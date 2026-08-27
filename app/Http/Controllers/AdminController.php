@@ -131,17 +131,6 @@ class AdminController extends Controller
         return redirect()->route('admin.bluebooks')->with('success', 'Bluebook updated successfully');
     }
 
-    public function bluebookDelete(int $id)
-    {
-        $user     = session('user');
-        $bluebook = Store::getBluebook($id);
-        if ($bluebook) {
-            Store::deleteBluebook($id);
-            Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Deleted Bluebook', 'document' => $bluebook['title']]);
-        }
-        return redirect()->route('admin.bluebooks')->with('success', 'Bluebook deleted successfully');
-    }
-
     public function bluebookApprove(int $id)
     {
         $user     = session('user');
@@ -227,12 +216,6 @@ class AdminController extends Controller
         if ($request->input('password')) $fields['password'] = $request->input('password');
         Store::updateUser($id, $fields);
         return redirect()->route('admin.users')->with('success', 'User updated successfully');
-    }
-
-    public function userDelete(int $id)
-    {
-        Store::deleteUser($id);
-        return redirect()->route('admin.users')->with('success', 'User deleted successfully');
     }
 
     public function enableUpload(int $id)

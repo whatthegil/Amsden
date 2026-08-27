@@ -3,7 +3,7 @@
 
 <div class="app">
   @include('partials.admin-sidebar')
-  <div class="main">
+  <main class="main" id="main-content">
     <header class="topbar">
       <h1 class="topbar-title">Bluebook Management</h1>
       <div class="topbar-right">
@@ -29,12 +29,12 @@
 
       <form method="GET" action="{{ route('admin.bluebooks') }}" class="filter-bar">
         <div class="filter-group grow">
-          <label>Search</label>
-          <input type="text" name="search" value="{{ $query['search'] ?? '' }}" placeholder="Title, author, keyword…">
+          <label for="bluebooks-filter-search">Search</label>
+          <input id="bluebooks-filter-search" type="text" name="search" value="{{ $query['search'] ?? '' }}" placeholder="Title, author, keyword…">
         </div>
         <div class="filter-group">
-          <label>Department</label>
-          <select name="department">
+          <label for="bluebooks-filter-department">Department</label>
+          <select id="bluebooks-filter-department" name="department">
             <option value="">All Departments</option>
             @foreach(['CCS','CENG','CAS','CHS','CTDE','CTHM','CBA'] as $dept)
               <option value="{{ $dept }}" {{ ($query['department'] ?? '') === $dept ? 'selected' : '' }}>{{ $dept }}</option>
@@ -42,8 +42,8 @@
           </select>
         </div>
         <div class="filter-group">
-          <label>Year</label>
-          <select name="year">
+          <label for="bluebooks-filter-year">Year</label>
+          <select id="bluebooks-filter-year" name="year">
             <option value="">All Years</option>
             @foreach($years as $y)
               <option value="{{ $y }}" {{ ($query['year'] ?? '') == $y ? 'selected' : '' }}>{{ $y }}</option>
@@ -51,8 +51,8 @@
           </select>
         </div>
         <div class="filter-group">
-          <label>Status</label>
-          <select name="status">
+          <label for="bluebooks-filter-status">Status</label>
+          <select id="bluebooks-filter-status" name="status">
             <option value="">All Status</option>
             @foreach(['Approved','Pending','Rejected'] as $s)
               <option value="{{ $s }}" {{ ($query['status'] ?? '') === $s ? 'selected' : '' }}>{{ $s }}</option>
@@ -123,9 +123,6 @@
                             @csrf <button type="submit" class="btn btn-outline btn-sm">Reprocess OCR</button>
                           </form>
                         @endif
-                        <form method="POST" action="{{ route('admin.bluebooks.delete', $b['id']) }}" style="display:inline;">
-                          @csrf <button type="submit" class="btn btn-danger btn-sm confirm-delete">Delete</button>
-                        </form>
                       </div>
                     </td>
                   </tr>
@@ -137,17 +134,17 @@
       @else
         <div class="card">
           <div class="empty-state">
-            <div class="icon">📭</div>
+            <div class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" fill="currentColor" fill-opacity="0.18"/><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
             <p>No bluebooks found matching your filters.</p>
           </div>
         </div>
       @endif
     </div>
 
-    <footer style="padding:1rem 2rem;font-size:0.8rem;color:var(--gray-400);border-top:1px solid var(--gray-200);background:rgba(255,255,255,0.98);">
-      AMSDEN &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
+    <footer class="app-footer">
+      C-BAMS &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
     </footer>
-  </div>
+  </main>
 </div>
 
 @include('partials.footer')

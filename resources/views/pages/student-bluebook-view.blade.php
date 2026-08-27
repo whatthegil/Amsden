@@ -3,7 +3,7 @@
 
 <div class="app">
   @include('partials.student-sidebar')
-  <div class="main">
+  <main class="main" id="main-content">
     <header class="topbar">
       <h1 class="topbar-title">Bluebook Detail</h1>
       <div class="topbar-right">
@@ -24,14 +24,16 @@
               <form method="POST" action="{{ route('student.bookmarks.remove', $bluebook['id']) }}?from=view">
                 @csrf
                 <button type="submit" class="btn btn-warning btn-sm">
-                  🔖 Remove Bookmark
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" fill="currentColor" fill-opacity="0.18"/><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Remove Bookmark
                 </button>
               </form>
             @else
               <form method="POST" action="{{ route('student.bookmarks.add', $bluebook['id']) }}">
                 @csrf
                 <button type="submit" class="btn btn-outline btn-sm">
-                  🔖 Bookmark
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" fill="currentColor" fill-opacity="0.18"/><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Bookmark
                 </button>
               </form>
             @endif
@@ -90,7 +92,7 @@
           <div style="font-size:0.78rem;color:var(--gray-400);margin-top:0.5rem;">Access logged for: {{ $user['email'] }}</div>
         @else
           <div class="watermark-overlay" style="margin-top:0;">
-            <div style="font-size:2rem;margin-bottom:1rem;">📄</div>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" style="margin:0 auto 1rem;display:block;"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" fill="var(--gray-400)" fill-opacity="0.18"/><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" fill="none" stroke="var(--gray-400)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <div style="font-size:0.9rem;color:var(--gray-600);margin-bottom:0.5rem;">No document file was attached to this record.</div>
             <div style="font-size:0.78rem;color:var(--gray-400);">Access logged for: {{ $user['email'] }}</div>
             <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0.08;font-size:2.5rem;font-weight:700;letter-spacing:0.2em;transform:rotate(-25deg);color:var(--primary-dark);user-select:none;">CSPC ARCHIVE</div>
@@ -99,10 +101,10 @@
       </div>
     </div>
 
-    <footer style="padding:1rem 2rem;font-size:0.8rem;color:var(--gray-400);border-top:1px solid var(--gray-200);background:rgba(255,255,255,0.98);">
-      AMSDEN &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
+    <footer class="app-footer">
+      C-BAMS &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
     </footer>
-  </div>
+  </main>
 </div>
 
 @include('partials.footer')

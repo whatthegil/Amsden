@@ -3,7 +3,7 @@
 
 <div class="app">
   @include('partials.student-sidebar')
-  <div class="main">
+  <main class="main" id="main-content">
     <header class="topbar">
       <h1 class="topbar-title">My Bookmarks</h1>
       <div class="topbar-right">
@@ -49,7 +49,7 @@
       @else
         <div class="card">
           <div class="empty-state">
-            <div class="icon">🔖</div>
+            <div class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" fill="currentColor" fill-opacity="0.18"/><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
             <p>You haven't bookmarked any bluebooks yet.</p>
             <a href="{{ route('student.bluebooks') }}" class="btn btn-primary" style="margin-top:1rem;">Browse Bluebooks</a>
           </div>
@@ -57,10 +57,10 @@
       @endif
     </div>
 
-    <footer style="padding:1rem 2rem;font-size:0.8rem;color:var(--gray-400);border-top:1px solid var(--gray-200);background:rgba(255,255,255,0.98);">
-      AMSDEN &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
+    <footer class="app-footer">
+      C-BAMS &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
     </footer>
-  </div>
+  </main>
 </div>
 
 @include('partials.footer')

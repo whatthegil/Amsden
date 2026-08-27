@@ -3,7 +3,7 @@
 
 <div class="app">
   @include('partials.admin-sidebar')
-  <div class="main">
+  <main class="main" id="main-content">
     <header class="topbar">
       <h1 class="topbar-title">{{ $isEdit ? 'Edit' : 'Add' }} User</h1>
       <div class="topbar-right">
@@ -22,7 +22,7 @@
 
       <div class="form-card">
         <div class="form-card-header">
-          <span class="icon">👤</span>
+          <span class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" fill="currentColor" fill-opacity="0.18"/><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <h2>{{ $isEdit ? 'Edit Account' : 'User Details' }}</h2>
         </div>
         <div class="form-card-body">
@@ -30,18 +30,18 @@
             @csrf
 
             <div class="form-group">
-              <label>Full Name</label>
-              <input type="text" name="name" value="{{ $editUser['name'] ?? '' }}" required>
+              <label for="user-form-name">Full Name</label>
+              <input id="user-form-name" type="text" name="name" value="{{ $editUser['name'] ?? '' }}" required>
             </div>
 
             <div class="form-row">
               <div class="form-group">
-                <label>Email Address</label>
-                <input type="email" name="email" value="{{ $editUser['email'] ?? '' }}" required>
+                <label for="user-form-email">Email Address</label>
+                <input id="user-form-email" type="email" name="email" value="{{ $editUser['email'] ?? '' }}" required>
               </div>
               <div class="form-group">
-                <label>Role</label>
-                <select name="role" required>
+                <label for="user-form-role">Role</label>
+                <select id="user-form-role" name="role" required>
                   <option value="Student" {{ ($editUser['role'] ?? 'Student') === 'Student' ? 'selected' : '' }}>Student</option>
                   <option value="Faculty" {{ ($editUser['role'] ?? '') === 'Faculty' ? 'selected' : '' }}>Faculty</option>
                   <option value="Admin" {{ ($editUser['role'] ?? '') === 'Admin' ? 'selected' : '' }}>Admin</option>
@@ -50,8 +50,8 @@
             </div>
 
             <div class="form-group">
-              <label>{{ $isEdit ? 'New Password (leave blank to keep current)' : 'Password' }}</label>
-              <input type="password" name="password" {{ $isEdit ? '' : 'required' }} placeholder="{{ $isEdit ? 'Leave blank to keep current password' : 'Create a password' }}">
+              <label for="user-form-password">{{ $isEdit ? 'New Password (leave blank to keep current)' : 'Password' }}</label>
+              <input id="user-form-password" type="password" name="password" {{ $isEdit ? '' : 'required' }} placeholder="{{ $isEdit ? 'Leave blank to keep current password' : 'Create a password' }}">
             </div>
 
             <div class="form-actions">
@@ -63,10 +63,10 @@
       </div>
     </div>
 
-    <footer style="padding:1rem 2rem;font-size:0.8rem;color:var(--gray-400);border-top:1px solid var(--gray-200);background:rgba(255,255,255,0.98);">
-      AMSDEN &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
+    <footer class="app-footer">
+      C-BAMS &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
     </footer>
-  </div>
+  </main>
 </div>
 
 @include('partials.footer')

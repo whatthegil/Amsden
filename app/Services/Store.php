@@ -67,11 +67,6 @@ class Store
         $user->save();
     }
 
-    public static function deleteUser(int $id): void
-    {
-        User::destroy($id);
-    }
-
     public static function setUploadPermission(int $id, bool $canUpload): void
     {
         User::where('id', $id)->update(['can_upload' => $canUpload]);
@@ -172,15 +167,6 @@ class Store
             $b->file_size          = $fields['fileSize'] ?? null;
         }
         $b->save();
-    }
-
-    public static function deleteBluebook(int $id): void
-    {
-        $b = Bluebook::find($id);
-        if ($b && $b->file_path) {
-            \Illuminate\Support\Facades\Storage::disk('local')->delete($b->file_path);
-        }
-        Bluebook::destroy($id);
     }
 
     public static function setBluebookStatus(int $id, string $status): void

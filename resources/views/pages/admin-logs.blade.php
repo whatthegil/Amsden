@@ -3,7 +3,7 @@
 
 <div class="app">
   @include('partials.admin-sidebar')
-  <div class="main">
+  <main class="main" id="main-content">
     <header class="topbar">
       <h1 class="topbar-title">Access Logs</h1>
       <div class="topbar-right">
@@ -21,12 +21,12 @@
 
       <form method="GET" action="{{ route('admin.logs') }}" class="filter-bar">
         <div class="filter-group grow">
-          <label>Search</label>
-          <input type="text" name="search" value="{{ $query['search'] ?? '' }}" placeholder="Name, email, or document…">
+          <label for="logs-filter-search">Search</label>
+          <input id="logs-filter-search" type="text" name="search" value="{{ $query['search'] ?? '' }}" placeholder="Name, email, or document…">
         </div>
         <div class="filter-group">
-          <label>Action</label>
-          <select name="action">
+          <label for="logs-filter-action">Action</label>
+          <select id="logs-filter-action" name="action">
             <option value="">All Actions</option>
             @foreach($actions as $a)
               <option value="{{ $a }}" {{ ($query['action'] ?? '') === $a ? 'selected' : '' }}>{{ $a }}</option>
@@ -82,17 +82,17 @@
       @else
         <div class="card">
           <div class="empty-state">
-            <div class="icon">📋</div>
+            <div class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" fill="currentColor" fill-opacity="0.18"/><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
             <p>No logs found matching your filters.</p>
           </div>
         </div>
       @endif
     </div>
 
-    <footer style="padding:1rem 2rem;font-size:0.8rem;color:var(--gray-400);border-top:1px solid var(--gray-200);background:rgba(255,255,255,0.98);">
-      AMSDEN &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
+    <footer class="app-footer">
+      C-BAMS &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
     </footer>
-  </div>
+  </main>
 </div>
 
 @include('partials.footer')

@@ -14,7 +14,7 @@
   --bg: #f7f8fa;
   --gray-100: #f2f4f7;
   --gray-200: #e4e7ec;
-  --gray-400: #98a2b3;
+  --gray-400: #6c727f; /* darkened from #98a2b3 for WCAG AA text contrast (~4.8:1 on white) */
   --gray-600: #475467;
   --gray-800: #1d2939;
   --red: #d92d20;
@@ -30,6 +30,38 @@
   --shadow: 0 1px 3px rgba(16,24,40,0.07), 0 1px 2px rgba(16,24,40,0.05);
   --shadow-md: 0 12px 24px -6px rgba(26,86,219,0.16);
   --transition: 0.2s ease;
+}
+
+/* ─── Skip link ──────────────────────────────────────────────────────────────── */
+/* Hidden until keyboard/screen-reader focus reaches it, then jumps past the
+   repeated sidebar nav straight to the page's <main> landmark. */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0.75rem;
+  z-index: 2000;
+  background: var(--primary-dark);
+  color: var(--white);
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+.skip-link:focus {
+  top: 0.75rem;
+}
+
+/* ─── Screen-reader-only text ────────────────────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ─── Reset ─────────────────────────────────────────────────────────────────── */
@@ -176,6 +208,29 @@ img { max-width: 100%; display: block; }
 .form-group textarea { resize: vertical; min-height: 90px; }
 .form-hint { font-size: 0.8rem; color: var(--gray-400); margin-top: 0.3rem; }
 
+/* ─── Divider ("or …") ───────────────────────────────────────────────────────── */
+.divider { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--gray-200); }
+.divider span { font-size: 0.78rem; color: var(--gray-400); font-weight: 500; white-space: nowrap; }
+
+/* ─── Quick-test callout (login page) ───────────────────────────────────────── */
+.quick-test-box {
+  padding: 0.85rem 1rem;
+  background: var(--primary-light);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--primary-pale);
+}
+.quick-test-box .label {
+  font-size: 0.75rem;
+  color: var(--primary-dark);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+}
+.quick-test-box .row { font-size: 0.81rem; color: var(--gray-600); }
+.quick-test-box .row + .row { margin-top: 0.3rem; }
+
 /* ─── Buttons ────────────────────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
@@ -203,6 +258,18 @@ img { max-width: 100%; display: block; }
 .btn-warning:hover { background: #9f580a; }
 .btn-sm { padding: 0.45rem 0.9rem; font-size: 0.82rem; }
 .btn-full { width: 100%; justify-content: center; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; pointer-events: none; box-shadow: none; transform: none; }
+
+/* Google brand button keeps Google's own colors (per their brand guidelines)
+   rather than the app accent, but is still a first-class themed component. */
+.btn-google {
+  background: var(--white);
+  border: 1.5px solid #dadce0;
+  color: #3c4043;
+  font-weight: 500;
+  box-shadow: var(--shadow);
+}
+.btn-google:hover { background: var(--gray-100); box-shadow: 0 4px 14px rgba(16,24,40,0.09); transform: translateY(-1px); }
 
 /* ─── Alerts ─────────────────────────────────────────────────────────────────── */
 .alert {
@@ -218,6 +285,87 @@ img { max-width: 100%; display: block; }
 .alert-success { background: var(--green-light);  color: var(--green);        border-left: 3px solid var(--green);   }
 .alert-info    { background: var(--primary-pale); color: var(--primary-dark); border-left: 3px solid var(--primary); }
 .alert-warning { background: var(--yellow-light); color: var(--yellow);       border-left: 3px solid var(--yellow);  }
+
+/* ─── Modal ──────────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 18, 40, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.modal-overlay.open { display: flex; }
+@media (prefers-reduced-motion: no-preference) {
+  .modal-overlay.open { animation: modal-fade 0.18s ease both; }
+  .modal-overlay.open .modal-card { animation: modal-pop 0.22s cubic-bezier(.2,.9,.3,1.2) both; }
+}
+@keyframes modal-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-pop { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+.modal-card {
+  background: var(--white);
+  border-radius: 16px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 460px;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  box-shadow: 0 24px 60px -12px rgba(16,24,40,0.35);
+  border: 1px solid var(--gray-200);
+}
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; gap: 1rem; }
+.modal-header h3 { font-weight: 700; letter-spacing: -0.02em; font-size: 1.15rem; color: var(--gray-800); }
+.modal-close {
+  border: none;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: all var(--transition);
+}
+.modal-close:hover { background: var(--red-light); color: var(--red); }
+.modal-body { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.account-option {
+  width: 100%;
+  text-align: left;
+  padding: 1.1rem 1.25rem;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  background: var(--cream);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all var(--transition);
+}
+.account-option:hover {
+  border-color: var(--primary-mid);
+  background: var(--primary-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+.account-option:active { transform: translateY(0); }
+.account-option .avatar {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--white);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.account-option .name { font-weight: 600; color: var(--gray-800); font-size: 0.92rem; }
+.account-option .detail { font-size: 0.8rem; color: var(--gray-600); margin-top: 0.1rem; }
 
 /* ─── App Shell ──────────────────────────────────────────────────────────────── */
 .app {
@@ -270,6 +418,25 @@ img { max-width: 100%; display: block; }
 }
 .menu-toggle:hover { border-color: var(--primary); background: var(--primary-light); }
 .menu-toggle:active { transform: scale(0.94); }
+/* Tint the button itself while the drawer/rail is open, matching the active
+   nav-item treatment elsewhere, so the icon isn't the only state signal. */
+.menu-toggle[aria-expanded="true"] { background: var(--primary-light); border-color: var(--primary-pale); color: var(--primary); }
+
+/* Animated hamburger ↔ close icon — three independent bars (see main.js)
+   morph into an X purely from the aria-expanded attribute the JS already
+   maintains, so the icon itself communicates open/closed state. */
+.menu-toggle .bar { transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion: no-preference) {
+  .menu-toggle .bar { transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease; }
+}
+.menu-toggle[aria-expanded="true"] .bar-top    { transform: translateY(6px) rotate(45deg); }
+.menu-toggle[aria-expanded="true"] .bar-mid    { opacity: 0; }
+.menu-toggle[aria-expanded="true"] .bar-bottom { transform: translateY(-6px) rotate(-45deg); }
+/* Hide the three-line (hamburger) toggle on desktop — the collapsed rail's own
+   expand button handles re-opening there. Kept on mobile for the drawer. */
+@media (min-width: 901px) {
+  .menu-toggle { display: none; }
+}
 .sidebar-brand {
   padding: 1.5rem 1.25rem 1.25rem;
   border-bottom: 1px solid var(--gray-100);
@@ -302,6 +469,25 @@ img { max-width: 100%; display: block; }
 }
 .sidebar-expand-btn:hover { background: var(--primary-pale); }
 .sidebar-expand-btn:active { transform: scale(0.94); }
+
+/* Collapse control in the brand row (desktop) — folds the sidebar into the
+   icon-only rail; the .sidebar-expand-btn above brings it back. */
+.sidebar-collapse-btn {
+  margin-left: auto;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--gray-400);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition), color var(--transition);
+}
+.sidebar-collapse-btn:hover { background: var(--gray-100); color: var(--gray-800); }
+.sidebar-collapse-btn:active { transform: scale(0.94); }
+html.sidebar-collapsed .sidebar-collapse-btn { display: none; }
+@media (max-width: 900px) { .sidebar-collapse-btn { display: none; } }
 .sidebar-brand-text .name {
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -369,6 +555,42 @@ a.user-chip.active { background: var(--primary-light); }
 }
 .user-chip-info .name { font-size: 0.82rem; color: var(--gray-800); font-weight: 600; display: block; }
 .user-chip-info .role { font-size: 0.72rem; color: var(--gray-400); display: block; }
+
+/* ─── Sidebar search ─────────────────────────────────────────────────────────────
+   Sits just below the brand row. A magnifying-glass icon is absolutely positioned
+   inside the wrapper; the input carries left padding so text clears it. */
+.sidebar-search {
+  position: relative;
+  padding: 0.9rem 1rem 0.25rem;
+}
+.sidebar-search .icon {
+  position: absolute;
+  left: 1.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--gray-400);
+  pointer-events: none;
+}
+.sidebar-search input {
+  width: 100%;
+  padding: 0.5rem 0.7rem 0.5rem 2.1rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--gray-800);
+  background: var(--cream);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--transition), background var(--transition);
+}
+.sidebar-search input::placeholder { color: var(--gray-400); }
+.sidebar-search input:focus {
+  outline: none;
+  background: var(--white);
+  border-color: var(--primary);
+}
+html.sidebar-collapsed .sidebar-search { display: none; }
 
 /* ─── Main Content ───────────────────────────────────────────────────────────── */
 .main {
@@ -441,6 +663,7 @@ a.user-chip.active { background: var(--primary-light); }
   text-overflow: ellipsis;
 }
 .topbar-right { display: flex; align-items: center; gap: 1rem; margin-left: auto; flex-shrink: 0; }
+.topbar-meta { font-size: 0.85rem; color: var(--gray-600); }
 .topbar-badge {
   background: var(--primary-light);
   border: 1px solid var(--primary-pale);
@@ -488,10 +711,24 @@ a.user-chip.active { background: var(--primary-light); }
   font-size: 1.3rem;
   flex-shrink: 0;
 }
-.stat-icon.blue   { background: var(--primary-light); }
-.stat-icon.green  { background: var(--green-light);  }
-.stat-icon.red    { background: var(--red-light);    }
-.stat-icon.yellow { background: var(--yellow-light); }
+.stat-icon.blue   { background: var(--primary-light); color: var(--primary);    }
+.stat-icon.green  { background: var(--green-light);  color: var(--green);     }
+.stat-icon.red    { background: var(--red-light);    color: var(--red);       }
+.stat-icon.yellow { background: var(--yellow-light); color: var(--yellow);    }
+/* Colored top accent that matches the icon, when the browser supports :has() —
+   falls back to no accent (still a fully styled card) otherwise. */
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: transparent;
+}
+.stat-card:has(.stat-icon.blue)::before   { background: var(--primary-mid); }
+.stat-card:has(.stat-icon.green)::before  { background: var(--green); }
+.stat-card:has(.stat-icon.red)::before    { background: var(--red); }
+.stat-card:has(.stat-icon.yellow)::before { background: var(--yellow); }
 .stat-body .value {
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -562,11 +799,12 @@ tbody tr:last-child td { border-bottom: none; }
   font-weight: 600;
   letter-spacing: 0.04em;
 }
-.badge-green  { background: var(--green-light);  color: var(--green);        }
-.badge-red    { background: var(--red-light);    color: var(--red);          }
-.badge-blue   { background: var(--primary-pale); color: var(--primary-dark); }
-.badge-yellow { background: var(--yellow-light); color: var(--yellow);       }
-.badge-gray   { background: var(--gray-100);     color: var(--gray-600);     }
+.badge { border: 1px solid transparent; }
+.badge-green  { background: var(--green-light);  color: var(--green);        border-color: rgba(6,118,71,0.18);   }
+.badge-red    { background: var(--red-light);    color: var(--red);          border-color: rgba(217,45,32,0.18);  }
+.badge-blue   { background: var(--primary-pale); color: var(--primary-dark); border-color: rgba(26,86,219,0.18);  }
+.badge-yellow { background: var(--yellow-light); color: var(--yellow);       border-color: rgba(181,71,8,0.18);   }
+.badge-gray   { background: var(--gray-100);     color: var(--gray-600);     border-color: var(--gray-200);       }
 
 /* ─── Filter Bar ─────────────────────────────────────────────────────────────── */
 .filter-bar {
@@ -596,6 +834,24 @@ tbody tr:last-child td { border-bottom: none; }
 .filter-group input:focus,
 .filter-group select:focus { outline: none; border-color: var(--primary); background: var(--white); }
 .filter-group.grow { flex: 1; min-width: 220px; }
+
+/* ─── File drop zone ─────────────────────────────────────────────────────────── */
+/* A <label for="..."> wrapping the visible dropzone, paired with a visually-
+   hidden (not display:none) file input — keeps the input keyboard-focusable
+   and clicking/tapping/Enter on the label natively opens the file picker. */
+.file-drop-zone {
+  display: block;
+  border: 2px dashed var(--primary-pale);
+  border-radius: var(--radius);
+  padding: 2rem;
+  text-align: center;
+  background: var(--primary-light);
+  margin-bottom: 1.5rem;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.file-drop-zone:hover { border-color: var(--primary-mid); }
+.file-drop-zone:focus-within { outline: 2px solid var(--primary-mid); outline-offset: 2px; border-color: var(--primary-mid); }
 
 /* ─── Form Card ──────────────────────────────────────────────────────────────── */
 .form-page { max-width: 760px; margin-left: auto; margin-right: auto; width: 100%; }
@@ -634,6 +890,8 @@ tbody tr:last-child td { border-bottom: none; }
   border: 1px solid var(--gray-200);
   padding: 2.5rem;
   max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .bluebook-detail h1 {
   font-weight: 700;
@@ -758,7 +1016,16 @@ tbody tr:last-child td { border-bottom: none; }
   padding: 3rem;
   color: var(--gray-400);
 }
-.empty-state .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+.empty-state .icon {
+  width: 56px; height: 56px;
+  margin: 0 auto 0.85rem;
+  border-radius: 50%;
+  background: var(--gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+}
 .empty-state p { font-size: 0.9rem; }
 
 /* ─── Mono ───────────────────────────────────────────────────────────────────── */
@@ -772,6 +1039,13 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* ─── Footer ─────────────────────────────────────────────────────────────────── */
 footer { background: var(--white) !important; }
+.app-footer {
+  padding: 1rem 2rem;
+  font-size: 0.8rem;
+  color: var(--gray-400);
+  border-top: 1px solid var(--gray-200);
+  background: var(--white);
+}
 
 /* ─── 404 Page ───────────────────────────────────────────────────────────────── */
 .not-found-page {

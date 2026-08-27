@@ -33,7 +33,6 @@ Route::prefix('admin')->middleware('role:Admin')->group(function () {
     Route::post('/bluebooks/new',              [AdminController::class, 'bluebookStore'])->name('admin.bluebooks.store');
     Route::get('/bluebooks/{id}/edit',         [AdminController::class, 'bluebookEditForm'])->name('admin.bluebooks.edit');
     Route::post('/bluebooks/{id}/edit',        [AdminController::class, 'bluebookUpdate'])->name('admin.bluebooks.update');
-    Route::post('/bluebooks/{id}/delete',      [AdminController::class, 'bluebookDelete'])->name('admin.bluebooks.delete');
     Route::post('/bluebooks/{id}/approve',     [AdminController::class, 'bluebookApprove'])->name('admin.bluebooks.approve');
     Route::post('/bluebooks/{id}/reject',      [AdminController::class, 'bluebookReject'])->name('admin.bluebooks.reject');
     Route::post('/bluebooks/{id}/reprocess-ocr', [AdminController::class, 'bluebookReprocessOcr'])->name('admin.bluebooks.reprocessOcr');
@@ -43,7 +42,6 @@ Route::prefix('admin')->middleware('role:Admin')->group(function () {
     Route::post('/users/new',                  [AdminController::class, 'userStore'])->name('admin.users.store');
     Route::get('/users/{id}/edit',             [AdminController::class, 'userEditForm'])->name('admin.users.edit');
     Route::post('/users/{id}/edit',            [AdminController::class, 'userUpdate'])->name('admin.users.update');
-    Route::post('/users/{id}/delete',          [AdminController::class, 'userDelete'])->name('admin.users.delete');
     Route::post('/users/{id}/enable-upload',   [AdminController::class, 'enableUpload'])->name('admin.users.enableUpload');
     Route::post('/users/{id}/disable-upload',  [AdminController::class, 'disableUpload'])->name('admin.users.disableUpload');
 

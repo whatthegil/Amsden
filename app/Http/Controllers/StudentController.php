@@ -158,7 +158,7 @@ class StudentController extends Controller
         if (!($user['canUpload'] ?? false)) {
             return view('pages.student-upload-denied', ['user' => $user, 'active' => 'upload']);
         }
-        return view('pages.student-upload', ['user' => $user, 'active' => 'upload', 'error' => null, 'success' => null]);
+        return view('pages.student-upload', ['user' => $user, 'active' => 'upload', 'error' => null, 'success' => null, 'old' => []]);
     }
 
     public function uploadStore(Request $request)
@@ -168,39 +168,70 @@ class StudentController extends Controller
             return view('pages.student-upload-denied', ['user' => $user, 'active' => 'upload']);
         }
 
-        $request->validate([
-            'file' => ['required', 'file', 'mimes:pdf', 'max:25600'], // 25MB
-        ]);
+        try {
+            $request->validate([
+                'file'       => ['required', 'file', 'mimes:pdf', 'max:25600'], // 25MB
+                'title'      => ['required', 'string'],
+                'authors'    => ['required', 'string'],
+                'department' => ['required', 'string'],
+                'program'    => ['required', 'string'],
+                'year'       => ['required', 'integer'],
+                'adviser'    => ['required', 'string'],
+                'pages'      => ['required', 'integer', 'min:1'],
+                'keywords'   => ['required', 'string'],
+                'abstract'   => ['required', 'string'],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return view('pages.student-upload', [
+                'user'    => $user,
+                'active'  => 'upload',
+                'error'   => collect($e->errors())->flatten()->first(),
+                'success' => null,
+                'old'     => $request->except('file', '_token'),
+            ]);
+        }
 
-        $title = $request->input('title');
-        $file  = $request->file('file');
-        $path  = $file->store('bluebooks', 'local');
+        try {
+            $title = $request->input('title');
+            $file  = $request->file('file');
+            $path  = $file->store('bluebooks', 'local');
 
-        $bluebook = Store::addBluebook([
-            'title'          => $title,
-            'authors'        => array_map('trim', explode(';', $request->input('authors'))),
-            'year'           => (int)$request->input('year'),
-            'department'     => $request->input('department'),
-            'program'        => $request->input('program'),
-            'keywords'       => array_map('trim', explode(',', $request->input('keywords'))),
-            'abstract'       => $request->input('abstract'),
-            'adviser'        => $request->input('adviser'),
-            'status'         => 'Pending',
-            'uploadedBy'     => $user['email'],
-            'uploadedByName' => $user['name'],
-            'pages'          => (int)$request->input('pages'),
-            'filePath'         => $path,
-            'fileOriginalName' => $file->getClientOriginalName(),
-            'fileSize'         => $file->getSize(),
-        ]);
-        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Uploaded Bluebook', 'document' => $title]);
-        ProcessBluebookOcr::dispatch($bluebook['id']);
+            $bluebook = Store::addBluebook([
+                'title'          => $title,
+                'authors'        => array_map('trim', explode(';', $request->input('authors'))),
+                'year'           => (int)$request->input('year'),
+                'department'     => $request->input('department'),
+                'program'        => $request->input('program'),
+                'keywords'       => array_map('trim', explode(',', $request->input('keywords'))),
+                'abstract'       => $request->input('abstract'),
+                'adviser'        => $request->input('adviser'),
+                'status'         => 'Pending',
+                'uploadedBy'     => $user['email'],
+                'uploadedByName' => $user['name'],
+                'pages'          => (int)$request->input('pages'),
+                'filePath'         => $path,
+                'fileOriginalName' => $file->getClientOriginalName(),
+                'fileSize'         => $file->getSize(),
+            ]);
+            Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Uploaded Bluebook', 'document' => $title]);
+            ProcessBluebookOcr::dispatch($bluebook['id']);
+        } catch (\Throwable $e) {
+            report($e);
+            return view('pages.student-upload', [
+                'user'    => $user,
+                'active'  => 'upload',
+                'error'   => 'Something went wrong while uploading your bluebook. Please try again.',
+                'success' => null,
+                'old'     => $request->except('file', '_token'),
+            ]);
+        }
 
         return view('pages.student-upload', [
             'user'    => $user,
             'active'  => 'upload',
             'error'   => null,
             'success' => 'Bluebook uploaded successfully! It is now pending admin approval.',
+            'old'     => [],
         ]);
     }
 

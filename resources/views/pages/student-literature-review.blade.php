@@ -3,7 +3,7 @@
 
 <div class="app">
   @include('partials.student-sidebar')
-  <div class="main">
+  <main class="main" id="main-content">
     <header class="topbar">
       <h1 class="topbar-title">Literature Review</h1>
       <div class="topbar-right">
@@ -26,7 +26,7 @@
       {{-- Input Form --}}
       <div class="form-card">
         <div class="form-card-header">
-          <span class="icon">📚</span>
+          <span class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" fill="currentColor" fill-opacity="0.18"/><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <h2>Research Topic</h2>
         </div>
         <div class="form-card-body">
@@ -34,8 +34,9 @@
             @csrf
 
             <div class="form-group">
-              <label>Topic / Research Question <span style="color:var(--red);">*</span></label>
+              <label for="litrev-topic">Topic / Research Question <span style="color:var(--red);">*</span></label>
               <input
+                id="litrev-topic"
                 type="text"
                 name="topic"
                 required
@@ -63,7 +64,7 @@
 
         @if($total === 0)
           <div class="alert alert-error" style="margin-top:1.5rem;display:flex;align-items:center;gap:0.75rem;">
-            <span style="font-size:1.4rem;">🔍</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" style="flex-shrink:0;"><path d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" fill="currentColor" fill-opacity="0.18"/><path d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <div>
               <strong>No related bluebooks found.</strong><br>
               <span style="font-size:0.88rem;">Try broadening your topic or using different keywords.</span>
@@ -71,7 +72,7 @@
           </div>
         @else
           <div class="alert alert-success" style="margin-top:1.5rem;display:flex;align-items:center;gap:0.75rem;">
-            <span style="font-size:1.4rem;">✅</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" style="flex-shrink:0;"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" fill="currentColor" fill-opacity="0.18"/><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <div>
               <strong>{{ $total }} related bluebook{{ $total !== 1 ? 's' : '' }} found for: <em>"{{ $topic }}"</em></strong><br>
               <span style="font-size:0.88rem;">Sorted by relevance to your topic.</span>
@@ -125,9 +126,9 @@
                   <div style="background:var(--cream);border:1px solid var(--gray-200);border-radius:var(--radius-sm);padding:0.75rem 1rem;">
                     <div style="font-size:0.78rem;font-weight:600;color:var(--gray-600);margin-bottom:0.3rem;display:flex;align-items:center;gap:0.4rem;">
                       @if($result['aiGenerated'] ?? false)
-                        <span style="background:var(--primary);color:var(--white);padding:0.05rem 0.5rem;border-radius:999px;font-size:0.68rem;letter-spacing:0.03em;">✨ AI Summary</span>
+                        <span style="background:var(--primary);color:var(--white);padding:0.05rem 0.5rem;border-radius:999px;font-size:0.68rem;letter-spacing:0.03em;">AI Summary</span>
                       @else
-                        <span>🧠</span> Key Points Summary
+                        Key Points Summary
                       @endif
                     </div>
                     <div style="font-size:0.88rem;color:var(--gray-800);line-height:1.5;">
@@ -142,10 +143,10 @@
       @endif
     </div>
 
-    <footer style="padding:1rem 2rem;font-size:0.8rem;color:var(--gray-400);border-top:1px solid var(--gray-200);background:rgba(255,255,255,0.98);">
-      AMSDEN &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
+    <footer class="app-footer">
+      C-BAMS &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
     </footer>
-  </div>
+  </main>
 </div>
 
 @include('partials.footer')

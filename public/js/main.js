@@ -4,7 +4,7 @@ document.querySelectorAll('.alert').forEach(el => {
     el.style.transition = 'opacity 0.4s ease';
     el.style.opacity = '0';
     setTimeout(() => el.remove(), 400);
-  }, 4000);
+  }, 300000); // 5 minutes
 });
 
 // ─── Confirm delete ───────────────────────────────────────────────────────────
@@ -47,9 +47,14 @@ document.querySelectorAll('[data-href]').forEach(row => {
   btn.type = 'button';
   btn.setAttribute('aria-label', 'Open navigation menu');
   btn.setAttribute('aria-expanded', 'false');
+  // Three independent bars (not one <path>) so each can be transformed on its
+  // own into an X when the drawer/rail is open — see .menu-toggle .bar in CSS,
+  // driven purely by the aria-expanded attribute this file already maintains.
   btn.innerHTML =
-    '<svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24">' +
-    '<path d="M4 6h16M4 12h16M4 18h16"/></svg>';
+    '<svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+    '<line class="bar bar-top" x1="4" y1="6" x2="20" y2="6"/>' +
+    '<line class="bar bar-mid" x1="4" y1="12" x2="20" y2="12"/>' +
+    '<line class="bar bar-bottom" x1="4" y1="18" x2="20" y2="18"/></svg>';
   topbar.insertBefore(btn, topbar.firstChild);
 
   // Mounted inside .app (not <body>): .app creates a stacking context, so the
@@ -68,7 +73,7 @@ document.querySelectorAll('[data-href]').forEach(row => {
     document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
     btn.setAttribute('aria-expanded', String(!collapsed));
     btn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
-    try { localStorage.setItem('amsden-sidebar', collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+    try { localStorage.setItem('cbams-sidebar', collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
   }
 
   btn.addEventListener('click', () => {
@@ -83,6 +88,10 @@ document.querySelectorAll('[data-href]').forEach(row => {
   // In-rail expand button that sits where the logo was (desktop only, see CSS)
   const expandBtn = sidebar.querySelector('.sidebar-expand-btn');
   if (expandBtn) expandBtn.addEventListener('click', () => setCollapsed(false));
+
+  // Collapse button in the brand row (desktop) — folds the sidebar to the rail
+  const collapseBtn = sidebar.querySelector('.sidebar-collapse-btn');
+  if (collapseBtn) collapseBtn.addEventListener('click', () => setCollapsed(true));
   document.addEventListener('keydown', e => { if (e.key === 'Escape') setOpen(false); });
   sidebar.querySelectorAll('a').forEach(a => a.addEventListener('click', () => setOpen(false)));
 
@@ -104,10 +113,10 @@ document.querySelectorAll('[data-href]').forEach(row => {
 
   // ── 1. Warning toast ───────────────────────────────────────────────────────
   function showWarning(msg) {
-    let el = document.getElementById('amsden-warn');
+    let el = document.getElementById('cbams-warn');
     if (!el) {
       el = document.createElement('div');
-      el.id = 'amsden-warn';
+      el.id = 'cbams-warn';
       Object.assign(el.style, {
         position:     'fixed',
         top:          '24px',
@@ -128,7 +137,7 @@ document.querySelectorAll('[data-href]').forEach(row => {
       });
       document.body.appendChild(el);
     }
-    el.textContent = '🔒  ' + msg;
+    el.textContent = msg;
     el.style.opacity = '1';
     clearTimeout(el._t);
     el._t = setTimeout(() => { el.style.opacity = '0'; }, 3500);
@@ -176,7 +185,7 @@ document.querySelectorAll('[data-href]').forEach(row => {
     function buildWatermark() {
       if (!logoImg.complete || logoImg.naturalWidth === 0) return;
 
-      const old = document.getElementById('amsden-wm');
+      const old = document.getElementById('cbams-wm');
       if (old) old.remove();
 
       const canvas  = document.createElement('canvas');
@@ -196,7 +205,7 @@ document.querySelectorAll('[data-href]').forEach(row => {
       ctx.restore();
 
       const wm = document.createElement('div');
-      wm.id = 'amsden-wm';
+      wm.id = 'cbams-wm';
       Object.assign(wm.style, {
         position:        'fixed',
         inset:           '0',
@@ -227,7 +236,7 @@ document.querySelectorAll('[data-href]').forEach(row => {
 
       // Red banner
       const banner = document.createElement('div');
-      banner.id = 'amsden-share-banner';
+      banner.id = 'cbams-share-banner';
       Object.assign(banner.style, {
         position:   'fixed', top: '0', left: '0', right: '0',
         background: '#dc2626', color: '#fff',
@@ -235,7 +244,7 @@ document.querySelectorAll('[data-href]').forEach(row => {
         fontWeight: '700', fontSize: '15px',
         zIndex:     '2147483646', letterSpacing: '0.02em',
       });
-      banner.textContent = '⚠️  Screen sharing detected — content has been blurred to protect confidential data.';
+      banner.textContent = 'Screen sharing detected — content has been blurred to protect confidential data.';
       document.body.appendChild(banner);
 
       stream.getVideoTracks()[0].addEventListener('ended', () => {
@@ -281,10 +290,10 @@ document.querySelectorAll('[data-href]').forEach(row => {
     }
 
     function showCaptureBanner(msg) {
-      let banner = document.getElementById('amsden-capture-banner');
+      let banner = document.getElementById('cbams-capture-banner');
       if (!banner) {
         banner = document.createElement('div');
-        banner.id = 'amsden-capture-banner';
+        banner.id = 'cbams-capture-banner';
         Object.assign(banner.style, {
           position:      'fixed', top: '0', left: '0', right: '0',
           background:    '#dc2626', color: '#fff',
@@ -294,11 +303,11 @@ document.querySelectorAll('[data-href]').forEach(row => {
         });
         document.body.appendChild(banner);
       }
-      banner.textContent = '⚠️  ' + msg;
+      banner.textContent = msg;
     }
 
     function hideCaptureBanner() {
-      const banner = document.getElementById('amsden-capture-banner');
+      const banner = document.getElementById('cbams-capture-banner');
       if (banner) banner.remove();
     }
 
@@ -321,7 +330,11 @@ document.querySelectorAll('[data-href]').forEach(row => {
       setTimeout(() => { blurBook(false); hideCaptureBanner(); }, 4000);
     });
 
-    // Losing window focus often means switching to a recording tool
+    // Losing window focus often means switching to a recording tool. On
+    // mobile this also fires for ordinary reasons (switching apps, a
+    // notification, the app-switcher gesture) that have nothing to do with
+    // capture — a known false-positive tradeoff, kept on for parity with
+    // desktop protection rather than leaving mobile unprotected.
     window.addEventListener('blur', function () {
       blurBook(true);
       showCaptureBanner('Window lost focus — content hidden for protection.');
@@ -334,4 +347,28 @@ document.querySelectorAll('[data-href]').forEach(row => {
     });
   }
 
+})();
+
+// ─── Sidebar menu filter ──────────────────────────────────────────────────────
+// Types in the sidebar search box narrow the visible nav items; empty shows all.
+// Section labels hide when none of their items match.
+(function () {
+  const input = document.querySelector('.sidebar-search input[data-nav-filter]');
+  if (!input) return;
+
+  const sections = [...document.querySelectorAll('.sidebar-section')];
+
+  input.addEventListener('input', function () {
+    const q = input.value.trim().toLowerCase();
+    sections.forEach(section => {
+      let anyVisible = false;
+      section.querySelectorAll('.nav-item').forEach(item => {
+        const match = !q || item.textContent.trim().toLowerCase().includes(q);
+        item.style.display = match ? '' : 'none';
+        if (match) anyVisible = true;
+      });
+      const label = section.querySelector('.sidebar-label');
+      if (label) label.style.display = anyVisible ? '' : 'none';
+    });
+  });
 })();

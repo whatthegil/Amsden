@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Services\Ai\AnthropicClient;
+use App\Services\Ai\OpenAiClient;
 
 class LiteratureReviewService
 {
@@ -21,7 +21,7 @@ class LiteratureReviewService
      * attach a per-paper summary to each match. Ranking is purely local
      * (token overlap — see SimilarityService); only the summary text for the
      * top AI_SUMMARY_LIMIT results is swapped for an AI-written one, and only
-     * when ANTHROPIC_API_KEY is configured. AI failures of any kind (no key,
+     * when OPENAI_API_KEY is configured. AI failures of any kind (no key,
      * refusal, network error, malformed response) fall back to the existing
      * extractive summary — search() never errors or returns fewer results
      * because of the AI layer.
@@ -63,7 +63,7 @@ class LiteratureReviewService
 
         usort($results, fn($a, $b) => $b['score'] <=> $a['score']);
 
-        if (!empty($results) && AnthropicClient::isConfigured()) {
+        if (!empty($results) && OpenAiClient::isConfigured()) {
             self::applyAiSummaries($results, $topic);
         }
 
@@ -99,7 +99,7 @@ class LiteratureReviewService
         $userContent = "Research topic: \"{$topic}\"\n\nCandidate papers from the archive, ranked by keyword relevance (do not re-rank them):\n\n{$papersBlock}";
 
         $system = <<<SYS
-You are a literature-review assistant for AMSDEN, a capstone/thesis archive at Camarines Sur Polytechnic Colleges (CSPC). For each candidate paper, write a 2-3 sentence summary explaining specifically how that paper relates to the student's research topic. Ground every claim in the title, abstract, or document excerpt actually provided — never invent findings, methods, or results that aren't in the given text. If only the abstract is available for a paper, summarize from that alone and do not claim to describe its full methodology or results. Write in a neutral, academic tone suitable for an undergraduate literature review. Do not re-rank or re-score the papers — only summarize.
+You are a literature-review assistant for C-BAMS, a capstone/thesis archive at Camarines Sur Polytechnic Colleges (CSPC). For each candidate paper, write a 2-3 sentence summary explaining specifically how that paper relates to the student's research topic. Ground every claim in the title, abstract, or document excerpt actually provided — never invent findings, methods, or results that aren't in the given text. If only the abstract is available for a paper, summarize from that alone and do not claim to describe its full methodology or results. Write in a neutral, academic tone suitable for an undergraduate literature review. Do not re-rank or re-score the papers — only summarize.
 SYS;
 
         $schema = [
@@ -122,7 +122,7 @@ SYS;
             'additionalProperties' => false,
         ];
 
-        $response = AnthropicClient::createJsonMessage($system, $userContent, $schema, maxTokens: 3072);
+        $response = OpenAiClient::createJsonMessage($system, $userContent, $schema, maxTokens: 3072);
         if ($response === null || !isset($response['papers'])) {
             return; // extractive summaries already in place — nothing to do
         }

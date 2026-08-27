@@ -3,7 +3,7 @@
 
 <div class="app">
   @include('partials.admin-sidebar')
-  <div class="main">
+  <main class="main" id="main-content">
     <header class="topbar">
       <h1 class="topbar-title">User Management</h1>
       <div class="topbar-right">
@@ -29,12 +29,12 @@
 
       <form method="GET" action="{{ route('admin.users') }}" class="filter-bar">
         <div class="filter-group grow">
-          <label>Search</label>
-          <input type="text" name="search" value="{{ $query['search'] ?? '' }}" placeholder="Name or email…">
+          <label for="users-filter-search">Search</label>
+          <input id="users-filter-search" type="text" name="search" value="{{ $query['search'] ?? '' }}" placeholder="Name or email…">
         </div>
         <div class="filter-group">
-          <label>Role</label>
-          <select name="role">
+          <label for="users-filter-role">Role</label>
+          <select id="users-filter-role" name="role">
             <option value="">All Roles</option>
             <option value="Admin" {{ ($query['role'] ?? '') === 'Admin' ? 'selected' : '' }}>Admin</option>
             <option value="Student" {{ ($query['role'] ?? '') === 'Student' ? 'selected' : '' }}>Student</option>
@@ -99,11 +99,6 @@
                             </form>
                           @endif
                         @endif
-                        @if($u['id'] !== $user['id'])
-                          <form method="POST" action="{{ route('admin.users.delete', $u['id']) }}" style="display:inline;">
-                            @csrf <button type="submit" class="btn btn-danger btn-sm confirm-delete">Delete</button>
-                          </form>
-                        @endif
                       </div>
                     </td>
                   </tr>
@@ -115,17 +110,17 @@
       @else
         <div class="card">
           <div class="empty-state">
-            <div class="icon">👥</div>
+            <div class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" fill="currentColor" fill-opacity="0.18"/><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
             <p>No users found.</p>
           </div>
         </div>
       @endif
     </div>
 
-    <footer style="padding:1rem 2rem;font-size:0.8rem;color:var(--gray-400);border-top:1px solid var(--gray-200);background:rgba(255,255,255,0.98);">
-      AMSDEN &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
+    <footer class="app-footer">
+      C-BAMS &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
     </footer>
-  </div>
+  </main>
 </div>
 
 @include('partials.footer')

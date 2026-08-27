@@ -3,7 +3,7 @@
 
 <div class="app">
   @include('partials.student-sidebar')
-  <div class="main">
+  <main class="main" id="main-content">
     <header class="topbar">
       <h1 class="topbar-title">Similarity Check</h1>
       <div class="topbar-right">
@@ -22,7 +22,7 @@
       {{-- Input Form --}}
       <div class="form-card">
         <div class="form-card-header">
-          <span class="icon">🔍</span>
+          <span class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" fill="currentColor" fill-opacity="0.18"/><path d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <h2>Your Proposed Title</h2>
         </div>
         <div class="form-card-body">
@@ -30,20 +30,23 @@
             @csrf
 
             <div class="form-group">
-              <label>Proposed Research Title <span style="color:var(--red);">*</span></label>
+              <label for="sim-title">Proposed Research Title <span style="color:var(--red);">*</span></label>
               <input
+                id="sim-title"
                 type="text"
                 name="title"
                 required
                 placeholder="e.g. Development of a Web-Based Attendance Monitoring System"
                 value="{{ $proposed['title'] ?? '' }}"
+                aria-describedby="sim-title-hint"
               >
-              <small style="color:var(--gray-400);font-size:0.8rem;">This field is required. The title is the primary basis for similarity scoring.</small>
+              <small style="color:var(--gray-400);font-size:0.8rem;" id="sim-title-hint">This field is required. The title is the primary basis for similarity scoring.</small>
             </div>
 
             <div class="form-group">
-              <label>Keywords <span style="font-weight:400;color:var(--gray-400);">(optional — comma-separated, improves accuracy)</span></label>
+              <label for="sim-keywords">Keywords <span style="font-weight:400;color:var(--gray-400);">(optional — comma-separated, improves accuracy)</span></label>
               <input
+                id="sim-keywords"
                 type="text"
                 name="keywords"
                 placeholder="e.g. Attendance, Web System, QR Code, Laravel"
@@ -52,8 +55,8 @@
             </div>
 
             <div class="form-group">
-              <label>Abstract <span style="font-weight:400;color:var(--gray-400);">(optional — further improves accuracy)</span></label>
-              <textarea name="abstract" rows="4" placeholder="Brief description of your proposed research…">{{ $proposed['abstract'] ?? '' }}</textarea>
+              <label for="sim-abstract">Abstract <span style="font-weight:400;color:var(--gray-400);">(optional — further improves accuracy)</span></label>
+              <textarea id="sim-abstract" name="abstract" rows="4" placeholder="Brief description of your proposed research…">{{ $proposed['abstract'] ?? '' }}</textarea>
             </div>
 
             <div style="background:var(--primary-light);border:1px solid var(--primary-pale);border-radius:var(--radius-sm);padding:0.875rem 1rem;margin-bottom:1.25rem;font-size:0.85rem;color:var(--primary-dark);">
@@ -80,7 +83,7 @@
         {{-- Summary Banner --}}
         @if($total === 0)
           <div class="alert alert-success" style="margin-top:1.5rem;display:flex;align-items:center;gap:0.75rem;">
-            <span style="font-size:1.4rem;">✅</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" style="flex-shrink:0;"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" fill="currentColor" fill-opacity="0.18"/><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <div>
               <strong>No similar titles found.</strong><br>
               <span style="font-size:0.88rem;">Your proposed title shows no notable similarity to any existing bluebook in the archive. You may proceed with confidence.</span>
@@ -89,7 +92,7 @@
         @else
           @if($highCount > 0)
             <div class="alert alert-error" style="margin-top:1.5rem;display:flex;align-items:center;gap:0.75rem;">
-              <span style="font-size:1.4rem;">⚠️</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" style="flex-shrink:0;"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" fill="currentColor" fill-opacity="0.18"/><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               <div>
                 <strong>High similarity detected — {{ $highCount }} bluebook{{ $highCount !== 1 ? 's' : '' }} with 60%+ match.</strong><br>
                 <span style="font-size:0.88rem;">Please review the results below and consider revising your title to avoid duplication.</span>
@@ -97,7 +100,7 @@
             </div>
           @else
             <div style="background:var(--yellow-light);border:1px solid #f6d860;border-radius:var(--radius-sm);padding:0.875rem 1.25rem;margin-top:1.5rem;display:flex;align-items:center;gap:0.75rem;color:var(--yellow);">
-              <span style="font-size:1.4rem;">🔶</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" style="flex-shrink:0;"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" fill="currentColor" fill-opacity="0.18"/><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               <div>
                 <strong>Some similar titles found — {{ $total }} result{{ $total !== 1 ? 's' : '' }} returned.</strong><br>
                 <span style="font-size:0.88rem;">No high-risk duplicates, but review the matches below to ensure your topic is sufficiently distinct.</span>
@@ -216,10 +219,10 @@
       @endif
     </div>
 
-    <footer style="padding:1rem 2rem;font-size:0.8rem;color:var(--gray-400);border-top:1px solid var(--gray-200);background:rgba(255,255,255,0.98);">
-      AMSDEN &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
+    <footer class="app-footer">
+      C-BAMS &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
     </footer>
-  </div>
+  </main>
 </div>
 
 @include('partials.footer')
