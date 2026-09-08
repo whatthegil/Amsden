@@ -9,6 +9,11 @@ use App\Http\Controllers\StudentController;
 // ─── Auth ──────────────────────────────────────────────────────────────────────
 Route::get('/',          [AuthController::class, 'loginForm'])->name('login');
 Route::post('/login',    [AuthController::class, 'login'])->middleware('throttle:login');
+// The sign-in page itself is '/', so /login only ever accepted POST and a
+// plain visit to it returned a bare "405 Method Not Allowed". Browsers reach
+// GET /login constantly - bookmarks, typed URLs, back after a failed submit -
+// so send those to the login page instead of an error.
+Route::get('/login', fn () => redirect()->route('login'));
 Route::get('/forgot-password', [AuthController::class, 'forgotPassword'])->name('password.help');
 Route::get('/logout',    [AuthController::class, 'logout'])->name('logout');
 
