@@ -49,6 +49,21 @@ class AcceptPolicyTest extends TestCase
         $response->assertSee('Privacy Policy');
     }
 
+    /**
+     * The gate renders the documents themselves, from the same partials the
+     * public pages use, rather than a summary that can drift away from them.
+     */
+    public function test_the_gate_shows_the_actual_document_text(): void
+    {
+        $response = $this->withSession(['user' => $this->student()])->get('/student/policy');
+
+        // Section headings unique to each published document.
+        $response->assertSee('Who may use the System');        // Terms, section 2
+        $response->assertSee('Submitting your own work');      // Terms, section 4
+        $response->assertSee('Information we collect');        // Privacy, section 1
+        $response->assertSee('Screen-capture detection');      // Privacy, section 5
+    }
+
     public function test_agreeing_records_acceptance_and_continues(): void
     {
         $user = $this->student();
