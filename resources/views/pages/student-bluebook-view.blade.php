@@ -16,7 +16,8 @@
         <a href="{{ route('student.bluebooks') }}" class="btn btn-outline btn-sm">← Back to Browse</a>
       </div>
 
-      <div class="bluebook-detail" id="bluebook-detail" data-bluebook-id="{{ $bluebook['id'] }}">
+      <div class="bluebook-detail" id="bluebook-detail" data-bluebook-id="{{ $bluebook['id'] }}"
+           data-viewer="{{ $user['email'] ?? '' }}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
           <h1>{{ $bluebook['title'] }}</h1>
           <div style="flex-shrink:0;">

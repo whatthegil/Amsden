@@ -76,6 +76,21 @@ class FlagCaptureTest extends TestCase
         $this->assertDatabaseMissing('logs', ['document' => 'A Studied Paper — <script>alert(1)</script>']);
     }
 
+    /**
+     * On a phone nothing at all fires when a screenshot is taken, so the
+     * watermark is the only control that reaches the captured image. It can
+     * only name the viewer if the page gives it their identity.
+     */
+    public function test_the_viewer_page_carries_the_viewer_identity_for_the_watermark(): void
+    {
+        $b = $this->makeBluebook();
+
+        $this->withSession(['user' => $this->student()])
+            ->get("/student/bluebooks/{$b->id}")
+            ->assertOk()
+            ->assertSee('data-viewer="tester@my.cspc.edu.ph"', false);
+    }
+
     public function test_a_missing_reason_falls_back_to_unknown(): void
     {
         $b = $this->makeBluebook();

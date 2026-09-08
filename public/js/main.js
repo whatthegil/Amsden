@@ -174,53 +174,79 @@ document.querySelectorAll('[data-href]').forEach(row => {
     el.style.msUserSelect     = 'none';
   });
 
-  // ── 5. Dynamic repeating watermark (CSPC logo) ─────────────────────────────
-  // Only render while actually viewing a document (not on every app page).
+  // ── 5. Dynamic repeating watermark (identifies the viewer) ─────────────────
+  // A web page cannot detect or block a screenshot, and on a phone it cannot
+  // even see one happen: no event fires when the user presses the hardware
+  // buttons. The watermark is therefore the only control that survives into the
+  // captured image, so it carries who was viewing and when. A leaked screenshot
+  // then identifies the account it came from, which is deterrence a blur can
+  // never provide on mobile.
   const viewingDocument = !!document.getElementById('bluebook-detail');
 
   if (viewingDocument) {
-    const logoImg = new Image();
-    logoImg.src = '/images/cspc-logo.png';
+    const detailEl = document.getElementById('bluebook-detail');
+    const viewer   = (detailEl.dataset.viewer || '').trim();
+    const logoImg  = new Image();
+    logoImg.src    = '/images/cspc-logo.png';
+
+    function stamp() {
+      const d = new Date();
+      const p = n => String(n).padStart(2, '0');
+      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+             ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
 
     function buildWatermark() {
-      if (!logoImg.complete || logoImg.naturalWidth === 0) return;
-
       const old = document.getElementById('cbams-wm');
       if (old) old.remove();
 
       const canvas  = document.createElement('canvas');
-      canvas.width  = 380;
-      canvas.height = 180;
+      canvas.width  = 420;
+      canvas.height = 200;
       const ctx     = canvas.getContext('2d');
 
       ctx.save();
       ctx.translate(canvas.width / 2, canvas.height / 2);
       ctx.rotate(-22 * Math.PI / 180);
 
-      // Semi-transparent logo
-      ctx.globalAlpha = 0.09;
-      const logoSize = 110;
-      ctx.drawImage(logoImg, -logoSize / 2, -logoSize / 2, logoSize, logoSize);
+      if (logoImg.complete && logoImg.naturalWidth > 0) {
+        ctx.globalAlpha = 0.07;
+        const logoSize = 104;
+        ctx.drawImage(logoImg, -logoSize / 2, -logoSize / 2 - 16, logoSize, logoSize);
+      }
+
+      // Identity is the point of the watermark, so it is drawn whether or not
+      // the logo loaded.
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle   = '#0f2350';
+      ctx.textAlign   = 'center';
+      ctx.font        = '600 13px Inter, system-ui, sans-serif';
+      if (viewer) ctx.fillText(viewer, 0, 52);
+      ctx.font        = '500 11px Inter, system-ui, sans-serif';
+      ctx.fillText(stamp() + ' · CSPC ARCHIVE', 0, 70);
 
       ctx.restore();
 
       const wm = document.createElement('div');
       wm.id = 'cbams-wm';
       Object.assign(wm.style, {
-        position:        'fixed',
-        inset:           '0',
-        zIndex:          '9998',
-        pointerEvents:   'none',
-        backgroundImage: 'url(' + canvas.toDataURL() + ')',
-        backgroundRepeat:'repeat',
-        backgroundSize:  '380px 180px',
+        position:         'fixed',
+        inset:            '0',
+        zIndex:           '9998',
+        pointerEvents:    'none',
+        backgroundImage:  'url(' + canvas.toDataURL() + ')',
+        backgroundRepeat: 'repeat',
+        backgroundSize:   '420px 200px',
       });
       document.body.appendChild(wm);
     }
 
-    logoImg.onload = buildWatermark;
+    logoImg.onload  = buildWatermark;
+    logoImg.onerror = buildWatermark;
     buildWatermark();
-    // Rebuild on visibility change so screenshot attempts get fresh watermark
+
+    // Keep the timestamp current, and rebuild if anything removes the overlay.
+    setInterval(buildWatermark, 60000);
     document.addEventListener('visibilitychange', buildWatermark);
   }
 
