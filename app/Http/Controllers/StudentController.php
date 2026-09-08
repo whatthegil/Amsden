@@ -89,11 +89,11 @@ class StudentController extends Controller
         if (!$bluebook || $bluebook['status'] !== 'Approved' || !$bluebook['hasFile']) {
             abort(404);
         }
-        if (!Storage::disk('local')->exists($bluebook['filePath'])) {
+        if (!Storage::disk(Store::bluebookDisk())->exists($bluebook['filePath'])) {
             abort(404);
         }
 
-        return Storage::disk('local')->response(
+        return Storage::disk(Store::bluebookDisk())->response(
             $bluebook['filePath'],
             $bluebook['fileOriginalName'] ?? 'document.pdf',
             [
@@ -172,7 +172,7 @@ class StudentController extends Controller
 
         try {
             $request->validate([
-                'file'       => ['required', 'file', 'mimes:pdf', 'max:25600', new \App\Rules\PdfFile], // 25MB, PDF only
+                'file'       => ['required', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile], // 35MB, PDF only
                 'title'      => ['required', 'string'],
                 'authors'    => ['required', 'string'],
                 'department' => ['required', 'string'],
@@ -196,7 +196,7 @@ class StudentController extends Controller
         try {
             $title = $request->input('title');
             $file  = $request->file('file');
-            $path  = $file->store('bluebooks', 'local');
+            $path  = $file->store('bluebooks', Store::bluebookDisk());
 
             $bluebook = Store::addBluebook([
                 'title'          => $title,
@@ -354,7 +354,7 @@ class StudentController extends Controller
     {
         try {
             $request->validate([
-                'file' => ['required', 'file', 'mimes:pdf', 'max:25600', new \App\Rules\PdfFile],
+                'file' => ['required', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return [null, collect($e->errors())->flatten()->first()];

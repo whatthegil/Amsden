@@ -125,7 +125,7 @@ class UploadAndSearchTest extends TestCase
 
         $response = $this->withSession(['user' => $this->uploader()])
             ->post('/student/upload', $this->validUploadFields() + [
-                'file' => $this->fakePdf('huge.pdf')->size(30000), // 30 MB > 25 MB cap
+                'file' => $this->fakePdf('huge.pdf')->size(40000), // 40 MB > 35 MB cap
             ]);
 
         $response->assertOk();

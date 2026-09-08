@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Bluebook;
 use App\Services\OcrService;
+use App\Services\Store;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -45,9 +46,28 @@ class ProcessBluebookOcr implements ShouldQueue
         $bluebook->ocr_status = 'processing';
         $bluebook->save();
 
-        $absolutePath = Storage::disk('local')->path($bluebook->file_path);
+        // OcrService shells out to mutool/Ghostscript/Tesseract, so it needs a
+        // real path on disk. Only local-style disks can supply one; object
+        // storage cannot, so the PDF is streamed to a temp file for the run and
+        // removed afterwards.
+        $disk    = Storage::disk(Store::bluebookDisk());
+        $tempPdf = null;
 
-        $result = OcrService::extractText($absolutePath);
+        try {
+            try {
+                $absolutePath = $disk->path($bluebook->file_path);
+            } catch (\RuntimeException) {
+                $tempPdf = tempnam(sys_get_temp_dir(), 'bluebook_') . '.pdf';
+                file_put_contents($tempPdf, $disk->get($bluebook->file_path));
+                $absolutePath = $tempPdf;
+            }
+
+            $result = OcrService::extractText($absolutePath);
+        } finally {
+            if ($tempPdf !== null && is_file($tempPdf)) {
+                @unlink($tempPdf);
+            }
+        }
 
         $bluebook->ocr_text = $result['text'];
         $bluebook->ocr_status = 'completed';

@@ -57,7 +57,7 @@ class AdminController extends Controller
     public function bluebookStore(Request $request)
     {
         $request->validate([
-            'file' => ['nullable', 'file', 'mimes:pdf', 'max:25600', new \App\Rules\PdfFile], // 25MB, PDF only
+            'file' => ['nullable', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile], // 35MB, PDF only
         ]);
         $user = session('user');
 
@@ -65,7 +65,7 @@ class AdminController extends Controller
         if ($request->hasFile('file')) {
             $file = $request->file('file');
             $fileData = [
-                'filePath'         => $file->store('bluebooks', 'local'),
+                'filePath'         => $file->store('bluebooks', Store::bluebookDisk()),
                 'fileOriginalName' => $file->getClientOriginalName(),
                 'fileSize'         => $file->getSize(),
             ];
@@ -99,7 +99,7 @@ class AdminController extends Controller
     public function bluebookUpdate(Request $request, int $id)
     {
         $request->validate([
-            'file' => ['nullable', 'file', 'mimes:pdf', 'max:25600', new \App\Rules\PdfFile], // 25MB, PDF only
+            'file' => ['nullable', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile], // 35MB, PDF only
         ]);
         $user = session('user');
 
@@ -118,10 +118,10 @@ class AdminController extends Controller
         if ($request->hasFile('file')) {
             $existing = Store::getBluebook($id);
             if ($existing && $existing['filePath']) {
-                Storage::disk('local')->delete($existing['filePath']);
+                Storage::disk(Store::bluebookDisk())->delete($existing['filePath']);
             }
             $file = $request->file('file');
-            $fields['filePath']         = $file->store('bluebooks', 'local');
+            $fields['filePath']         = $file->store('bluebooks', Store::bluebookDisk());
             $fields['fileOriginalName'] = $file->getClientOriginalName();
             $fields['fileSize']         = $file->getSize();
         }

@@ -10,6 +10,19 @@ use Illuminate\Support\Facades\Hash;
 
 class Store
 {
+    /**
+     * Disk holding uploaded bluebook PDFs.
+     *
+     * Single source of truth for every read, write and delete of a bluebook
+     * file. This used to be the string 'local' repeated across the upload,
+     * replace, stream and OCR paths, which meant the archive could not be
+     * moved to durable storage without finding all of them.
+     */
+    public static function bluebookDisk(): string
+    {
+        return config('filesystems.bluebooks', 'local');
+    }
+
     public static function now(): string
     {
         return now()->setTimezone('Asia/Manila')->format('Y-m-d H:i:s');

@@ -17,6 +17,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Bluebook Disk
+    |--------------------------------------------------------------------------
+    |
+    | Disk holding uploaded bluebook PDFs. Kept separate from the default disk
+    | so the archive can be moved to object storage on its own. On hosted
+    | platforms the container filesystem is replaced on every deployment, so
+    | this must point at durable storage in production or uploads are lost.
+    |
+    */
+
+    'bluebooks' => env('BLUEBOOK_DISK', env('FILESYSTEM_DISK', 'local')),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |
