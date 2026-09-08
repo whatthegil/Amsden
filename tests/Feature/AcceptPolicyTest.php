@@ -69,7 +69,7 @@ class AcceptPolicyTest extends TestCase
         $user = $this->student();
 
         $response = $this->withSession(['user' => $user])
-            ->post('/student/policy/accept', ['agree' => '1']);
+            ->post('/student/policy/accept', ['agree_terms' => '1', 'agree_privacy' => '1']);
 
         $response->assertRedirect(route('student.dashboard'));
         $this->assertNotNull(User::where('email', $user['email'])->first()->policy_accepted_at);
@@ -82,7 +82,7 @@ class AcceptPolicyTest extends TestCase
         $response = $this->withSession(['user' => $user])
             ->post('/student/policy/accept', []);
 
-        $response->assertSessionHasErrors('agree');
+        $response->assertSessionHasErrors(['agree_terms', 'agree_privacy']);
         $this->assertNull(User::where('email', $user['email'])->first()->policy_accepted_at);
     }
 
@@ -91,7 +91,7 @@ class AcceptPolicyTest extends TestCase
         $user = $this->student();
 
         $this->withSession(['user' => $user])
-            ->post('/student/policy/accept', ['agree' => '1']);
+            ->post('/student/policy/accept', ['agree_terms' => '1', 'agree_privacy' => '1']);
 
         $this->assertDatabaseHas('logs', [
             'email'    => $user['email'],
@@ -104,5 +104,27 @@ class AcceptPolicyTest extends TestCase
     {
         $this->get('/terms')->assertOk()->assertSee('Terms and Conditions');
         $this->get('/privacy')->assertOk()->assertSee('Privacy Policy');
+    }
+    /** Agreeing to one document is not agreement to the other. */
+    public function test_agreeing_to_only_the_terms_is_rejected(): void
+    {
+        $user = $this->student();
+
+        $response = $this->withSession(['user' => $user])
+            ->post('/student/policy/accept', ['agree_terms' => '1']);
+
+        $response->assertSessionHasErrors('agree_privacy');
+        $this->assertNull(User::where('email', $user['email'])->first()->policy_accepted_at);
+    }
+
+    public function test_agreeing_to_only_the_privacy_policy_is_rejected(): void
+    {
+        $user = $this->student();
+
+        $response = $this->withSession(['user' => $user])
+            ->post('/student/policy/accept', ['agree_privacy' => '1']);
+
+        $response->assertSessionHasErrors('agree_terms');
+        $this->assertNull(User::where('email', $user['email'])->first()->policy_accepted_at);
     }
 }

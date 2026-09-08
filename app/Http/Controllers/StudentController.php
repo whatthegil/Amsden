@@ -21,12 +21,19 @@ class StudentController extends Controller
 
     public function acceptPolicy(Request $request)
     {
-        // Checked server-side as well as in the markup: acceptance is recorded
-        // permanently against the account and is the record that the user was
-        // shown these terms, so a request that skips the box must not count.
+        // Each document is agreed to separately, and both are checked here
+        // rather than relying on the markup: acceptance is recorded once,
+        // permanently, and is the only record that this account holder was
+        // shown these terms, so a request that skips a box must not count.
         $request->validate(
-            ['agree' => ['accepted']],
-            ['agree.accepted' => 'Please confirm you have read the Terms and Conditions and the Privacy Policy before continuing.']
+            [
+                'agree_terms'   => ['accepted'],
+                'agree_privacy' => ['accepted'],
+            ],
+            [
+                'agree_terms.accepted'   => 'Please confirm you have read and agree to the Terms and Conditions.',
+                'agree_privacy.accepted' => 'Please confirm you have read and agree to the Privacy Policy.',
+            ]
         );
 
         $user = session('user');
