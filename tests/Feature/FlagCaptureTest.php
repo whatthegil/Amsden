@@ -26,15 +26,15 @@ class FlagCaptureTest extends TestCase
         ];
     }
 
-    private function makeBluebook(): Bluebook
+    private function makeBluebook(array $overrides = []): Bluebook
     {
-        return Bluebook::create([
+        return Bluebook::create(array_merge([
             'title' => 'A Studied Paper', 'authors' => ['Dela Cruz, Maria'], 'year' => 2025,
             'department' => 'CCS', 'program' => 'Bachelor of Science in Information Technology',
             'keywords' => ['sample'], 'abstract' => 'An abstract.', 'adviser' => '',
             'status' => 'Approved', 'uploaded_by' => 'tester@my.cspc.edu.ph',
             'uploaded_by_name' => 'Test Student', 'date_added' => '2026-01-01',
-        ]);
+        ], $overrides));
     }
 
     public function test_it_records_the_reason_the_page_reported(): void
@@ -111,5 +111,22 @@ class FlagCaptureTest extends TestCase
             ->assertOk();
 
         $this->assertDatabaseHas('logs', ['document' => 'A Studied Paper — Unknown']);
+    }
+    /**
+     * The document is rendered to canvas rather than handed to the browser in
+     * an iframe. Android WebView has no PDF viewer, so an iframe is blank
+     * inside the wrapper app, and the watermark cannot be drawn over a frame.
+     */
+    public function test_the_document_is_rendered_by_pdfjs_not_an_iframe(): void
+    {
+        $b = $this->makeBluebook(['file_path' => 'bluebooks/paper.pdf']);
+
+        $response = $this->withSession(['user' => $this->student()])
+            ->get("/student/bluebooks/{$b->id}");
+
+        $response->assertOk();
+        $response->assertSee('id="pdf-view"', false);
+        $response->assertSee('/vendor/pdfjs/pdf.min.js', false);
+        $response->assertDontSee('<iframe', false);
     }
 }

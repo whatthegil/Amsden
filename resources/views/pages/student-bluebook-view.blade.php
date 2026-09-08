@@ -84,11 +84,18 @@
 
         <h4 style="font-size:0.82rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--gray-400);margin-bottom:0.6rem;">Document</h4>
         @if($bluebook['hasFile'])
-          <div class="watermark-overlay" style="margin-top:0;padding:0;overflow:hidden;">
-            <iframe src="{{ route('student.bluebook.file', $bluebook['id']) }}#toolbar=0"
-                    style="width:100%;height:75vh;border:0;display:block;"
-                    title="{{ $bluebook['title'] }}"></iframe>
-            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0.08;font-size:2.5rem;font-weight:700;letter-spacing:0.2em;transform:rotate(-25deg);color:var(--primary-dark);user-select:none;">CSPC ARCHIVE</div>
+          {{-- Rendered page by page to canvas by PDF.js rather than handed to
+               the browser's own viewer in an iframe. Android's WebView ships no
+               PDF renderer at all, so the iframe was simply blank there; this
+               also removes the built-in viewer's download and print controls,
+               and lets the watermark sit over the pages instead of beside
+               them. --}}
+          <div class="pdf-view watermark-overlay"
+               id="pdf-view"
+               data-pdf-url="{{ route('student.bluebook.file', $bluebook['id']) }}"
+               data-worker-url="/vendor/pdfjs/pdf.worker.min.js">
+            <div class="pdf-status" id="pdf-status">Loading document&hellip;</div>
+            <div class="pdf-pages" id="pdf-pages"></div>
           </div>
           <div style="font-size:0.78rem;color:var(--gray-400);margin-top:0.5rem;">Access logged for: {{ $user['email'] }}</div>
         @else
@@ -108,4 +115,8 @@
   </main>
 </div>
 
+@if($bluebook['hasFile'])
+  <script src="/vendor/pdfjs/pdf.min.js"></script>
+  <script src="/js/pdf-viewer.js"></script>
+@endif
 @include('partials.footer')
