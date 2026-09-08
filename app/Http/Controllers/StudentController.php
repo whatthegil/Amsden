@@ -131,11 +131,27 @@ class StudentController extends Controller
         $user     = session('user');
         $bluebook = Store::getBluebook($id);
 
+        // Which signal fired matters when reviewing these later: a PrintScreen
+        // press or a snipping shortcut is a deliberate capture attempt, while a
+        // lost focus or hidden tab is often just someone switching windows. The
+        // value comes from the page, so it is constrained to a known set rather
+        // than written into the log as-is.
+        $allowed = [
+            'PrintScreen key',
+            'Snipping shortcut (Win+Shift+S)',
+            'macOS screenshot shortcut',
+            'Window lost focus',
+            'Tab hidden',
+            'Screen sharing',
+        ];
+        $reason = (string) $request->input('reason', '');
+        $reason = in_array($reason, $allowed, true) ? $reason : 'Unknown';
+
         Store::addLog([
             'userName' => $user['name'],
             'email'    => $user['email'],
             'action'   => 'Screenshot/Recording Attempt',
-            'document' => $bluebook ? $bluebook['title'] : '—',
+            'document' => ($bluebook ? $bluebook['title'] : '—') . ' — ' . $reason,
             'status'   => 'Flagged',
         ]);
 

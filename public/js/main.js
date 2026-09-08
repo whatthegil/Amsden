@@ -272,7 +272,7 @@ document.querySelectorAll('[data-href]').forEach(row => {
     const bookId = bookEl.dataset.bluebookId;
     let lastFlag = 0;
 
-    function flagCapture() {
+    function flagCapture(reason) {
       const now = Date.now();
       if (now - lastFlag < 3000) return; // throttle repeated triggers
       lastFlag = now;
@@ -284,7 +284,9 @@ document.querySelectorAll('[data-href]').forEach(row => {
           headers: {
             'X-CSRF-TOKEN': csrf.getAttribute('content'),
             'Accept':       'application/json',
+            'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ reason: reason || 'Unknown' }),
         }).catch(() => {});
       }
     }
@@ -315,13 +317,45 @@ document.querySelectorAll('[data-href]').forEach(row => {
       bookEl.style.filter = on ? 'blur(16px)' : '';
     }
 
+    // Win+Shift+S and the macOS shortcuts are consumed by the OS shell, and the
+    // snipping overlay freezes the screen the instant it opens. Reacting to the
+    // blur event that follows is therefore always too late — the frame is
+    // already taken. The one thing that can beat it is blurring the moment the
+    // modifier goes down, before the combination completes, so that is done
+    // first and questions are asked afterwards.
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Meta' || e.key === 'OS' || e.metaKey) {
+        blurBook(true);
+      }
+    }, true);
+
+    // The combination itself, when the browser is given a chance to see it.
+    document.addEventListener('keydown', function (e) {
+      const k = (e.key || '').toLowerCase();
+      const winSnip = e.metaKey && e.shiftKey && k === 's';
+      const macShot = e.metaKey && e.shiftKey && ['3', '4', '5'].includes(k);
+      if (!winSnip && !macShot) return;
+
+      blurBook(true);
+      showCaptureBanner('Screenshot shortcut detected — this access has been logged.');
+      flagCapture(winSnip ? 'Snipping shortcut (Win+Shift+S)' : 'macOS screenshot shortcut');
+      setTimeout(() => { blurBook(false); hideCaptureBanner(); }, 4000);
+    }, true);
+
+    document.addEventListener('keyup', function (e) {
+      // Releasing the modifier without having triggered a capture: restore.
+      if ((e.key === 'Meta' || e.key === 'OS') && !document.hidden) {
+        setTimeout(() => { if (document.hasFocus()) blurBook(false); }, 150);
+      }
+    }, true);
+
     // PrintScreen: best-effort clipboard clear (can't block the OS capture itself)
     document.addEventListener('keyup', function (e) {
       if (e.key !== 'PrintScreen') return;
 
       blurBook(true);
       showCaptureBanner('Screenshot attempt detected — this access has been logged.');
-      flagCapture();
+      flagCapture('PrintScreen key');
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText('').catch(() => {});
@@ -330,15 +364,22 @@ document.querySelectorAll('[data-href]').forEach(row => {
       setTimeout(() => { blurBook(false); hideCaptureBanner(); }, 4000);
     });
 
-    // Losing window focus often means switching to a recording tool. On
-    // mobile this also fires for ordinary reasons (switching apps, a
-    // notification, the app-switcher gesture) that have nothing to do with
-    // capture — a known false-positive tradeoff, kept on for parity with
-    // desktop protection rather than leaving mobile unprotected.
+    // The snipping overlay takes focus, so this fires for Win+Shift+S even when
+    // the keydown never reached the page. Too late to protect the frame, but it
+    // is what puts the attempt in the audit log.
     window.addEventListener('blur', function () {
       blurBook(true);
       showCaptureBanner('Window lost focus — content hidden for protection.');
-      flagCapture();
+      flagCapture('Window lost focus');
+    });
+
+    // Switching tabs or minimising. Separate from blur so the log can tell them
+    // apart when reviewing what a user was doing.
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        blurBook(true);
+        flagCapture('Tab hidden');
+      }
     });
 
     window.addEventListener('focus', function () {
