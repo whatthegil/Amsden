@@ -67,7 +67,9 @@
 
       <p class="login-note">
         Accounts are created by the library administrator.<br>
-        Need access? Visit the CSPC Library or <a href="{{ route('password.help') }}">request assistance</a>.
+        Need access? Visit the CSPC Library or <a href="{{ route('password.help') }}">request assistance</a>.<br>
+        By signing in you agree to our <a href="{{ route('terms') }}">Terms and Conditions</a>
+        and <a href="{{ route('privacy') }}">Privacy Policy</a>.
       </p>
     </div>
   </div>

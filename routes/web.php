@@ -17,6 +17,12 @@ Route::get('/login', fn () => redirect()->route('login'));
 Route::get('/forgot-password', [AuthController::class, 'forgotPassword'])->name('password.help');
 Route::get('/logout',    [AuthController::class, 'logout'])->name('logout');
 
+// ─── Public legal pages ────────────────────────────────────────────────────────
+// Reachable without signing in: they are linked from the login screen, and a
+// visitor has to be able to read them before deciding to authenticate.
+Route::view('/terms',   'pages.terms')->name('terms');
+Route::view('/privacy', 'pages.privacy')->name('privacy');
+
 // ─── Google OAuth ───────────────────────────────────────────────────────────────
 Route::get('/auth/google',          [AuthController::class, 'redirectToGoogle'])->name('auth.google');
 Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
