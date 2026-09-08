@@ -46,6 +46,7 @@ Route::prefix('admin')->middleware('role:Admin')->group(function () {
     Route::post('/bluebooks/{id}/approve',     [AdminController::class, 'bluebookApprove'])->name('admin.bluebooks.approve');
     Route::post('/bluebooks/{id}/reject',      [AdminController::class, 'bluebookReject'])->name('admin.bluebooks.reject');
     Route::post('/bluebooks/{id}/reprocess-ocr', [AdminController::class, 'bluebookReprocessOcr'])->name('admin.bluebooks.reprocessOcr');
+    Route::post('/bluebooks/{id}/delete',       [AdminController::class, 'bluebookDelete'])->name('admin.bluebooks.delete');
 
     Route::get('/users',                       [AdminController::class, 'users'])->name('admin.users');
     Route::get('/users/new',                   [AdminController::class, 'userNewForm'])->name('admin.users.new');

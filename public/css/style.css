@@ -1372,3 +1372,14 @@ a:focus-visible {
   .legal-doc { padding: 1.75rem 1.15rem 2.5rem; }
   .legal-doc h1 { font-size: 1.45rem; }
 }
+
+/* ── Admin: delete a bluebook ───────────────────────────────────────────────── */
+.bb-danger {
+  display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap;
+  margin-top: 2rem; padding: 1.25rem 1.5rem;
+  border: 1px solid var(--red); border-radius: var(--radius-sm);
+  background: var(--red-light);
+}
+.bb-danger strong { display: block; color: var(--red); font-size: 0.95rem; margin-bottom: 0.2rem; }
+.bb-danger p { margin: 0; color: var(--gray-600); font-size: 0.85rem; }
+@media (max-width: 600px) { .bb-danger { flex-direction: column; align-items: stretch; } }

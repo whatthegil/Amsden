@@ -103,6 +103,21 @@
               <button type="submit" class="btn btn-primary">{{ $isEdit ? 'Update Bluebook' : 'Add Bluebook' }}</button>
             </div>
           </form>
+          @if ($isEdit)
+            {{-- Deleting lives on the edit page rather than the list so it is not one
+                 stray click from the table. Removes the stored PDF and any bookmarks
+                 too, and is written to the access log. --}}
+            <div class="bb-danger">
+              <div>
+                <strong>Delete this bluebook</strong>
+                <p>Removes the record, its uploaded PDF and any bookmarks of it. This cannot be undone.</p>
+              </div>
+              <form method="POST" action="{{ route('admin.bluebooks.delete', $bluebook['id']) }}">
+                @csrf
+                <button type="submit" class="btn btn-danger">Delete Bluebook</button>
+              </form>
+            </div>
+          @endif
         </div>
       </div>
     </div>

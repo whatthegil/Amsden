@@ -7,6 +7,7 @@ use App\Models\Bookmark;
 use App\Models\Log;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class Store
 {
@@ -185,6 +186,36 @@ class Store
     public static function setBluebookStatus(int $id, string $status): void
     {
         Bluebook::where('id', $id)->update(['status' => $status]);
+    }
+
+    /**
+     * Permanently remove a bluebook, its stored PDF and any bookmarks of it.
+     *
+     * Returns the record as it was, so the caller can name it in the audit log
+     * after the row is gone. Null if there was nothing to delete.
+     *
+     * The file is removed before the row: an orphaned row would leave the
+     * archive listing a document that 404s, whereas an orphaned file is merely
+     * wasted space. Audit log entries are deliberately left alone — they record
+     * that the document was accessed while it existed, which stays true.
+     */
+    public static function deleteBluebook(int $id): ?array
+    {
+        $bluebook = Bluebook::find($id);
+        if (!$bluebook) {
+            return null;
+        }
+
+        $snapshot = self::bookToArray($bluebook);
+
+        if ($bluebook->file_path) {
+            Storage::disk(self::bluebookDisk())->delete($bluebook->file_path);
+        }
+
+        Bookmark::where('bluebook_id', $id)->delete();
+        $bluebook->delete();
+
+        return $snapshot;
     }
 
     public static function incrementViews(int $id): void

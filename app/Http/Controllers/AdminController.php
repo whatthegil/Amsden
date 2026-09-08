@@ -153,6 +153,25 @@ class AdminController extends Controller
         return redirect()->route('admin.bluebooks')->with('success', 'Bluebook rejected');
     }
 
+    public function bluebookDelete(int $id)
+    {
+        $user     = session('user');
+        $bluebook = Store::deleteBluebook($id);
+
+        if (!$bluebook) {
+            return redirect()->route('admin.bluebooks')->with('error', 'That bluebook no longer exists.');
+        }
+
+        Store::addLog([
+            'userName' => $user['name'],
+            'email'    => $user['email'],
+            'action'   => 'Deleted Bluebook',
+            'document' => $bluebook['title'],
+        ]);
+
+        return redirect()->route('admin.bluebooks')->with('success', 'Bluebook deleted: ' . $bluebook['title']);
+    }
+
     public function bluebookReprocessOcr(int $id)
     {
         $user     = session('user');
