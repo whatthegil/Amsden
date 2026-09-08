@@ -179,7 +179,23 @@ class ImportBluebooks extends Command
             }
 
             $stored = 'bluebooks/' . bin2hex(random_bytes(16)) . '.pdf';
-            $disk->put($stored, file_get_contents($match));
+
+            try {
+                // Streamed rather than read into a string: these run to 29 MB and
+                // the app container is small, so file_get_contents plus a string
+                // upload would hold the whole document in memory twice over.
+                $handle = fopen($match, 'rb');
+                $disk->writeStream($stored, $handle);
+                if (is_resource($handle)) {
+                    fclose($handle);
+                }
+            } catch (\Throwable $e) {
+                // Keep going: one unwritable document should not stop the rest,
+                // and the run can simply be repeated once the cause is fixed.
+                $this->error('  failed to store ' . basename($match) . ': ' . $e->getMessage());
+                $skipped++;
+                continue;
+            }
 
             Bluebook::create([
                 'title'              => $meta['title'],
