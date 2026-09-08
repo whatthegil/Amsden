@@ -19,11 +19,25 @@ class StudentController extends Controller
         return view('pages.policy', ['user' => session('user')]);
     }
 
-    public function acceptPolicy()
+    public function acceptPolicy(Request $request)
     {
+        // Checked server-side as well as in the markup: acceptance is recorded
+        // permanently against the account and is the record that the user was
+        // shown these terms, so a request that skips the box must not count.
+        $request->validate(
+            ['agree' => ['accepted']],
+            ['agree.accepted' => 'Please confirm you have read the Terms and Conditions and the Privacy Policy before continuing.']
+        );
+
         $user = session('user');
         Store::acceptPolicy($user['email']);
-        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Accepted Policy', 'document' => '—']);
+        Store::addLog([
+            'userName' => $user['name'],
+            'email'    => $user['email'],
+            'action'   => 'Accepted Policy',
+            'document' => 'Acceptable Use, Terms and Conditions, Privacy Policy',
+        ]);
+
         return redirect()->route('student.dashboard');
     }
 
