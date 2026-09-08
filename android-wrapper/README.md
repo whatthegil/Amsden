@@ -74,15 +74,31 @@ None is committed, so the platform default is used. Add one in Android Studio
 via *File → New → Image Asset*, which writes `@mipmap/ic_launcher`, then
 reference it in `AndroidManifest.xml`.
 
-## Verifying FLAG_SECURE works
+## Verifying it actually blocks screenshots
 
-Install the debug APK, open a page, and take a screenshot. Android shows
-*"Can't take screenshot due to security policy"* or saves a black image. The
-recent-apps card is blank too.
+This cannot be verified by reading the code — it has to be observed on a device
+or emulator. Install the debug APK and check all five:
 
-If a screenshot succeeds, the flag is not being applied — check that
-`window.setFlags` in `MainActivity.onCreate` runs **before** `super.onCreate`,
-which is where it currently sits.
+1. **Screenshot** (Power + Volume Down) — Android shows *"Can't take screenshot
+   due to security policy"*, or saves a black image.
+2. **Screen recording** — the recording plays back black for this app.
+3. **Recent apps** (square/swipe up) — the app's card is blank, not a preview.
+4. **Google Assistant / "share screenshot"** — same block.
+5. **Casting or screen mirroring** — the window does not appear on the external
+   display.
+
+If any of those succeed, the flag is not reaching that window. Check that
+`CbamsApplication` is registered as `android:name` on `<application>` in the
+manifest, since that is what guarantees the flag on every window rather than
+only the one activity.
+
+### Why the flag is applied in two places
+
+`MainActivity` sets it, and `CbamsApplication` sets it again for every activity
+created. That is deliberate. `FLAG_SECURE` is per-window, not per-app: anything
+that opens its own window — an activity added later, a dialog hosted in one, a
+file picker — starts unprotected unless it asks. Relying on each one to remember
+is how a screenshot gets through a build that looks correct.
 
 ## What this is not
 
