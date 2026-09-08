@@ -110,20 +110,43 @@ class StudentController extends Controller
         if (!$bluebook || $bluebook['status'] !== 'Approved' || !$bluebook['hasFile']) {
             abort(404);
         }
-        if (!Storage::disk(Store::bluebookDisk())->exists($bluebook['filePath'])) {
+        $disk = Storage::disk(Store::bluebookDisk());
+
+        if (!$disk->exists($bluebook['filePath'])) {
             abort(404);
         }
 
-        return Storage::disk(Store::bluebookDisk())->response(
-            $bluebook['filePath'],
-            $bluebook['fileOriginalName'] ?? 'document.pdf',
-            [
-                'Content-Type'        => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . ($bluebook['fileOriginalName'] ?? 'document.pdf') . '"',
-                'Cache-Control'       => 'no-store',
-                'X-Frame-Options'     => 'SAMEORIGIN',
-            ]
-        );
+        // The document is streamed rather than handed to Storage::response().
+        // That helper sets Content-Length from the object's recorded size and
+        // then streams the body separately; when the two disagree nginx aborts
+        // the response mid-flight with
+        //
+        //     upstream sent more data than specified in "Content-Length" header
+        //
+        // and the browser gets a 503 instead of a PDF. Letting the response go
+        // out chunked, with no declared length, removes the disagreement.
+        $stream = $disk->readStream($bluebook['filePath']);
+
+        if ($stream === false) {
+            abort(404);
+        }
+
+        return response()->stream(function () use ($stream) {
+            // Flushed in chunks so the first bytes reach the viewer promptly on
+            // a document that runs to tens of megabytes, rather than the whole
+            // file being buffered before anything is sent.
+            while (!feof($stream)) {
+                echo fread($stream, 262144);
+                flush();
+            }
+            fclose($stream);
+        }, 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . ($bluebook['fileOriginalName'] ?? 'document.pdf') . '"',
+            'Cache-Control'       => 'no-store',
+            'X-Frame-Options'     => 'SAMEORIGIN',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function flagCaptureAttempt(Request $request, int $id)
