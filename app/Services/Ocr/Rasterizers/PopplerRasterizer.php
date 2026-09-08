@@ -28,11 +28,24 @@ class PopplerRasterizer implements PdfRasterizer
         return 'poppler';
     }
 
-    public function rasterize(string $pdfPath, string $outDir, int $dpi): array
+    public function rasterize(string $pdfPath, string $outDir, int $dpi, ?int $maxPages = null): array
     {
         $prefix = $outDir . DIRECTORY_SEPARATOR . 'page';
 
-        $process = new Process([$this->bin, '-png', '-r', (string) $dpi, $pdfPath, $prefix]);
+        $args = [$this->bin, '-png', '-r', (string) $dpi];
+
+        // -f/-l bound the render at the source rather than after the fact.
+        if ($maxPages !== null && $maxPages > 0) {
+            $args[] = '-f';
+            $args[] = '1';
+            $args[] = '-l';
+            $args[] = (string) $maxPages;
+        }
+
+        $args[] = $pdfPath;
+        $args[] = $prefix;
+
+        $process = new Process($args);
         $process->setTimeout(config('ocr.timeout'));
         $process->run();
 

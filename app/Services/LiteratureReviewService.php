@@ -31,6 +31,15 @@ class LiteratureReviewService
         $queryTokens = SimilarityService::tokenize($topic);
         $results     = [];
 
+        // Defence in depth: the AI layer (and this search) may only ever see
+        // Approved bluebooks. Callers already pass Store::getApprovedBluebooks(),
+        // but re-filter here so a future caller can't accidentally leak a
+        // Pending/Rejected paper's title, abstract or OCR text to OpenAI.
+        $bluebooks = array_filter(
+            $bluebooks,
+            fn($book) => ($book['status'] ?? null) === 'Approved'
+        );
+
         foreach ($bluebooks as $book) {
             $bookTokens = array_merge(
                 SimilarityService::tokenize($book['title'] ?? ''),

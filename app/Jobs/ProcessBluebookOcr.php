@@ -17,10 +17,18 @@ class ProcessBluebookOcr implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
-    public int $timeout = 300;
+
+    /**
+     * A 60-page run measures ~205s on a dev machine; a slower host can easily
+     * double that, and blowing this timeout is what leaves rows stranded in
+     * 'processing'. Config-driven so a slow deploy can raise it without a
+     * code change — keep it below ocr.stuck_after.
+     */
+    public int $timeout = 600;
 
     public function __construct(private int $bluebookId)
     {
+        $this->timeout = (int) config('ocr.job_timeout', 600);
     }
 
     public function handle(): void
@@ -29,6 +37,10 @@ class ProcessBluebookOcr implements ShouldQueue
         if (!$bluebook || !$bluebook->file_path) {
             return;
         }
+
+        // Sweep work dirs abandoned by previously killed runs; their own
+        // finally-block cleanup never got to run.
+        OcrService::pruneOrphanedWorkDirs();
 
         $bluebook->ocr_status = 'processing';
         $bluebook->save();

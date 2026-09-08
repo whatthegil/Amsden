@@ -6,8 +6,8 @@
 
 **C-BAMS** — a bluebook (undergraduate thesis / capstone document) repository for **CSPC** (Camarines Sur Polytechnic Colleges). Students and faculty browse, upload, bookmark, and search approved bluebooks; admins curate the archive, manage users, and audit activity. Includes OCR full-text extraction of uploaded PDFs, a similarity checker for proposed titles, and a literature-review search tool.
 
-- **Stack:** Laravel 9 (PHP ^8.0), MySQL (`laravel` db via XAMPP at `C:\xampp\php\php.exe`), Blade views + vanilla JS/CSS (no build pipeline in active use; `webpack.mix.js` is stock).
-- **Not a git repository.**
+- **Stack:** Laravel 9 (PHP `^8.5`), MySQL (`laravel` db via XAMPP), Blade views + vanilla JS/CSS (no build pipeline in active use; `webpack.mix.js` is stock).
+- **Git:** `main` tracking `origin` -> https://github.com/whatthegil/Amsden-Capstone-Project.git
 - **Key packages:** `laravel/socialite` (Google OAuth), `laravel/sanctum` (installed, only used by the stock `/api/user` route), `guzzlehttp/guzzle`.
 - **Tests:** only the stock Laravel example tests — no real coverage.
 
@@ -82,7 +82,7 @@ Active on logged-in pages: right-click blocked, Ctrl+P/S/U and DevTools shortcut
 ## How to run
 
 ```powershell
-C:\xampp\php\php.exe artisan serve          # dev server (past sessions used ports 8000/8123)
+php artisan serve                           # dev server (past sessions used ports 8000/8123)
 # queue worker: Scheduled Task "AmsdenLaravelQueueWorker", or manually:
 powershell -NoProfile -File scripts\run-queue-worker.ps1
 ```

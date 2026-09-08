@@ -50,7 +50,7 @@ class AuthController extends Controller
                 ? redirect()->route('admin.dashboard')
                 : redirect()->route('student.dashboard');
         }
-        return view('pages.login', ['error' => null, 'success' => null]);
+        return view('pages.login', ['error' => null, 'success' => null, 'email' => null]);
     }
 
     public function login(Request $request)
@@ -59,12 +59,12 @@ class AuthController extends Controller
         $password = $request->input('password');
 
         if (!$this->isAllowedEmail($email)) {
-            return view('pages.login', ['error' => 'Only @cspc.edu.ph or @my.cspc.edu.ph email addresses are allowed.', 'success' => null]);
+            return view('pages.login', ['error' => 'Only @cspc.edu.ph or @my.cspc.edu.ph email addresses are allowed.', 'success' => null, 'email' => $email]);
         }
 
         $user = User::where('email', $email)->first();
         if (!$user || !Hash::check($password, $user->password)) {
-            return view('pages.login', ['error' => 'Invalid email or password. Please try again.', 'success' => null]);
+            return view('pages.login', ['error' => 'Invalid email or password. Please try again.', 'success' => null, 'email' => $email]);
         }
 
         Store::addLog(['userName' => $user->name, 'email' => $user->email, 'action' => 'Login', 'document' => '—']);
@@ -73,33 +73,13 @@ class AuthController extends Controller
         return $this->redirectToDashboard($user);
     }
 
-    public function registerForm()
+    // Self-service email/password registration was removed: accounts are
+    // created by the library administrator (admin → Users → New), or
+    // provisioned automatically on first CSPC Google sign-in. This page just
+    // tells the user who to contact for access or a password reset.
+    public function forgotPassword()
     {
-        return view('pages.register', ['error' => null, 'success' => null]);
-    }
-
-    public function register(Request $request)
-    {
-        $name            = $request->input('name');
-        $email           = $request->input('email');
-        $password        = $request->input('password');
-        $confirmPassword = $request->input('confirmPassword');
-
-        if (!$this->isAllowedEmail($email)) {
-            return view('pages.register', ['error' => 'Only @cspc.edu.ph or @my.cspc.edu.ph email addresses are allowed.', 'success' => null]);
-        }
-        if ($password !== $confirmPassword) {
-            return view('pages.register', ['error' => 'Passwords do not match.', 'success' => null]);
-        }
-        if (User::where('email', $email)->exists()) {
-            return view('pages.register', ['error' => 'An account with this email already exists.', 'success' => null]);
-        }
-
-        $role = str_ends_with($email, '@my.cspc.edu.ph') ? 'Student' : 'Faculty';
-        User::create(['name' => $name, 'email' => $email, 'password' => Hash::make($password), 'role' => $role]);
-        Store::addLog(['userName' => $name, 'email' => $email, 'action' => 'Registered', 'document' => '—']);
-
-        return view('pages.login', ['error' => null, 'success' => 'Account created successfully! You can now log in.']);
+        return view('pages.forgot-password');
     }
 
     public function logout()

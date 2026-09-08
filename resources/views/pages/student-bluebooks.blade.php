@@ -28,8 +28,8 @@
           <label for="student-bluebooks-filter-department">Department</label>
           <select id="student-bluebooks-filter-department" name="department">
             <option value="">All Departments</option>
-            @foreach(['CCS','CENG','CAS','CHS','CTDE','CTHM','CBA'] as $dept)
-              <option value="{{ $dept }}" {{ ($query['department'] ?? '') === $dept ? 'selected' : '' }}>{{ $dept }}</option>
+            @foreach(config('departments') as $code => $dept)
+              <option value="{{ $code }}" {{ ($query['department'] ?? '') === $code ? 'selected' : '' }}>{{ $code === $dept['name'] ? $code : "$code — {$dept['name']}" }}</option>
             @endforeach
           </select>
         </div>

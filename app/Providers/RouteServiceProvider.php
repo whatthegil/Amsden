@@ -66,10 +66,6 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(6)->by($request->ip());
         });
 
-        RateLimiter::for('register', function (Request $request) {
-            return Limit::perMinute(4)->by($request->ip());
-        });
-
         // Cost protection for the AI-powered Literature Review search — each
         // POST can trigger a paid Claude API call (see LiteratureReviewService).
         // Keyed by the session user's email when logged in (the normal case,

@@ -9,8 +9,7 @@ use App\Http\Controllers\StudentController;
 // ─── Auth ──────────────────────────────────────────────────────────────────────
 Route::get('/',          [AuthController::class, 'loginForm'])->name('login');
 Route::post('/login',    [AuthController::class, 'login'])->middleware('throttle:login');
-Route::get('/register',  [AuthController::class, 'registerForm'])->name('register');
-Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
+Route::get('/forgot-password', [AuthController::class, 'forgotPassword'])->name('password.help');
 Route::get('/logout',    [AuthController::class, 'logout'])->name('logout');
 
 // ─── Google OAuth ───────────────────────────────────────────────────────────────

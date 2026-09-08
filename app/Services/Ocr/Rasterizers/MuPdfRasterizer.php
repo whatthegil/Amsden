@@ -28,11 +28,19 @@ class MuPdfRasterizer implements PdfRasterizer
         return 'mutool';
     }
 
-    public function rasterize(string $pdfPath, string $outDir, int $dpi): array
+    public function rasterize(string $pdfPath, string $outDir, int $dpi, ?int $maxPages = null): array
     {
         $pattern = $outDir . DIRECTORY_SEPARATOR . 'page-%04d.png';
 
-        $process = new Process([$this->bin, 'draw', '-r', (string) $dpi, '-o', $pattern, $pdfPath]);
+        $args = [$this->bin, 'draw', '-r', (string) $dpi, '-o', $pattern, $pdfPath];
+
+        // mutool takes a trailing page range ("1-60"); without it every page
+        // is rendered even when only the first few are wanted.
+        if ($maxPages !== null && $maxPages > 0) {
+            $args[] = '1-' . $maxPages;
+        }
+
+        $process = new Process($args);
         $process->setTimeout(config('ocr.timeout'));
         $process->run();
 

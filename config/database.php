@@ -59,7 +59,12 @@ return [
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                // PHP 8.4 moved the driver constants onto Pdo\Mysql and 8.5 deprecated
+                // the PDO::MYSQL_* spelling, but that spelling is still the only one
+                // 8.2/8.3 know. Both resolve to the same value, so pick per runtime.
+                (class_exists(Pdo\Mysql::class)
+                    ? Pdo\Mysql::ATTR_SSL_CA
+                    : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
 

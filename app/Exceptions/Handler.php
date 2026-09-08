@@ -39,14 +39,14 @@ class Handler extends ExceptionHandler
             //
         });
 
-        // Rate-limited routes (login, register, the AI-powered literature
-        // review search — see RouteServiceProvider::configureRateLimiting)
-        // otherwise render Laravel's bare 429 page, which doesn't match the
-        // rest of the app. Send the user back with a flash message instead.
+        // Rate-limited routes (login, the AI-powered literature review search
+        // — see RouteServiceProvider::configureRateLimiting) otherwise render
+        // Laravel's bare 429 page, which doesn't match the rest of the app.
+        // Send the user back with a flash message instead.
         $this->renderable(function (ThrottleRequestsException $e, $request) {
             if (!$request->expectsJson()) {
                 return redirect()->back()
-                    ->withInput($request->except(['password', 'confirmPassword']))
+                    ->withInput($request->except(['password']))
                     ->with('error', 'Too many attempts. Please wait a moment and try again.');
             }
         });

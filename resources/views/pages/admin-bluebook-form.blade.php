@@ -52,8 +52,8 @@
                 <label for="bb-form-department">Department</label>
                 <select id="bb-form-department" name="department" required>
                   <option value="">Select Department</option>
-                  @foreach(['CCS','CENG','CAS','CHS','CTDE','CTHM','CBA'] as $dept)
-                    <option value="{{ $dept }}" {{ ($bluebook['department'] ?? '') === $dept ? 'selected' : '' }}>{{ $dept }}</option>
+                  @foreach(config('departments') as $code => $dept)
+                    <option value="{{ $code }}" {{ ($bluebook['department'] ?? '') === $code ? 'selected' : '' }}>{{ $code === $dept['name'] ? $code : "$code — {$dept['name']}" }}</option>
                   @endforeach
                 </select>
               </div>
@@ -67,33 +67,13 @@
               <label for="bb-form-program">Program</label>
               <select id="bb-form-program" name="program" required>
                 <option value="">Select Program</option>
-                <optgroup label="CCS — College of Computing Studies">
-                  <option value="Bachelor of Science in Information Technology" {{ ($bluebook['program'] ?? '') === 'Bachelor of Science in Information Technology' ? 'selected' : '' }}>Bachelor of Science in Information Technology</option>
-                  <option value="Bachelor of Science in Computer Science" {{ ($bluebook['program'] ?? '') === 'Bachelor of Science in Computer Science' ? 'selected' : '' }}>Bachelor of Science in Computer Science</option>
-                </optgroup>
-                <optgroup label="CENG — College of Engineering">
-                  <option value="Bachelor of Science in Civil Engineering" {{ ($bluebook['program'] ?? '') === 'Bachelor of Science in Civil Engineering' ? 'selected' : '' }}>Bachelor of Science in Civil Engineering</option>
-                  <option value="Bachelor of Science in Electrical Engineering" {{ ($bluebook['program'] ?? '') === 'Bachelor of Science in Electrical Engineering' ? 'selected' : '' }}>Bachelor of Science in Electrical Engineering</option>
-                  <option value="Bachelor of Science in Mechanical Engineering" {{ ($bluebook['program'] ?? '') === 'Bachelor of Science in Mechanical Engineering' ? 'selected' : '' }}>Bachelor of Science in Mechanical Engineering</option>
-                </optgroup>
-                <optgroup label="CAS — College of Arts and Sciences">
-                  <option value="Bachelor of Arts in Communication" {{ ($bluebook['program'] ?? '') === 'Bachelor of Arts in Communication' ? 'selected' : '' }}>Bachelor of Arts in Communication</option>
-                  <option value="Bachelor of Science in Biology" {{ ($bluebook['program'] ?? '') === 'Bachelor of Science in Biology' ? 'selected' : '' }}>Bachelor of Science in Biology</option>
-                </optgroup>
-                <optgroup label="CHS — College of Health Sciences">
-                  <option value="Bachelor of Science in Nursing" {{ ($bluebook['program'] ?? '') === 'Bachelor of Science in Nursing' ? 'selected' : '' }}>Bachelor of Science in Nursing</option>
-                </optgroup>
-                <optgroup label="CTDE — College of Teacher Development and Education">
-                  <option value="Bachelor of Elementary Education" {{ ($bluebook['program'] ?? '') === 'Bachelor of Elementary Education' ? 'selected' : '' }}>Bachelor of Elementary Education</option>
-                  <option value="Bachelor of Secondary Education" {{ ($bluebook['program'] ?? '') === 'Bachelor of Secondary Education' ? 'selected' : '' }}>Bachelor of Secondary Education</option>
-                </optgroup>
-                <optgroup label="CTHM — College of Tourism, Hospitality, and Management">
-                  <option value="Bachelor of Science in Tourism Management" {{ ($bluebook['program'] ?? '') === 'Bachelor of Science in Tourism Management' ? 'selected' : '' }}>Bachelor of Science in Tourism Management</option>
-                  <option value="Bachelor of Science in Hospitality Management" {{ ($bluebook['program'] ?? '') === 'Bachelor of Science in Hospitality Management' ? 'selected' : '' }}>Bachelor of Science in Hospitality Management</option>
-                </optgroup>
-                <optgroup label="CBA — College of Business Administration">
-                  <option value="Bachelor of Science in Business Administration" {{ ($bluebook['program'] ?? '') === 'Bachelor of Science in Business Administration' ? 'selected' : '' }}>Bachelor of Science in Business Administration</option>
-                </optgroup>
+                @foreach(config('departments') as $code => $dept)
+                  <optgroup label="{{ $code === $dept['name'] ? $code : "$code — {$dept['name']}" }}">
+                    @foreach($dept['programs'] as $program)
+                      <option value="{{ $program }}" {{ ($bluebook['program'] ?? '') === $program ? 'selected' : '' }}>{{ $program }}</option>
+                    @endforeach
+                  </optgroup>
+                @endforeach
               </select>
             </div>
 

@@ -59,13 +59,9 @@
                 <label for="upload-department">College / Department</label>
                 <select id="upload-department" name="department" required>
                   <option value="">Select Department</option>
-                  <option value="CCS" @selected(($old['department'] ?? '') === 'CCS')>CCS — Computing Studies</option>
-                  <option value="CENG" @selected(($old['department'] ?? '') === 'CENG')>CENG — Engineering</option>
-                  <option value="CAS" @selected(($old['department'] ?? '') === 'CAS')>CAS — Arts and Sciences</option>
-                  <option value="CHS" @selected(($old['department'] ?? '') === 'CHS')>CHS — Health Sciences</option>
-                  <option value="CTDE" @selected(($old['department'] ?? '') === 'CTDE')>CTDE — Teacher Development</option>
-                  <option value="CTHM" @selected(($old['department'] ?? '') === 'CTHM')>CTHM — Tourism &amp; Hospitality</option>
-                  <option value="CBA" @selected(($old['department'] ?? '') === 'CBA')>CBA — Business Administration</option>
+                  @foreach(config('departments') as $code => $dept)
+                    <option value="{{ $code }}" @selected(($old['department'] ?? '') === $code)>{{ $code === $dept['name'] ? $code : "$code — {$dept['name']}" }}</option>
+                  @endforeach
                 </select>
               </div>
               <div class="form-group">
@@ -78,33 +74,13 @@
               <label for="upload-program">Program</label>
               <select id="upload-program" name="program" required>
                 <option value="">Select Program</option>
-                <optgroup label="CCS — College of Computing Studies">
-                  <option value="Bachelor of Science in Information Technology" @selected(($old['program'] ?? '') === 'Bachelor of Science in Information Technology')>Bachelor of Science in Information Technology</option>
-                  <option value="Bachelor of Science in Computer Science" @selected(($old['program'] ?? '') === 'Bachelor of Science in Computer Science')>Bachelor of Science in Computer Science</option>
-                </optgroup>
-                <optgroup label="CENG — College of Engineering">
-                  <option value="Bachelor of Science in Civil Engineering" @selected(($old['program'] ?? '') === 'Bachelor of Science in Civil Engineering')>Bachelor of Science in Civil Engineering</option>
-                  <option value="Bachelor of Science in Electrical Engineering" @selected(($old['program'] ?? '') === 'Bachelor of Science in Electrical Engineering')>Bachelor of Science in Electrical Engineering</option>
-                  <option value="Bachelor of Science in Mechanical Engineering" @selected(($old['program'] ?? '') === 'Bachelor of Science in Mechanical Engineering')>Bachelor of Science in Mechanical Engineering</option>
-                </optgroup>
-                <optgroup label="CAS — College of Arts and Sciences">
-                  <option value="Bachelor of Arts in Communication" @selected(($old['program'] ?? '') === 'Bachelor of Arts in Communication')>Bachelor of Arts in Communication</option>
-                  <option value="Bachelor of Science in Biology" @selected(($old['program'] ?? '') === 'Bachelor of Science in Biology')>Bachelor of Science in Biology</option>
-                </optgroup>
-                <optgroup label="CHS — College of Health Sciences">
-                  <option value="Bachelor of Science in Nursing" @selected(($old['program'] ?? '') === 'Bachelor of Science in Nursing')>Bachelor of Science in Nursing</option>
-                </optgroup>
-                <optgroup label="CTDE — College of Teacher Development and Education">
-                  <option value="Bachelor of Elementary Education" @selected(($old['program'] ?? '') === 'Bachelor of Elementary Education')>Bachelor of Elementary Education</option>
-                  <option value="Bachelor of Secondary Education" @selected(($old['program'] ?? '') === 'Bachelor of Secondary Education')>Bachelor of Secondary Education</option>
-                </optgroup>
-                <optgroup label="CTHM — College of Tourism, Hospitality, and Management">
-                  <option value="Bachelor of Science in Tourism Management" @selected(($old['program'] ?? '') === 'Bachelor of Science in Tourism Management')>Bachelor of Science in Tourism Management</option>
-                  <option value="Bachelor of Science in Hospitality Management" @selected(($old['program'] ?? '') === 'Bachelor of Science in Hospitality Management')>Bachelor of Science in Hospitality Management</option>
-                </optgroup>
-                <optgroup label="CBA — College of Business Administration">
-                  <option value="Bachelor of Science in Business Administration" @selected(($old['program'] ?? '') === 'Bachelor of Science in Business Administration')>Bachelor of Science in Business Administration</option>
-                </optgroup>
+                @foreach(config('departments') as $code => $dept)
+                  <optgroup label="{{ $code === $dept['name'] ? $code : "$code — {$dept['name']}" }}">
+                    @foreach($dept['programs'] as $program)
+                      <option value="{{ $program }}" @selected(($old['program'] ?? '') === $program)>{{ $program }}</option>
+                    @endforeach
+                  </optgroup>
+                @endforeach
               </select>
             </div>
 

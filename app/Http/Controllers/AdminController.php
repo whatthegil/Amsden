@@ -57,7 +57,7 @@ class AdminController extends Controller
     public function bluebookStore(Request $request)
     {
         $request->validate([
-            'file' => ['nullable', 'file', 'mimes:pdf', 'max:25600'], // 25MB
+            'file' => ['nullable', 'file', 'mimes:pdf', 'max:25600', new \App\Rules\PdfFile], // 25MB, PDF only
         ]);
         $user = session('user');
 
@@ -99,7 +99,7 @@ class AdminController extends Controller
     public function bluebookUpdate(Request $request, int $id)
     {
         $request->validate([
-            'file' => ['nullable', 'file', 'mimes:pdf', 'max:25600'], // 25MB
+            'file' => ['nullable', 'file', 'mimes:pdf', 'max:25600', new \App\Rules\PdfFile], // 25MB, PDF only
         ]);
         $user = session('user');
 
@@ -161,7 +161,7 @@ class AdminController extends Controller
         if (!$bluebook || !$bluebook['hasFile']) {
             return redirect()->route('admin.bluebooks')->with('success', 'Bluebook has no file to process');
         }
-        if ($bluebook['ocrStatus'] === 'processing') {
+        if ($bluebook['ocrStatus'] === 'processing' && !$bluebook['ocrStuck']) {
             return redirect()->route('admin.bluebooks')->with('success', 'OCR is already processing for this bluebook');
         }
 

@@ -296,6 +296,7 @@ class Store
             'fileSize'         => $b->file_size,
             'hasFile'          => !empty($b->file_path),
             'ocrStatus'        => $b->ocr_status,
+            'ocrStuck'         => $b->isOcrStuck(),
             'ocrText'          => $b->ocr_text,
             'ocrError'         => $b->ocr_error,
             'ocrEngine'        => $b->ocr_engine,

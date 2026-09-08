@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Jobs\ProcessBluebookOcr;
 use App\Services\LiteratureReviewService;
+use App\Services\OcrService;
+use App\Services\PdfTextExtractor;
 use App\Services\SimilarityService;
 use App\Services\Store;
 use Illuminate\Http\Request;
@@ -142,7 +144,7 @@ class StudentController extends Controller
             abort(403);
         }
 
-        if ($bluebook['ocrStatus'] === 'processing') {
+        if ($bluebook['ocrStatus'] === 'processing' && !$bluebook['ocrStuck']) {
             return redirect()->route('student.my-uploads')->with('success', 'OCR is already processing for this bluebook');
         }
 
@@ -170,7 +172,7 @@ class StudentController extends Controller
 
         try {
             $request->validate([
-                'file'       => ['required', 'file', 'mimes:pdf', 'max:25600'], // 25MB
+                'file'       => ['required', 'file', 'mimes:pdf', 'max:25600', new \App\Rules\PdfFile], // 25MB, PDF only
                 'title'      => ['required', 'string'],
                 'authors'    => ['required', 'string'],
                 'department' => ['required', 'string'],
@@ -269,42 +271,34 @@ class StudentController extends Controller
 
         $results  = null;
         $proposed = null;
+        $error    = null;
 
         if ($request->isMethod('post')) {
-            $proposedTitle    = trim($request->input('title', ''));
-            $proposedKeywords = array_filter(array_map('trim', explode(',', $request->input('keywords', ''))));
-            $proposedAbstract = trim($request->input('abstract', ''));
+            $mode = $request->hasFile('file') ? 'file' : 'text';
 
-            $proposed = [
-                'title'    => $proposedTitle,
-                'keywords' => array_values($proposedKeywords),
-                'abstract' => $proposedAbstract,
-            ];
-
-            $bluebooks = Store::getApprovedBluebooks();
-            $results   = [];
-
-            foreach ($bluebooks as $book) {
-                $score = SimilarityService::computeSimilarity(
-                    $proposedTitle, array_values($proposedKeywords), $proposedAbstract, $book
-                );
-                if ($score >= 0.08) {
-                    $results[] = [
-                        'bluebook'   => $book,
-                        'score'      => $score,
-                        'percentage' => round($score * 100, 1),
-                    ];
+            if ($mode === 'file') {
+                [$proposed, $error] = $this->similarityProposalFromFile($request);
+            } else {
+                $proposed = [
+                    'title'    => trim($request->input('title', '')),
+                    'keywords' => array_values(array_filter(array_map('trim', explode(',', $request->input('keywords', ''))))),
+                    'abstract' => trim($request->input('abstract', '')),
+                ];
+                if ($proposed['title'] === '') {
+                    $error = 'Please enter a proposed research title.';
                 }
             }
 
-            usort($results, fn($a, $b) => $b['score'] <=> $a['score']);
+            if ($error === null && $proposed !== null) {
+                $results = $this->runSimilarityCheck($proposed, $mode);
 
-            Store::addLog([
-                'userName' => $user['name'],
-                'email'    => $user['email'],
-                'action'   => 'Similarity Check',
-                'document' => $proposedTitle,
-            ]);
+                Store::addLog([
+                    'userName' => $user['name'],
+                    'email'    => $user['email'],
+                    'action'   => $mode === 'file' ? 'Similarity Check (pre-proposal upload)' : 'Similarity Check',
+                    'document' => $proposed['title'] ?: ($proposed['sourceFile'] ?? '—'),
+                ]);
+            }
         }
 
         return view('pages.student-similarity-check', [
@@ -312,7 +306,139 @@ class StudentController extends Controller
             'active'   => 'similarity',
             'results'  => $results,
             'proposed' => $proposed,
+            'error'    => $error,
         ]);
+    }
+
+    /**
+     * Score a proposed capstone against every approved bluebook and keep the
+     * matches above the display threshold, highest first. `$mode` picks the
+     * scorer: 'text' compares the typed title/keywords/abstract fields;
+     * 'file' compares the whole extracted pre-proposal text.
+     */
+    private function runSimilarityCheck(array $proposed, string $mode): array
+    {
+        $results = [];
+
+        foreach (Store::getApprovedBluebooks() as $book) {
+            $score = $mode === 'file'
+                ? SimilarityService::computeSimilarityFromText($proposed['proposalText'] ?? '', $book)
+                : SimilarityService::computeSimilarity(
+                    $proposed['title'], $proposed['keywords'], $proposed['abstract'], $book
+                );
+
+            $threshold = $mode === 'file' ? 0.12 : 0.08;
+            if ($score >= $threshold) {
+                $results[] = [
+                    'bluebook'   => $book,
+                    'score'      => $score,
+                    'percentage' => round($score * 100, 1),
+                ];
+            }
+        }
+
+        usort($results, fn($a, $b) => $b['score'] <=> $a['score']);
+
+        return $results;
+    }
+
+    /**
+     * Validate the uploaded pre-proposal PDF, pull its text out (embedded text
+     * layer first, a short OCR pass as fallback for scanned documents), and
+     * shape it into the same $proposed array the typed path produces — plus
+     * `proposalText` (for scoring) and `sourceFile` (for display).
+     *
+     * @return array{0: array|null, 1: string|null} [$proposed, $error]
+     */
+    private function similarityProposalFromFile(Request $request): array
+    {
+        try {
+            $request->validate([
+                'file' => ['required', 'file', 'mimes:pdf', 'max:25600', new \App\Rules\PdfFile],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return [null, collect($e->errors())->flatten()->first()];
+        }
+
+        $file       = $request->file('file');
+        $sourceName = $file->getClientOriginalName();
+
+        $tmpDir  = storage_path('app/similarity-tmp');
+        if (!is_dir($tmpDir)) {
+            @mkdir($tmpDir, 0777, true);
+        }
+        $tmpName = uniqid('proposal_', true) . '.pdf';
+        $tmpPath = $tmpDir . DIRECTORY_SEPARATOR . $tmpName;
+
+        try {
+            $file->move($tmpDir, $tmpName);
+
+            $text = PdfTextExtractor::extract($tmpPath);
+
+            // Scanned / image-only PDF — no text layer. Try a short OCR pass
+            // (capped hard so the request still returns promptly).
+            if (mb_strlen($text) < 150) {
+                try {
+                    $pages = (int) config('ocr.sync_max_pages', 12);
+                    // Even capped, OCR runs ~3s/page, which overruns php-fpm's default
+                    // 30s max_execution_time. Lift the ceiling for this request only;
+                    // the page cap is what actually bounds the work.
+                    if (function_exists('set_time_limit')) {
+                        @set_time_limit((int) config('ocr.timeout') + ($pages * 15));
+                    }
+                    $text = OcrService::extractText($tmpPath, $pages)['text'];
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
+        } catch (\Throwable $e) {
+            report($e);
+            @unlink($tmpPath);
+            return [null, 'Something went wrong while reading that PDF. Please try again.'];
+        } finally {
+            @unlink($tmpPath);
+        }
+
+        $text = trim($text);
+        if (mb_strlen($text) < 150) {
+            return [null, 'We couldn\'t read any text from that PDF. It may be a scanned image without a selectable text layer — try typing your title above, or upload a text-based PDF.'];
+        }
+
+        return [[
+            'title'        => $this->guessProposalTitle($text, $sourceName),
+            'keywords'     => [],
+            'abstract'     => '',
+            'proposalText' => $text,
+            'sourceFile'   => $sourceName,
+        ], null];
+    }
+
+    /**
+     * Best-effort title for display: an explicit "Title: ..." line if the
+     * document has one, otherwise the first substantial line of text, falling
+     * back to the file name.
+     */
+    private function guessProposalTitle(string $text, string $sourceName): string
+    {
+        $lines = preg_split('/\n+/', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        foreach ($lines as $line) {
+            if (preg_match('/^\s*(?:proposed\s+)?(?:research\s+)?title\s*[:\-]\s*(.+)$/i', trim($line), $m)) {
+                $candidate = trim($m[1]);
+                if (mb_strlen($candidate) >= 10) {
+                    return mb_substr($candidate, 0, 300);
+                }
+            }
+        }
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (mb_strlen($line) >= 15 && mb_strlen($line) <= 250 && str_word_count($line) >= 3) {
+                return mb_substr($line, 0, 300);
+            }
+        }
+
+        return pathinfo($sourceName, PATHINFO_FILENAME) ?: 'Uploaded pre-proposal';
     }
 
     public function literatureReview(Request $request)

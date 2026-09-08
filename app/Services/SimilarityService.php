@@ -103,6 +103,44 @@ class SimilarityService
     }
 
     /**
+     * Duplicate-risk score for a whole pre-proposal document (its full
+     * extracted text) against an existing bluebook — the upload path of the
+     * similarity checker, where the proposal isn't split into title /
+     * keywords / abstract fields.
+     *
+     * For each field the bluebook actually has, we measure what fraction of
+     * that field's vocabulary also appears somewhere in the proposal
+     * (overlapCoefficient — denominator is the short field, not the long
+     * proposal, so a match isn't punished for the proposal being verbose),
+     * then combine the fields by weight, renormalising over whichever fields
+     * were present. Title carries the most weight, mirroring computeSimilarity().
+     */
+    public static function computeSimilarityFromText(string $proposalText, array $bluebook): float
+    {
+        $proposalTokens = self::tokenize($proposalText);
+        if (empty($proposalTokens)) return 0.0;
+
+        $fields = [
+            // [field tokens, weight]
+            [self::tokenize($bluebook['title'] ?? ''), 0.45],
+            [array_map(fn($k) => strtolower(trim($k)), $bluebook['keywords'] ?? []), 0.15],
+            [self::tokenize($bluebook['abstract'] ?? ''), 0.15],
+            [self::tokenize($bluebook['ocrText'] ?? ''), 0.25],
+        ];
+
+        $score     = 0.0;
+        $weightSum = 0.0;
+        foreach ($fields as [$tokens, $weight]) {
+            $tokens = array_values(array_filter($tokens, fn($t) => strlen($t) > 2));
+            if (empty($tokens)) continue;
+            $score     += self::overlapCoefficient($tokens, $proposalTokens) * $weight;
+            $weightSum += $weight;
+        }
+
+        return $weightSum > 0.0 ? $score / $weightSum : 0.0;
+    }
+
+    /**
      * Relevance of a free-text search query against a bluebook, for ranking
      * search results (as opposed to computeSimilarity(), which compares two
      * documents against each other for duplicate detection).

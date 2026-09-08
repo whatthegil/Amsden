@@ -14,13 +14,54 @@
     <div class="content form-page">
       <div class="page-header">
         <div>
-          <h1>Pre-Title Proposal Similarity Check</h1>
-          <p>Enter your proposed capstone title to check for similar or duplicate research in the archive before submitting.</p>
+          <h1>Pre-Proposal Similarity Check</h1>
+          <p>Check your proposed capstone against the archive before submitting — enter your title, or upload your full pre-proposal PDF to compare it against existing research and similar bluebooks.</p>
+        </div>
+      </div>
+
+      @if(!empty($error))
+        <div class="alert alert-error" style="margin-bottom:1rem;">{{ $error }}</div>
+      @endif
+
+      @php $activeTab = (isset($proposed['sourceFile']) && $proposed['sourceFile']) ? 'file' : 'text'; @endphp
+
+      {{-- Mode switch --}}
+      <div class="sim-tabs" role="tablist" style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+        <button type="button" class="btn btn-outline sim-tab" data-tab="text" aria-selected="{{ $activeTab === 'text' ? 'true' : 'false' }}">Enter a title</button>
+        <button type="button" class="btn btn-outline sim-tab" data-tab="file" aria-selected="{{ $activeTab === 'file' ? 'true' : 'false' }}">Upload pre-proposal (PDF)</button>
+      </div>
+
+      {{-- Upload Form --}}
+      <div class="form-card sim-panel" data-panel="file" style="{{ $activeTab === 'file' ? '' : 'display:none;' }}">
+        <div class="form-card-header">
+          <span class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" fill="currentColor" fill-opacity="0.18"/><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <h2>Upload Your Pre-Proposal</h2>
+        </div>
+        <div class="form-card-body">
+          <form method="POST" action="{{ route('student.similarity-check.post') }}" enctype="multipart/form-data">
+            @csrf
+
+            <label for="sim-file" class="file-drop-zone">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" style="margin:0 auto 0.5rem;display:block;"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" fill="var(--primary-dark)" fill-opacity="0.18"/><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" fill="none" stroke="var(--primary-dark)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div style="font-weight:600;color:var(--primary-dark);margin-bottom:0.25rem;">Click or drag your pre-proposal PDF here</div>
+              <div style="font-size:0.83rem;color:var(--gray-400);">Accepted: .pdf, up to 25 MB. The file is only read for this check — it is not saved or submitted to the archive.</div>
+            </label>
+            <input type="file" id="sim-file" name="file" accept=".pdf,application/pdf" required class="sr-only" onchange="simShowFile(this)" aria-describedby="sim-file-info">
+            <div id="sim-file-info" style="display:none;padding:0.75rem 1rem;background:var(--green-light);border-radius:var(--radius-sm);border:1px solid var(--green);font-size:0.88rem;color:var(--green);margin-bottom:1rem;" role="status"></div>
+
+            <div style="background:var(--primary-light);border:1px solid var(--primary-pale);border-radius:var(--radius-sm);padding:0.875rem 1rem;margin-bottom:1.25rem;font-size:0.85rem;color:var(--primary-dark);">
+              <strong>How this works:</strong> we extract the text from your PDF and compare its wording against the title, keywords, abstract, and full text of every approved bluebook. Scanned documents without a selectable text layer may not be readable — type your title instead if so.
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Check Similarity</button>
+            </div>
+          </form>
         </div>
       </div>
 
       {{-- Input Form --}}
-      <div class="form-card">
+      <div class="form-card sim-panel" data-panel="text" style="{{ $activeTab === 'text' ? '' : 'display:none;' }}">
         <div class="form-card-header">
           <span class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" fill="currentColor" fill-opacity="0.18"/><path d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <h2>Your Proposed Title</h2>
@@ -60,7 +101,7 @@
             </div>
 
             <div style="background:var(--primary-light);border:1px solid var(--primary-pale);border-radius:var(--radius-sm);padding:0.875rem 1rem;margin-bottom:1.25rem;font-size:0.85rem;color:var(--primary-dark);">
-              <strong>How scoring works:</strong> Title match accounts for 60% of the score, keywords 25%, and abstract 15%. Results with at least 8% similarity are shown.
+              <strong>How scoring works:</strong> Title match accounts for 50% of the score, keywords 20%, abstract 10%, and overlap with existing documents' full text 20%. Results with at least 8% similarity are shown.
             </div>
 
             <div class="form-actions">
@@ -73,6 +114,13 @@
 
       {{-- Results Section --}}
       @if($results !== null)
+        @if(!empty($proposed['sourceFile']))
+          <div style="margin-top:1.5rem;font-size:0.88rem;color:var(--gray-600);background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-sm);padding:0.75rem 1rem;">
+            Compared from uploaded file <strong>{{ $proposed['sourceFile'] }}</strong>.
+            Detected title: <em>"{{ $proposed['title'] }}"</em>
+            <span style="color:var(--gray-400);">(best guess from the document text — the full text was used for scoring)</span>
+          </div>
+        @endif
         @php
           $highCount = count(array_filter($results, fn($r) => $r['percentage'] >= 60));
           $modCount  = count(array_filter($results, fn($r) => $r['percentage'] >= 30 && $r['percentage'] < 60));
@@ -224,5 +272,35 @@
     </footer>
   </main>
 </div>
+
+<script>
+(function () {
+  var tabs   = document.querySelectorAll('.sim-tab');
+  var panels = document.querySelectorAll('.sim-panel');
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      var name = tab.dataset.tab;
+      tabs.forEach(function (t) { t.setAttribute('aria-selected', String(t === tab)); });
+      panels.forEach(function (p) { p.style.display = (p.dataset.panel === name) ? '' : 'none'; });
+    });
+  });
+})();
+
+function simShowFile(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var info = document.getElementById('sim-file-info');
+  info.style.display = 'block';
+  info.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+}
+</script>
+
+<style>
+  .sim-tab[aria-selected="true"] {
+    background: var(--primary-light);
+    border-color: var(--primary-mid);
+    color: var(--primary-dark);
+  }
+</style>
 
 @include('partials.footer')

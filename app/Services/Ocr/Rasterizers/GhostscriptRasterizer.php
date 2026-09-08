@@ -28,14 +28,25 @@ class GhostscriptRasterizer implements PdfRasterizer
         return 'ghostscript';
     }
 
-    public function rasterize(string $pdfPath, string $outDir, int $dpi): array
+    public function rasterize(string $pdfPath, string $outDir, int $dpi, ?int $maxPages = null): array
     {
         $pattern = $outDir . DIRECTORY_SEPARATOR . 'page-%04d.png';
 
-        $process = new Process([
+        $args = [
             $this->bin, '-dNOPAUSE', '-dBATCH', '-dSAFER',
-            '-sDEVICE=png16m', "-r{$dpi}", "-sOutputFile={$pattern}", $pdfPath,
-        ]);
+            '-sDEVICE=png16m', "-r{$dpi}",
+        ];
+
+        // Bound the render at the source. Both flags must precede the input file.
+        if ($maxPages !== null && $maxPages > 0) {
+            $args[] = '-dFirstPage=1';
+            $args[] = "-dLastPage={$maxPages}";
+        }
+
+        $args[] = "-sOutputFile={$pattern}";
+        $args[] = $pdfPath;
+
+        $process = new Process($args);
         $process->setTimeout(config('ocr.timeout'));
         $process->run();
 
