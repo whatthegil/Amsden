@@ -248,6 +248,55 @@ document.querySelectorAll('[data-href]').forEach(row => {
     // Keep the timestamp current, and rebuild if anything removes the overlay.
     setInterval(buildWatermark, 60000);
     document.addEventListener('visibilitychange', buildWatermark);
+
+    // Keep the watermark honest. Deleting the overlay in developer tools, or
+    // setting display:none on it, would otherwise produce a clean screenshot
+    // with no attribution. The overlay is re-created whenever it is removed and
+    // its critical styles are re-asserted, so it cannot simply be switched off.
+    //
+    // This does not stop a screenshot, and is not meant to. It stops the
+    // watermark being removed before one is taken.
+    (function guardWatermark() {
+      let strikes = 0;
+
+      function violated() {
+        const wm = document.getElementById('cbams-wm');
+        if (!wm) return true;
+        const cs = getComputedStyle(wm);
+        return cs.display === 'none'
+            || cs.visibility === 'hidden'
+            || parseFloat(cs.opacity) < 0.5
+            || !wm.style.backgroundImage;
+      }
+
+      function restore() {
+        buildWatermark();
+        if (++strikes === 3) {
+          // Repeated tampering is deliberate, so record it once.
+          flagWatermarkTampering();
+        }
+      }
+
+      function flagWatermarkTampering() {
+        const csrf = document.querySelector('meta[name="csrf-token"]');
+        const id   = detailEl.dataset.bluebookId;
+        if (!csrf || !id) return;
+        fetch('/student/bluebooks/' + id + '/flag-capture', {
+          method:  'POST',
+          headers: {
+            'X-CSRF-TOKEN': csrf.getAttribute('content'),
+            'Accept':       'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ reason: 'Watermark tampering' }),
+        }).catch(() => {});
+      }
+
+      new MutationObserver(() => { if (violated()) restore(); })
+        .observe(document.body, { childList: true, subtree: false, attributes: true, attributeFilter: ['style', 'class'] });
+
+      setInterval(() => { if (violated()) restore(); }, 1000);
+    })();
   }
 
   // ── 6. Screen share / recording detection ─────────────────────────────────

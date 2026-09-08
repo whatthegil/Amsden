@@ -91,6 +91,17 @@ class FlagCaptureTest extends TestCase
             ->assertSee('data-viewer="tester@my.cspc.edu.ph"', false);
     }
 
+    public function test_watermark_tampering_is_recorded(): void
+    {
+        $b = $this->makeBluebook();
+
+        $this->withSession(['user' => $this->student()])
+            ->postJson("/student/bluebooks/{$b->id}/flag-capture", ['reason' => 'Watermark tampering'])
+            ->assertOk();
+
+        $this->assertDatabaseHas('logs', ['document' => 'A Studied Paper — Watermark tampering']);
+    }
+
     public function test_a_missing_reason_falls_back_to_unknown(): void
     {
         $b = $this->makeBluebook();

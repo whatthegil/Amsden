@@ -143,6 +143,7 @@ class StudentController extends Controller
             'Window lost focus',
             'Tab hidden',
             'Screen sharing',
+            'Watermark tampering',
         ];
         $reason = (string) $request->input('reason', '');
         $reason = in_array($reason, $allowed, true) ? $reason : 'Unknown';
