@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\Store;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
@@ -101,15 +102,53 @@ class AuthController extends Controller
             ->redirect();
     }
 
-    public function handleGoogleCallback()
+    // Google sends these back on the callback URL when it refuses the sign-in
+    // *before* issuing an auth code. Without translating them the user only ever
+    // saw the generic "Google sign-in failed", which hid the real cause.
+    private const GOOGLE_ERRORS = [
+        'access_denied'         => 'Google sign-in was cancelled, or this Google project is still in "Testing" mode and your account is not on its test-user list. Ask the administrator to publish the OAuth consent screen or add you as a test user.',
+        'admin_policy_enforced' => 'Your CSPC Google Workspace administrator has blocked this app. It has to be allow-listed in the Google Admin console before you can sign in.',
+        'org_internal'          => 'This Google project only accepts accounts from the organisation that owns it. Ask the administrator to check the OAuth consent screen User Type.',
+        'disallowed_useragent'  => 'Google refused this browser. Please open the site in Chrome, Edge, or Firefox rather than an in-app browser.',
+    ];
+
+    public function handleGoogleCallback(Request $request)
     {
+        // Google redirects here with ?error=... (and no ?code=) when it declines
+        // the sign-in. Socialite would just choke on the missing code and raise
+        // an opaque exception, so handle that case first.
+        if ($error = $request->query('error')) {
+            Log::warning('Google sign-in refused by Google', [
+                'error'       => $error,
+                'description' => $request->query('error_description'),
+            ]);
+
+            return redirect()->route('login')->with(
+                'error',
+                self::GOOGLE_ERRORS[$error] ?? ('Google sign-in failed (' . $error . '). Please try again.')
+            );
+        }
+
         try {
             $googleUser = Socialite::driver('google')->stateless()->user();
         } catch (\Exception $e) {
+            // Previously swallowed silently, which made every Google failure
+            // undiagnosable. Record it so storage/logs/laravel.log says why.
+            Log::error('Google sign-in failed during token exchange', [
+                'exception' => get_class($e),
+                'message'   => $e->getMessage(),
+            ]);
+
             return redirect()->route('login')->with('error', 'Google sign-in failed. Please try again.');
         }
 
         $email = $googleUser->getEmail();
+
+        if (!$email) {
+            Log::error('Google sign-in returned no email address', ['googleId' => $googleUser->getId()]);
+
+            return redirect()->route('login')->with('error', 'Google did not share an email address with us. Please grant the email permission and try again.');
+        }
 
         if (!$this->isAllowedEmail($email)) {
             return redirect()->route('login')->with('error', 'Only @cspc.edu.ph or @my.cspc.edu.ph Google accounts are allowed. Please use your institutional email.');
