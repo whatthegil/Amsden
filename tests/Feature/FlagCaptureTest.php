@@ -129,4 +129,29 @@ class FlagCaptureTest extends TestCase
         $response->assertSee('/vendor/pdfjs/pdf.min.js', false);
         $response->assertDontSee('<iframe', false);
     }
+
+    /**
+     * .pdf-view also carries .watermark-overlay, which is a centred column flex
+     * container. While the viewer inherited that, the page list was a flex item
+     * sized to its own content - and a page that reserves its height with
+     * padding-top and holds its canvas out of flow contributes no width at all.
+     * The list collapsed to its padding, every page measured 0px wide and each
+     * canvas was drawn 0x0: the document loaded and nothing appeared.
+     */
+    public function test_the_viewer_is_not_laid_out_as_a_flex_item(): void
+    {
+        $css = file_get_contents(public_path('css/style.css'));
+
+        $this->assertMatchesRegularExpression(
+            '/\.pdf-view\s*\{[^}]*display:\s*block/',
+            $css,
+            '.pdf-view must override the flex display it inherits from .watermark-overlay.'
+        );
+
+        $this->assertMatchesRegularExpression(
+            '/\.pdf-pages\s*\{[^}]*width:\s*100%/',
+            $css,
+            '.pdf-pages must fill the viewer rather than shrink to its contents.'
+        );
+    }
 }

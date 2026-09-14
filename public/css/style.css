@@ -1433,12 +1433,22 @@ a:focus-visible {
 /* ── Bluebook PDF viewer (PDF.js canvas rendering) ──────────────────────────── */
 /* Replaces the browser's own PDF frame, which Android's WebView does not have
    and which the watermark could not be drawn over. */
-.pdf-view { margin-top: 0; padding: 0; overflow: hidden; position: relative; }
+/* .pdf-view also carries .watermark-overlay, which is a centred column flex
+   container. As a flex item the page list took its fit-content width, and a
+   page that reserves its height with padding-top contributes nothing to that,
+   so the list collapsed to its own padding, every .pdf-page measured 0px wide
+   and each canvas was drawn 0x0 - a document that loaded fine and showed
+   nothing. The viewer lays its own children out, so it is a block. */
+.pdf-view {
+  display: block; margin-top: 0; padding: 0;
+  overflow: hidden; position: relative; text-align: left;
+}
 .pdf-status {
   padding: 3rem 1rem; text-align: center;
   color: var(--gray-600); font-size: 0.9rem;
 }
 .pdf-pages {
+  width: 100%;
   max-height: 75vh; overflow-y: auto; overflow-x: hidden;
   background: var(--gray-100); padding: 0.75rem;
   -webkit-overflow-scrolling: touch;
@@ -1452,3 +1462,11 @@ a:focus-visible {
    canvas has to be positioned out of flow once it arrives. */
 .pdf-page canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .pdf-page:last-child { margin-bottom: 0; }
+/* Same reason as the canvas: the holder's own box is reserved padding, so an
+   in-flow message would fall below it and be clipped. */
+.pdf-page-error {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem; text-align: center;
+  color: var(--gray-600); font-size: 0.85rem;
+}

@@ -450,10 +450,19 @@ document.querySelectorAll('[data-href]').forEach(row => {
 
     // Switching tabs or minimising. Separate from blur so the log can tell them
     // apart when reviewing what a user was doing.
+    //
+    // Coming back has to lift the blur here as well, not only on window focus.
+    // The wrapper app's WebView raises visibilitychange when it is backgrounded
+    // and foregrounded but does not always raise a window focus event, so a
+    // document blurred on the way out stayed blurred on the way back in - the
+    // reader returned to a page they could no longer read.
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) {
         blurBook(true);
         flagCapture('Tab hidden');
+      } else {
+        blurBook(false);
+        hideCaptureBanner();
       }
     });
 

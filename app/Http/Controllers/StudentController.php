@@ -132,11 +132,27 @@ class StudentController extends Controller
         }
 
         return response()->stream(function () use ($stream) {
+            // These documents run to tens of megabytes, so on a slow connection
+            // the send outlives the default execution limit. Hitting it mid-file
+            // truncates the response, and the viewer is handed a PDF that ends
+            // in the middle of the byte stream.
+            @set_time_limit(0);
+
             // Flushed in chunks so the first bytes reach the viewer promptly on
             // a document that runs to tens of megabytes, rather than the whole
             // file being buffered before anything is sent.
             while (!feof($stream)) {
-                echo fread($stream, 262144);
+                $chunk = fread($stream, 262144);
+                if ($chunk === false) {
+                    break;
+                }
+                echo $chunk;
+
+                // flush() alone only pushes the web server's buffer. With PHP's
+                // own output buffering on, the bytes are still sitting in it.
+                if (ob_get_level() > 0) {
+                    @ob_flush();
+                }
                 flush();
             }
             fclose($stream);
