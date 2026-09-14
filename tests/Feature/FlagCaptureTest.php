@@ -154,4 +154,80 @@ class FlagCaptureTest extends TestCase
             '.pdf-pages must fill the viewer rather than shrink to its contents.'
         );
     }
+
+    /**
+     * .pdf-pages is its own scroll container, so the observers that decide when
+     * a page is drawn and when it is let go have to take it as their root. With
+     * the default root their margins are measured from the window, and a margin
+     * on the window does not widen an intervening scroller's clip - so a page
+     * was only ever drawn once it was already on screen, and dropped the moment
+     * it left. Measured on a 200-page document, two pages held a canvas at any
+     * time and scrolling showed grey boxes that filled in late.
+     */
+    public function test_the_page_observers_watch_the_scroll_container(): void
+    {
+        $js = file_get_contents(public_path('js/pdf-viewer.js'));
+
+        $this->assertSame(
+            2,
+            preg_match_all('/new IntersectionObserver\(.*?\{\s*root:\s*pagesEl/s', $js),
+            'Both page observers must use .pdf-pages as their root, not the window.'
+        );
+    }
+
+    /**
+     * A render that measures a zero width draws nothing and returns, and the
+     * page observers do not fire again afterwards because nothing about the
+     * intersection changed. If the viewer is laid out late, or starts hidden,
+     * the width arriving is the only signal that those pages can now be drawn -
+     * and it reaches the list, not the window, so a window resize listener
+     * never hears it.
+     */
+    public function test_a_late_layout_is_still_drawn(): void
+    {
+        $js = file_get_contents(public_path('js/pdf-viewer.js'));
+
+        $this->assertMatchesRegularExpression(
+            '/new ResizeObserver\(\s*\w+\s*\)\.observe\(pagesEl\)/',
+            $js,
+            'The viewer must watch the page list for a width it can finally draw into.'
+        );
+    }
+
+    /**
+     * The two observers report separately, each callback followed by its own
+     * microtask checkpoint. A page already in the worker cache resolves inside
+     * that gap and, finding a keep set the wider observer has not filled in
+     * yet, discards its finished canvas. Page 1 is always in that cache -
+     * the layout pass reads it for the document proportions - so every document
+     * opened on a blank first page. The render observer therefore records the
+     * page itself, synchronously, before any of the async work starts.
+     */
+    public function test_the_first_page_is_kept_before_it_is_drawn(): void
+    {
+        $js = file_get_contents(public_path('js/pdf-viewer.js'));
+
+        $this->assertMatchesRegularExpression(
+            '/keep\.add\(num\);\s*\n\s*render\(/',
+            $js,
+            'A page must join the keep set before render() starts, or its canvas is thrown away.'
+        );
+    }
+
+    /**
+     * Scrolling past a page that is mid-render cancels it. That is the ordinary
+     * path on a long document, not a failure, so it must not leave "This page
+     * could not be displayed." sitting over a page the reader can scroll back
+     * to perfectly well.
+     */
+    public function test_a_cancelled_render_is_not_reported_as_an_error(): void
+    {
+        $js = file_get_contents(public_path('js/pdf-viewer.js'));
+
+        $this->assertStringContainsString(
+            "RenderingCancelledException",
+            $js,
+            'A cancelled render must be distinguished from a page that genuinely failed.'
+        );
+    }
 }
