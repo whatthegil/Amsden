@@ -1,4 +1,10 @@
-@php $title = 'My Uploads'; @endphp
+@php
+  $title = 'My Uploads';
+
+  $approvedCount = count(array_filter($bluebooks, fn($b) => $b['status'] === 'Approved'));
+  $pendingCount  = count(array_filter($bluebooks, fn($b) => $b['status'] === 'Pending'));
+  $rejectedCount = count(array_filter($bluebooks, fn($b) => $b['status'] === 'Rejected'));
+@endphp
 @include('partials.head')
 
 <div class="app">
@@ -12,17 +18,37 @@
     </header>
 
     <div class="content">
-      <div class="page-header">
-        <div>
-          <h1>My Uploads</h1>
-          <p>{{ count($bluebooks) }} submission(s)</p>
+      <div class="dash-hero slim">
+        <div class="dash-hero-top" style="margin-bottom:0;">
+          <div>
+            <h1>My Uploads</h1>
+            @if(count($bluebooks) > 0)
+              <p>{{ count($bluebooks) }} {{ Str::plural('submission', count($bluebooks)) }} to the CSPC archive.</p>
+              {{-- How they divide up, in a line rather than a row of cards. --}}
+              <div class="hero-tally">
+                @if($approvedCount > 0)
+                  <span><span class="dot" style="background:#7ee2b8;"></span> {{ $approvedCount }} approved</span>
+                @endif
+                @if($pendingCount > 0)
+                  @if($approvedCount > 0)<span class="sep">&middot;</span>@endif
+                  <span><span class="dot" style="background:#fbbf24;"></span> {{ $pendingCount }} awaiting review</span>
+                @endif
+                @if($rejectedCount > 0)
+                  @if($approvedCount > 0 || $pendingCount > 0)<span class="sep">&middot;</span>@endif
+                  <span><span class="dot" style="background:#fca5a5;"></span> {{ $rejectedCount }} not published</span>
+                @endif
+              </div>
+            @else
+              <p>Nothing submitted yet.</p>
+            @endif
+          </div>
+          @if($user['canUpload'] ?? false)
+            <a href="{{ route('student.upload') }}" class="btn btn-sm btn-on-hero">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0-12l-4 4m4-4l4 4M4 20h16"/></svg>
+              Upload New
+            </a>
+          @endif
         </div>
-        @if($user['canUpload'] ?? false)
-          <a href="{{ route('student.upload') }}" class="btn btn-primary">
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-            Upload New
-          </a>
-        @endif
       </div>
 
       @if(session('success'))
@@ -30,63 +56,93 @@
       @endif
 
       @if(count($bluebooks) > 0)
-        <div class="card">
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Title</th>
-                  <th>Department</th>
-                  <th>Year</th>
-                  <th>Status</th>
-                  <th>Date Added</th>
-                  <th>Views</th>
-                  <th>OCR</th>
-                </tr>
-              </thead>
-              <tbody>
-                @foreach($bluebooks as $i => $b)
-                  <tr @if($b['status'] === 'Approved') data-href="{{ route('student.bluebook', $b['id']) }}" @endif>
-                    <td class="mono">{{ $i + 1 }}</td>
-                    <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;">{{ $b['title'] }}</td>
-                    <td><span class="badge badge-blue">{{ $b['department'] }}</span></td>
-                    <td>{{ $b['year'] }}</td>
-                    <td>
-                      @if($b['status'] === 'Approved') <span class="badge badge-green">Approved</span>
-                      @elseif($b['status'] === 'Pending') <span class="badge badge-yellow">Pending Review</span>
-                      @else <span class="badge badge-red">Rejected</span>
-                      @endif
-                    </td>
-                    <td style="font-size:0.83rem;">{{ $b['dateAdded'] }}</td>
-                    <td>{{ $b['views'] }}</td>
-                    <td>
-                      @if($b['ocrStatus'] === 'completed') <span class="badge badge-green">Completed</span>
-                      @elseif($b['ocrStatus'] === 'processing') <span class="badge badge-yellow">Processing</span>
-                      @elseif($b['ocrStatus'] === 'failed') <span class="badge badge-red">Failed</span>
-                      @else <span class="badge badge-blue">Pending</span>
-                      @endif
-                      @if($b['hasFile'] && $b['ocrStatus'] !== 'processing')
-                        <form method="POST" action="{{ route('student.bluebook.reprocess-ocr', $b['id']) }}" style="display:inline-block;margin-left:0.35rem;" onclick="event.stopPropagation();">
-                          @csrf <button type="submit" class="btn btn-outline btn-sm">Retry OCR</button>
-                        </form>
-                      @endif
-                    </td>
-                  </tr>
-                @endforeach
-              </tbody>
-            </table>
-          </div>
+        <div class="submission-list">
+          @foreach($bluebooks as $b)
+            @php
+              $state = $b['status'] === 'Approved' ? 'approved'
+                     : ($b['status'] === 'Pending' ? 'pending' : 'rejected');
+            @endphp
+            <div class="submission is-{{ $state }}">
+              <div class="submission-head">
+                @if($b['status'] === 'Approved')
+                  <a class="submission-title" href="{{ route('student.bluebook', $b['id']) }}">{{ $b['title'] }}</a>
+                @else
+                  <div class="submission-title">{{ $b['title'] }}</div>
+                @endif
+                <div style="flex-shrink:0;">
+                  @if($b['status'] === 'Approved') <span class="badge badge-green">Approved</span>
+                  @elseif($b['status'] === 'Pending') <span class="badge badge-yellow">Pending Review</span>
+                  @else <span class="badge badge-red">Rejected</span>
+                  @endif
+                </div>
+              </div>
+
+              <div class="submission-meta">
+                <span class="badge badge-blue">{{ $b['department'] }}</span>
+                <span>{{ $b['year'] }}</span>
+                <span class="sep">&middot;</span>
+                <span>Submitted {{ $b['dateAdded'] }}</span>
+                @if($b['status'] === 'Approved')
+                  <span class="sep">&middot;</span>
+                  <span>{{ $b['views'] }} {{ Str::plural('view', $b['views']) }}</span>
+                @endif
+              </div>
+
+              {{-- What the badge means for the person who sent it in. A one-word
+                   status leaves an author guessing whether anything is expected
+                   of them. --}}
+              <div class="submission-note">
+                @if($b['status'] === 'Approved')
+                  Published to the archive and readable by students and faculty.
+                @elseif($b['status'] === 'Pending')
+                  Waiting for an administrator to review it. Nothing is needed from you.
+                @else
+                  Not published to the archive. Contact your adviser or the CSPC Library if you think this is wrong.
+                @endif
+              </div>
+
+              @if($b['hasFile'])
+                {{-- OCR to us, but the author only cares what it decides: whether
+                     the paper turns up in a search of its own contents. --}}
+                <div class="submission-foot">
+                  <span class="ocr">
+                    <span class="ocr-label">Searchable text</span>
+                    @if($b['ocrStatus'] === 'completed') <span class="badge badge-green">Ready</span>
+                    @elseif($b['ocrStatus'] === 'processing') <span class="badge badge-yellow">Processing</span>
+                    @elseif($b['ocrStatus'] === 'failed') <span class="badge badge-red">Failed</span>
+                    @else <span class="badge badge-gray">Queued</span>
+                    @endif
+                    @if($b['ocrStatus'] === 'failed' && !empty($b['ocrError']))
+                      <span style="color:var(--gray-400);">&mdash; {{ Str::limit($b['ocrError'], 70) }}</span>
+                    @elseif($b['ocrStatus'] === 'completed')
+                      <span style="color:var(--gray-400);">This paper can be found by the words inside it.</span>
+                    @endif
+                  </span>
+                  @if($b['ocrStatus'] !== 'processing')
+                    <form method="POST" action="{{ route('student.bluebook.reprocess-ocr', $b['id']) }}">
+                      @csrf
+                      <button type="submit" class="btn btn-outline btn-sm">
+                        {{ $b['ocrStatus'] === 'failed' ? 'Try again' : 'Re-extract' }}
+                      </button>
+                    </form>
+                  @endif
+                </div>
+              @endif
+            </div>
+          @endforeach
         </div>
       @else
         <div class="card">
           <div class="empty-state">
-            <div class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" fill="currentColor" fill-opacity="0.18"/><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <p>You haven't uploaded any bluebooks yet.</p>
+            <div class="icon">
+              <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0L8 8m4-4 4 4M4 20h16"/></svg>
+            </div>
+            <p>You have not submitted a bluebook yet.</p>
             @if($user['canUpload'] ?? false)
-              <a href="{{ route('student.upload') }}" class="btn btn-primary" style="margin-top:1rem;">Upload your first bluebook</a>
+              <p style="font-size:0.8rem;color:var(--gray-400);margin-top:0.35rem;">Submissions are reviewed by an administrator before they appear in the archive.</p>
+              <a href="{{ route('student.upload') }}" class="btn btn-primary btn-sm" style="margin-top:0.9rem;">Upload your first bluebook</a>
             @else
-              <p style="margin-top:0.5rem;font-size:0.82rem;">Contact an administrator to request upload permission.</p>
+              <p style="font-size:0.8rem;color:var(--gray-400);margin-top:0.35rem;">Ask an administrator to enable uploads for your account.</p>
             @endif
           </div>
         </div>
