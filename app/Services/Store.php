@@ -368,10 +368,37 @@ class Store
 
     // ─── Bookmarks ────────────────────────────────────────────────────────────
 
+    /**
+     * A reader's saved papers, most recently saved first.
+     *
+     * These used to come back in bluebook id order - the order the archive
+     * received them, which has nothing to do with the order this reader saved
+     * them in, so a paper bookmarked this morning could sit at the bottom of
+     * the list under one saved a year ago. Each carries the date it was saved.
+     */
     public static function getBookmarkedBluebooks(string $userEmail): array
     {
-        $ids = Bookmark::where('user_email', $userEmail)->pluck('bluebook_id');
-        return Bluebook::whereIn('id', $ids)->get()->map(fn($b) => self::bookToArray($b))->toArray();
+        $bookmarks = Bookmark::where('user_email', $userEmail)
+            ->orderByDesc('added_at')
+            ->orderByDesc('id')          // same-day saves keep the order they were made
+            ->get();
+
+        if ($bookmarks->isEmpty()) {
+            return [];
+        }
+
+        $books = Bluebook::whereIn('id', $bookmarks->pluck('bluebook_id'))->get()->keyBy('id');
+
+        $out = [];
+        foreach ($bookmarks as $bookmark) {
+            $book = $books->get($bookmark->bluebook_id);
+            if (!$book) {
+                continue;                // deleted out from under the bookmark
+            }
+            $out[] = self::bookToArray($book) + ['bookmarkedAt' => $bookmark->added_at];
+        }
+
+        return $out;
     }
 
     public static function isBookmarked(string $userEmail, int $bluebookId): bool

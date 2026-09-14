@@ -1783,3 +1783,40 @@ a.submission-title:hover { color: var(--primary-dark); text-decoration: underlin
   .hero-tally .sep { display: none; }
   .hero-tally { gap: 0.35rem 0.9rem; }
 }
+
+/* ─── Saved papers ───────────────────────────────────────────────────────────── */
+/* The bookmarks list reuses the browse page's row, because it is the same thing:
+   a paper, described well enough to decide whether to open it. It cannot be one
+   big anchor the way the browse rows are, though - there is a form inside it -
+   so the title carries the link and the actions sit on their own row. */
+a.result-title { display: block; text-decoration: none; }
+a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
+
+.saved-actions {
+  margin-top: 0.9rem; padding-top: 0.8rem;
+  border-top: 1px solid var(--gray-100);
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+}
+.saved-actions form { margin: 0; }
+.saved-when { margin-left: auto; font-size: 0.78rem; color: var(--gray-400); }
+
+/* Removing a bookmark had a filled red button, the same weight the page gave
+   "View". It undoes one click and is undone by one click, which is not what a
+   danger button is for - and putting it beside the primary action at equal
+   weight invites the misclick it is styled to warn about. */
+.btn-quiet {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--gray-600);
+  box-shadow: none;
+}
+.btn-quiet:hover {
+  background: var(--red-light);
+  border-color: rgba(217, 45, 32, 0.18);
+  color: var(--red);
+}
+
+@media (max-width: 768px) {
+  /* Pushed to its own line rather than squeezed against the buttons. */
+  .saved-when { margin-left: 0; width: 100%; }
+}
