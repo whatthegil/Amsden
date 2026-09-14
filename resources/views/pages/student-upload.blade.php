@@ -12,12 +12,12 @@
     </header>
 
     <div class="content form-page">
-      <div class="page-header">
-        <div>
-          <h1>Upload Bluebook</h1>
-          <p>Submit your capstone research paper for admin review.</p>
-        </div>
-      </div>
+      <x-page-hero heading="Upload Bluebook"
+                   sub="Submit your capstone paper. An administrator reviews it before it appears in the archive.">
+        <x-slot name="action">
+          <a href="{{ route('student.my-uploads') }}" class="btn btn-sm btn-on-hero">My uploads</a>
+        </x-slot>
+      </x-page-hero>
 
       @if($error)
         <div class="alert alert-error">{{ $error }}</div>

@@ -12,16 +12,15 @@
     </header>
 
     <div class="content">
-      <div class="page-header">
-        <div>
-          <h1>Users</h1>
-          <p>{{ count($users) }} user(s) found</p>
-        </div>
-        <a href="{{ route('admin.users.new') }}" class="btn btn-primary">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-          Add User
-        </a>
-      </div>
+      <x-page-hero heading="Users"
+                   sub="{{ count($users) }} {{ Str::plural('account', count($users)) }} registered.">
+        <x-slot name="action">
+          <a href="{{ route('admin.users.new') }}" class="btn btn-sm btn-on-hero">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            Add User
+          </a>
+        </x-slot>
+      </x-page-hero>
 
       @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
@@ -111,7 +110,14 @@
         <div class="card">
           <div class="empty-state">
             <div class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" fill="currentColor" fill-opacity="0.18"/><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <p>No users found.</p>
+            @php $isFiltered = collect($query ?? [])->filter(fn($v) => $v !== null && $v !== '')->isNotEmpty(); @endphp
+            @if($isFiltered)
+              <p>No accounts match these filters.</p>
+              <a href="{{ route('admin.users') }}" class="btn btn-outline btn-sm" style="margin-top:0.85rem;">Clear all filters</a>
+            @else
+              <p>There are no accounts yet.</p>
+              <a href="{{ route('admin.users.new') }}" class="btn btn-primary btn-sm" style="margin-top:0.85rem;">Add the first user</a>
+            @endif
           </div>
         </div>
       @endif

@@ -12,13 +12,12 @@
     </header>
 
     <div class="content form-page">
-      <div class="page-header">
-        <div>
-          <h1>{{ $isEdit ? 'Edit Bluebook' : 'Add New Bluebook' }}</h1>
-          <p>{{ $isEdit ? 'Update the details of this research paper.' : 'Register a new capstone research paper.' }}</p>
-        </div>
-        <a href="{{ route('admin.bluebooks') }}" class="btn btn-outline">← Back</a>
-      </div>
+      <x-page-hero heading="{{ $isEdit ? 'Edit Bluebook' : 'Add New Bluebook' }}"
+                   sub="{{ $isEdit ? 'Update the details of this research paper.' : 'Register a new capstone research paper in the archive.' }}">
+        <x-slot name="action">
+          <a href="{{ route('admin.bluebooks') }}" class="btn btn-sm btn-on-hero">&larr; Back</a>
+        </x-slot>
+      </x-page-hero>
 
       <div class="form-card">
         <div class="form-card-header">

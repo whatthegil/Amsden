@@ -12,12 +12,8 @@
     </header>
 
     <div class="content form-page">
-      <div class="page-header">
-        <div>
-          <h1>Literature Review Assistant</h1>
-          <p>Enter a research topic to find related bluebooks in the archive, each with an AI-written key-points summary grounded in the paper's actual content.</p>
-        </div>
-      </div>
+      <x-page-hero heading="Literature Review Assistant"
+                   sub="Enter a research topic to find related bluebooks, each with an AI-written summary grounded in the paper's own text." />
 
       @if(session('error'))
         <div class="alert alert-error" style="margin-bottom:1.25rem;">{{ session('error') }}</div>

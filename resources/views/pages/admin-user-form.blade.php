@@ -12,13 +12,12 @@
     </header>
 
     <div class="content form-page">
-      <div class="page-header">
-        <div>
-          <h1>{{ $isEdit ? 'Edit User' : 'Add New User' }}</h1>
-          <p>{{ $isEdit ? 'Update this user\'s account details.' : 'Create a new user account.' }}</p>
-        </div>
-        <a href="{{ route('admin.users') }}" class="btn btn-outline">← Back</a>
-      </div>
+      <x-page-hero heading="{{ $isEdit ? 'Edit User' : 'Add New User' }}"
+                   sub="{{ $isEdit ? 'Update this account and what it is allowed to do.' : 'Create an account for a student, faculty member or administrator.' }}">
+        <x-slot name="action">
+          <a href="{{ route('admin.users') }}" class="btn btn-sm btn-on-hero">&larr; Back</a>
+        </x-slot>
+      </x-page-hero>
 
       <div class="form-card">
         <div class="form-card-header">

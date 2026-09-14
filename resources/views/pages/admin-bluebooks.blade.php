@@ -12,16 +12,15 @@
     </header>
 
     <div class="content">
-      <div class="page-header">
-        <div>
-          <h1>Bluebooks</h1>
-          <p>{{ count($bluebooks) }} record(s) found</p>
-        </div>
-        <a href="{{ route('admin.bluebooks.new') }}" class="btn btn-primary">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-          Add Bluebook
-        </a>
-      </div>
+      <x-page-hero heading="Bluebooks"
+                   sub="{{ count($bluebooks) }} {{ Str::plural('record', count($bluebooks)) }} in the archive.">
+        <x-slot name="action">
+          <a href="{{ route('admin.bluebooks.new') }}" class="btn btn-sm btn-on-hero">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            Add Bluebook
+          </a>
+        </x-slot>
+      </x-page-hero>
 
       @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
@@ -135,7 +134,17 @@
         <div class="card">
           <div class="empty-state">
             <div class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" fill="currentColor" fill-opacity="0.18"/><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <p>No bluebooks found matching your filters.</p>
+            {{-- Filtered to nothing and genuinely empty are different problems,
+                 and the way out of one is not the way out of the other. --}}
+            @php $isFiltered = collect($query ?? [])->filter(fn($v) => $v !== null && $v !== '')->isNotEmpty(); @endphp
+            @if($isFiltered)
+              <p>No bluebooks match these filters.</p>
+              <p style="font-size:0.8rem;color:var(--gray-400);margin-top:0.35rem;">Try a different status, department or year.</p>
+              <a href="{{ route('admin.bluebooks') }}" class="btn btn-outline btn-sm" style="margin-top:0.85rem;">Clear all filters</a>
+            @else
+              <p>The archive has no records yet.</p>
+              <a href="{{ route('admin.bluebooks.new') }}" class="btn btn-primary btn-sm" style="margin-top:0.85rem;">Add the first bluebook</a>
+            @endif
           </div>
         </div>
       @endif

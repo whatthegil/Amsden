@@ -12,12 +12,8 @@
     </header>
 
     <div class="content form-page">
-      <div class="page-header">
-        <div>
-          <h1>Pre-Proposal Similarity Check</h1>
-          <p>Check your proposed capstone against the archive before submitting — enter your title, or upload your full pre-proposal PDF to compare it against existing research and similar bluebooks.</p>
-        </div>
-      </div>
+      <x-page-hero heading="Pre-Proposal Similarity Check"
+                   sub="Compare your proposed capstone against the archive before you submit it — by title, or by uploading the full pre-proposal." />
 
       @if(!empty($error))
         <div class="alert alert-error" style="margin-bottom:1rem;">{{ $error }}</div>

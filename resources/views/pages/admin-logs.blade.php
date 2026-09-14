@@ -12,12 +12,8 @@
     </header>
 
     <div class="content">
-      <div class="page-header">
-        <div>
-          <h1>Access Logs</h1>
-          <p>{{ count($logs) }} log entr{{ count($logs) === 1 ? 'y' : 'ies' }} found</p>
-        </div>
-      </div>
+      <x-page-hero heading="Access Logs"
+                   sub="{{ count($logs) }} {{ Str::plural('entry', count($logs)) }} — who opened what, and when." />
 
       <form method="GET" action="{{ route('admin.logs') }}" class="filter-bar">
         <div class="filter-group grow">
@@ -83,7 +79,14 @@
         <div class="card">
           <div class="empty-state">
             <div class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" fill="currentColor" fill-opacity="0.18"/><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <p>No logs found matching your filters.</p>
+            @php $isFiltered = collect($query ?? [])->filter(fn($v) => $v !== null && $v !== '')->isNotEmpty(); @endphp
+            @if($isFiltered)
+              <p>No entries match these filters.</p>
+              <a href="{{ route('admin.logs') }}" class="btn btn-outline btn-sm" style="margin-top:0.85rem;">Clear all filters</a>
+            @else
+              <p>Nothing has been recorded yet.</p>
+              <p style="font-size:0.8rem;color:var(--gray-400);margin-top:0.35rem;">Logins, document views and capture attempts all appear here as they happen.</p>
+            @endif
           </div>
         </div>
       @endif

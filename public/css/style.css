@@ -793,21 +793,6 @@ html.sidebar-collapsed .sidebar-search { display: none; }
 }
 .content { padding: 2rem; flex: 1; }
 
-/* ─── Page Header ────────────────────────────────────────────────────────────── */
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-}
-.page-header h1 {
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  font-size: 1.75rem;
-  color: var(--gray-800);
-}
-.page-header p { color: var(--gray-600); font-size: 0.92rem; margin-top: 0.3rem; }
-
 /* ─── Cards ──────────────────────────────────────────────────────────────────── */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
 .card {
@@ -1226,9 +1211,6 @@ a:focus-visible {
 
   .form-row { grid-template-columns: 1fr; }
   .info-grid { grid-template-columns: 1fr; }
-
-  .page-header { flex-wrap: wrap; gap: 0.75rem; }
-  .page-header h1 { font-size: 1.35rem; }
 
   /* Filter bars stack into a single column */
   .filter-bar { flex-direction: column; align-items: stretch; padding: 1rem; }
