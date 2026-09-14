@@ -43,8 +43,12 @@ class DashboardRendersTest extends TestCase
         $res = $this->withSession(['user' => $stu])->get('/student/dashboard');
 
         $res->assertOk();
-        $res->assertSee('Literature Review Search', false);
         $res->assertSee('Recently Added', false);
+        $res->assertSee('Most Read', false);
+        // The search is the page's primary action and now sits in the hero
+        // rather than in a card of its own partway down.
+        $res->assertSee('id="litSearch"', false);
+        $res->assertSee('dash-hero', false);
 
         $res->assertDontSee('stats-grid', false);
         $res->assertDontSee('stat-card', false);

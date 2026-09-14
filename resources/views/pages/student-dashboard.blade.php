@@ -12,115 +12,152 @@
     </header>
 
     <div class="content">
-      <div class="page-header">
-        <div>
-          <h1>Welcome, {{ explode(' ', $user['name'])[0] }}</h1>
-          <p>Explore {{ $totalApproved }} approved research papers in the CSPC archive.
-            @if($user['role'] === 'Faculty') &mdash; <span style="font-size:0.82rem;color:var(--primary);">Faculty</span> @endif
-          </p>
+      {{-- The greeting and the search together. The search used to sit in a card
+           of its own, below the heading and styled like every other panel, which
+           left the page with nothing to look at and buried the one tool a reader
+           comes here to use. --}}
+      <div class="dash-hero">
+        <div class="dash-hero-top">
+          <div>
+            <h1>Welcome, {{ explode(' ', $user['name'])[0] }}</h1>
+            <p>
+              {{ $totalApproved }} approved {{ Str::plural('paper', $totalApproved) }} in the CSPC archive, ready to read.
+              @if($user['role'] === 'Faculty') &middot; Faculty access @endif
+            </p>
+          </div>
+          @if($user['canUpload'] ?? false)
+            <a href="{{ route('student.upload') }}" class="btn btn-sm btn-on-hero">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0-12l-4 4m4-4l4 4M4 20h16"/></svg>
+              Upload Bluebook
+            </a>
+          @endif
         </div>
-        @if($user['canUpload'] ?? false)
-          <a href="{{ route('student.upload') }}" class="btn btn-primary">
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-            Upload Bluebook
-          </a>
-        @endif
+
+        <div class="hero-search">
+          <div class="field">
+            <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/></svg>
+            <label for="litSearch" class="sr-only">Search the archive</label>
+            <input type="text" id="litSearch" autocomplete="off"
+                   placeholder="Search titles, authors, keywords, abstracts…"
+                   oninput="searchLiterature()">
+          </div>
+          <button type="button" class="btn btn-sm btn-on-hero"
+                  onclick="document.getElementById('litSearch').value='';searchLiterature();">Clear</button>
+        </div>
+        <div class="hero-hint">Searches every approved paper, including the text inside the documents.</div>
       </div>
 
-      <!-- Literature Review Search -->
-      <div class="card" style="margin-bottom:1.5rem;">
+      {{-- Results land directly under the search that produced them. --}}
+      <div class="card" id="litResults" style="display:none;margin-bottom:1.5rem;">
         <div class="card-header">
-          <h3 class="card-title">Literature Review Search</h3>
+          <h3 class="card-title">Search Results</h3>
+          <span style="font-size:0.82rem;color:var(--gray-400);" id="litCount"></span>
         </div>
         <div class="card-body">
-          <div style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;">
-            <input type="text" id="litSearch" placeholder="Search titles, authors, keywords, abstracts…" style="flex:1;min-width:240px;padding:0.65rem 1rem;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-size:0.9rem;background:var(--cream);" oninput="searchLiterature()">
-            <button class="btn btn-outline btn-sm" onclick="document.getElementById('litSearch').value='';searchLiterature();">Clear</button>
-          </div>
-          <div id="litResults" style="display:none;">
-            <div style="font-size:0.82rem;color:var(--gray-400);margin-bottom:0.75rem;" id="litCount"></div>
-            <div id="litList" style="display:flex;flex-direction:column;gap:0.5rem;max-height:340px;overflow-y:auto;"></div>
-          </div>
+          <div id="litList" style="display:flex;flex-direction:column;gap:0.5rem;max-height:340px;overflow-y:auto;"></div>
         </div>
+      </div>
+
+      {{-- The archive's own content, which was a bare three-column table. It is
+           the most interesting thing on this page, so it gets the room. --}}
+      <div style="margin-bottom:1.5rem;">
+        <div class="section-head">
+          <h2>Recently Added</h2>
+          <a href="{{ route('student.bluebooks') }}">Browse all &rarr;</a>
+        </div>
+        @if(count($recentBluebooks) > 0)
+          <div class="doc-grid">
+            @foreach($recentBluebooks as $b)
+              <a class="doc-card" href="{{ route('student.bluebook', $b['id']) }}">
+                <span class="badge badge-blue" style="align-self:flex-start;">{{ $b['department'] }}</span>
+                <div class="doc-title">{{ $b['title'] }}</div>
+                <div class="doc-authors">{{ implode(', ', $b['authors']) }}</div>
+                <div class="doc-foot">
+                  <span>{{ $b['year'] }}</span>
+                  <span class="doc-views">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+                    {{ $b['views'] }}
+                  </span>
+                </div>
+              </a>
+            @endforeach
+          </div>
+        @else
+          <div class="card"><div class="empty-state">
+            <div class="icon"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.25A9.7 9.7 0 0 0 6 4.5 9.7 9.7 0 0 0 3 5v14a9.7 9.7 0 0 1 3-.5 9.7 9.7 0 0 1 6 1.75 9.7 9.7 0 0 1 6-1.75 9.7 9.7 0 0 1 3 .5V5a9.7 9.7 0 0 0-3-.5 9.7 9.7 0 0 0-6 1.75Zm0 0V20"/></svg></div>
+            <p>No papers have been approved yet. Once they are, they will appear here.</p>
+          </div></div>
+        @endif
       </div>
 
       <div class="grid-2">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Recently Added</h3>
-            <a href="{{ route('student.bluebooks') }}" style="font-size:0.82rem;color:var(--primary);">Browse all</a>
+            <h3 class="card-title">Most Read</h3>
           </div>
-          @if(count($recentBluebooks) > 0)
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Title</th><th>Year</th><th>Dept</th></tr></thead>
-                <tbody>
-                  @foreach($recentBluebooks as $b)
-                    <tr data-href="{{ route('student.bluebook', $b['id']) }}" style="cursor:pointer;">
-                      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;">{{ $b['title'] }}</td>
-                      <td>{{ $b['year'] }}</td>
-                      <td><span class="badge badge-blue">{{ $b['department'] }}</span></td>
-                    </tr>
-                  @endforeach
-                </tbody>
-              </table>
+          @if(count($popularBluebooks) > 0)
+            <div class="rank-list">
+              @foreach($popularBluebooks as $i => $b)
+                <a class="rank-item" href="{{ route('student.bluebook', $b['id']) }}">
+                  <span class="rank-num">{{ $i + 1 }}</span>
+                  <span class="rank-body">
+                    <span class="t">{{ $b['title'] }}</span>
+                    <span class="s">{{ $b['department'] }} &middot; {{ $b['year'] }}</span>
+                  </span>
+                  <span class="rank-count">{{ $b['views'] }}</span>
+                </a>
+              @endforeach
             </div>
           @else
-            <div class="empty-state"><div class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" fill="currentColor" fill-opacity="0.18"/><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p>No bluebooks yet</p></div>
+            <div class="empty-state">
+              <div class="icon"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M3 20h18M7 20v-7m5 7V7m5 13v-4"/></svg></div>
+              <p>Nothing has been read yet.</p>
+            </div>
           @endif
         </div>
 
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Most Popular</h3>
+            <h3 class="card-title">My Uploads</h3>
+            @if(count($myBluebooks) > 0)
+              <a href="{{ route('student.my-uploads') }}" style="font-size:0.82rem;color:var(--primary);">View all</a>
+            @endif
           </div>
-          @if(count($popularBluebooks) > 0)
+          @if(count($myBluebooks) > 0)
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Title</th><th>Views</th></tr></thead>
+                <thead><tr><th>Title</th><th>Status</th><th>Date</th></tr></thead>
                 <tbody>
-                  @foreach($popularBluebooks as $b)
-                    <tr data-href="{{ route('student.bluebook', $b['id']) }}" style="cursor:pointer;">
+                  @foreach(array_slice($myBluebooks, 0, 4) as $b)
+                    <tr>
                       <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;">{{ $b['title'] }}</td>
-                      <td style="font-weight:600;color:var(--primary-dark);">{{ $b['views'] }}</td>
+                      <td>
+                        @if($b['status'] === 'Approved') <span class="badge badge-green">Approved</span>
+                        @elseif($b['status'] === 'Pending') <span class="badge badge-yellow">Pending</span>
+                        @else <span class="badge badge-red">Rejected</span>
+                        @endif
+                      </td>
+                      <td style="font-size:0.83rem;">{{ $b['dateAdded'] }}</td>
                     </tr>
                   @endforeach
                 </tbody>
               </table>
             </div>
           @else
-            <div class="empty-state"><div class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" fill="currentColor" fill-opacity="0.18"/><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p>No views yet</p></div>
+            {{-- An empty panel said nothing. This says what the space is for, and
+                 how to fill it for a reader who is allowed to. --}}
+            <div class="empty-state">
+              <div class="icon"><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0L8 8m4-4 4 4M4 20h16"/></svg></div>
+              <p>You have not submitted a paper yet.</p>
+              @if($user['canUpload'] ?? false)
+                <a href="{{ route('student.upload') }}" class="btn btn-outline btn-sm" style="margin-top:0.75rem;">Upload your first</a>
+              @else
+                <p style="font-size:0.78rem;color:var(--gray-400);margin-top:0.4rem;">Ask an administrator to enable uploads for your account.</p>
+              @endif
+            </div>
           @endif
         </div>
       </div>
-
-      @if(count($myBluebooks) > 0)
-        <div class="card" style="margin-top:1.5rem;">
-          <div class="card-header">
-            <h3 class="card-title">My Uploads</h3>
-            <a href="{{ route('student.my-uploads') }}" style="font-size:0.82rem;color:var(--primary);">View all</a>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Title</th><th>Status</th><th>Date</th></tr></thead>
-              <tbody>
-                @foreach(array_slice($myBluebooks, 0, 4) as $b)
-                  <tr>
-                    <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;">{{ $b['title'] }}</td>
-                    <td>
-                      @if($b['status'] === 'Approved') <span class="badge badge-green">Approved</span>
-                      @elseif($b['status'] === 'Pending') <span class="badge badge-yellow">Pending</span>
-                      @else <span class="badge badge-red">Rejected</span>
-                      @endif
-                    </td>
-                    <td style="font-size:0.83rem;">{{ $b['dateAdded'] }}</td>
-                  </tr>
-                @endforeach
-              </tbody>
-            </table>
-          </div>
-        </div>
-      @endif
     </div>
 
     <footer class="app-footer">
@@ -130,8 +167,7 @@
 </div>
 
 <script>
-const allBluebooks = {!! json_encode($recentBluebooks) !!};
-const allApproved  = {!! json_encode(array_merge($recentBluebooks, $popularBluebooks)) !!};
+const allApproved = {!! json_encode(array_merge($recentBluebooks, $popularBluebooks)) !!};
 
 function highlight(text, query) {
   if (!query) return text;
@@ -157,7 +193,7 @@ function searchLiterature() {
     )
   );
 
-  countEl.textContent = results.length + ' result(s) found';
+  countEl.textContent = results.length + ' result' + (results.length === 1 ? '' : 's');
   list.innerHTML = results.length === 0
     ? '<p style="color:var(--gray-400);font-size:0.88rem;text-align:center;padding:1rem;">No results found for "' + q + '"</p>'
     : results.map(b => `
@@ -169,5 +205,4 @@ function searchLiterature() {
     `).join('');
 }
 </script>
-
 @include('partials.footer')

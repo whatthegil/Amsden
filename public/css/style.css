@@ -1414,3 +1414,199 @@ a:focus-visible {
   padding: 1rem; text-align: center;
   color: var(--gray-600); font-size: 0.85rem;
 }
+
+/* ─── Dashboard hero ─────────────────────────────────────────────────────────── */
+/* The dashboards opened on a heading and a plain search box, which gave the page
+   nothing to look at and buried the one tool a reader comes here to use. The
+   hero carries the greeting and the search together, so the primary action is
+   what the eye lands on.
+
+   The gradient runs primary to primary-dark rather than using --gradient-primary:
+   that one starts at #6f80ec, where white text sits at about 3.5:1 and fails AA
+   at body size. This starts at #1a56db, which clears it. */
+.dash-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  padding: 1.9rem 2rem;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+}
+/* Two soft discs, drawn behind the content and clipped by the panel, so the
+   block reads as designed rather than as a flat rectangle of colour. */
+.dash-hero::before,
+.dash-hero::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  pointer-events: none;
+}
+.dash-hero::before { width: 260px; height: 260px; top: -120px; right: -60px; }
+.dash-hero::after  { width: 180px; height: 180px; bottom: -110px; right: 130px; }
+.dash-hero > * { position: relative; z-index: 1; }
+
+.dash-hero-top {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 1.4rem;
+}
+.dash-hero h1 {
+  font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em;
+  color: var(--white); margin-bottom: 0.3rem;
+}
+.dash-hero p { font-size: 0.93rem; color: rgba(255, 255, 255, 0.86); }
+
+/* Reads as a button on the panel without competing with the search below it. */
+.btn-on-hero {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: var(--white);
+}
+.btn-on-hero:hover { background: rgba(255, 255, 255, 0.26); color: var(--white); }
+
+.hero-search { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.hero-search .field { position: relative; flex: 1; min-width: 240px; }
+.hero-search .field svg {
+  position: absolute; left: 0.95rem; top: 50%; transform: translateY(-50%);
+  color: var(--gray-400); pointer-events: none;
+}
+.hero-search input {
+  width: 100%;
+  padding: 0.8rem 1rem 0.8rem 2.7rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  font-family: inherit;
+  background: var(--white);
+  color: var(--gray-800);
+  box-shadow: var(--shadow-xs);
+}
+.hero-search input::placeholder { color: var(--gray-400); }
+.hero-search input:focus {
+  outline: none;
+  border-color: var(--white);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
+}
+.hero-hint { margin-top: 0.7rem; font-size: 0.78rem; color: rgba(255, 255, 255, 0.72); }
+
+/* ─── Document cards ─────────────────────────────────────────────────────────── */
+/* The archive's own content, which was being shown as rows of a bare table. It
+   is the most interesting thing on the page, so it is given room to look like
+   it. */
+.doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1rem;
+}
+.doc-card {
+  display: flex; flex-direction: column;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 1.15rem 1.15rem 1rem;
+  box-shadow: var(--shadow-xs);
+  text-decoration: none;
+  position: relative; overflow: hidden;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+.doc-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--primary-mid);
+  opacity: 0; transition: opacity var(--transition);
+}
+.doc-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-mid);
+}
+.doc-card:hover::before { opacity: 1; }
+.doc-card .doc-title {
+  font-weight: 650; font-size: 0.92rem; line-height: 1.4;
+  color: var(--gray-800); margin: 0.55rem 0 0.4rem;
+  /* Three lines, then an ellipsis: titles here run past 100 characters, and an
+     unclamped one would set the height of every card beside it. */
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.doc-card .doc-authors {
+  font-size: 0.79rem; color: var(--gray-600);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.doc-card .doc-foot {
+  margin-top: auto; padding-top: 0.8rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  font-size: 0.78rem; color: var(--gray-400);
+}
+.doc-views { display: inline-flex; align-items: center; gap: 0.3rem; font-weight: 600; color: var(--primary-dark); }
+
+/* ─── Ranked list ────────────────────────────────────────────────────────────── */
+/* Deliberately not another grid of cards: a second identical block would read as
+   more of the same, and the ordering, which is the point here, would be lost. */
+.rank-list { display: flex; flex-direction: column; }
+.rank-item {
+  display: flex; align-items: center; gap: 0.9rem;
+  padding: 0.8rem 1.5rem;
+  border-bottom: 1px solid var(--gray-100);
+  text-decoration: none;
+  transition: background var(--transition);
+}
+.rank-item:last-child { border-bottom: none; }
+.rank-item:hover { background: var(--primary-light); }
+.rank-num {
+  flex-shrink: 0;
+  width: 26px; height: 26px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.78rem; font-weight: 700;
+  background: var(--gray-100); color: var(--gray-600);
+}
+.rank-item:first-child .rank-num { background: var(--primary-pale); color: var(--primary-dark); }
+.rank-body { min-width: 0; flex: 1; }
+.rank-body .t {
+  display: block;
+  font-size: 0.87rem; font-weight: 550; color: var(--gray-800);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rank-body .s { display: block; font-size: 0.76rem; color: var(--gray-400); margin-top: 0.1rem; }
+.rank-count { flex-shrink: 0; font-size: 0.82rem; font-weight: 700; color: var(--primary-dark); }
+
+/* ─── Callout ────────────────────────────────────────────────────────────────── */
+/* Something waiting on the reader, with the way to deal with it attached. Not a
+   counter: it appears only when the number is non-zero, and it always carries
+   an action. */
+.callout {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--yellow-light);
+  background: linear-gradient(to right, var(--yellow-light), rgba(254, 240, 199, 0.35));
+  margin-bottom: 1.5rem;
+}
+.callout-icon {
+  flex-shrink: 0;
+  width: 40px; height: 40px; border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(181, 71, 8, 0.12); color: var(--yellow);
+}
+.callout-body { flex: 1; min-width: 180px; }
+.callout-body strong { display: block; font-size: 0.92rem; color: var(--gray-800); }
+.callout-body span { font-size: 0.82rem; color: var(--gray-600); }
+
+/* ─── Section heading ────────────────────────────────────────────────────────── */
+/* For blocks that sit on the page rather than inside a card. */
+.section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 1rem; margin-bottom: 0.9rem;
+}
+.section-head h2 {
+  font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; color: var(--gray-800);
+}
+.section-head a { font-size: 0.82rem; color: var(--primary); font-weight: 550; }
+
+@media (max-width: 768px) {
+  .dash-hero { padding: 1.5rem 1.25rem; }
+  .dash-hero h1 { font-size: 1.45rem; }
+  .doc-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
+  .rank-item { padding: 0.75rem 1.1rem; }
+}

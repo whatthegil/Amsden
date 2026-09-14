@@ -12,16 +12,38 @@
     </header>
 
     <div class="content">
-      <div class="page-header">
-        <div>
-          <h1>Welcome, {{ explode(' ', $user['name'])[0] }}</h1>
-          <p>Here's what's happening in the C-BAMS archive today.</p>
+      <div class="dash-hero">
+        <div class="dash-hero-top" style="margin-bottom:0;">
+          <div>
+            <h1>Welcome, {{ explode(' ', $user['name'])[0] }}</h1>
+            <p>
+              {{ $stats['totalBluebooks'] }} {{ Str::plural('bluebook', $stats['totalBluebooks']) }} in the archive &middot;
+              {{ $stats['approved'] }} approved &middot;
+              {{ $stats['totalUsers'] }} registered {{ Str::plural('user', $stats['totalUsers']) }}
+            </p>
+          </div>
+          <a href="{{ route('admin.bluebooks.new') }}" class="btn btn-sm btn-on-hero">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            Add Bluebook
+          </a>
         </div>
-        <a href="{{ route('admin.bluebooks.new') }}" class="btn btn-primary">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-          Add Bluebook
-        </a>
       </div>
+
+      {{-- What is actually waiting on this administrator, with the way to deal
+           with it attached. A counter that always reads zero is noise; this
+           appears only when there is something to do. --}}
+      @if($stats['pending'] > 0)
+        <div class="callout">
+          <div class="callout-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 7v5l3 2"/></svg>
+          </div>
+          <div class="callout-body">
+            <strong>{{ $stats['pending'] }} {{ Str::plural('bluebook', $stats['pending']) }} awaiting review</strong>
+            <span>Submitted by students and not yet approved or rejected.</span>
+          </div>
+          <a href="{{ route('admin.bluebooks') }}?status=Pending" class="btn btn-primary btn-sm">Review now</a>
+        </div>
+      @endif
 
       <div class="grid-2">
         <div class="card">
