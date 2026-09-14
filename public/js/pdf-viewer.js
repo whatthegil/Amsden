@@ -65,30 +65,59 @@
     return Math.floor(inner);
   }
 
-  const loadingTask = pdfjsLib.getDocument({
-    url: view.dataset.pdfUrl,
-    withCredentials: true,          // the file route is behind the session
-    disableRange: false,
-    disableStream: false,
-  });
-
-  // These documents run to tens of megabytes and travel through PHP from
-  // object storage, so the wait before the first page appears is long enough
-  // that a motionless "Loading" reads as a viewer that has hung. The response
-  // goes out chunked with no declared length, so there is usually no total to
-  // measure against: count the megabytes in hand rather than show nothing.
+  // A document runs to tens of megabytes, so the wait before the first page
+  // appears is long enough that a motionless "Loading" reads as a viewer that
+  // has hung. A signed storage link answers with a Content-Length and the
+  // percentage is real; the streaming route through PHP has to go out chunked
+  // with no declared length, so there count the megabytes in hand instead.
   const mb = (bytes) => (bytes / 1048576).toFixed(1) + ' MB';
-  loadingTask.onProgress = function (progress) {
-    if (!progress || !progress.loaded) return;
+  // Progress does not stop when the document opens. Over a signed link PDF.js
+  // goes on pulling ranges for as long as the reader is reading, so without
+  // this the status line reappears over pages that are already drawn and sits
+  // there at whatever percentage it last saw.
+  let opened = false;
+  function onProgress(progress) {
+    if (opened || !progress || !progress.loaded) return;
     if (progress.total) {
       const pct = Math.min(100, Math.round((progress.loaded / progress.total) * 100));
       setStatus('Loading document… ' + pct + '%');
     } else {
       setStatus('Loading document… ' + mb(progress.loaded));
     }
-  };
+  }
 
-  loadingTask.promise.then(function (pdf) {
+  function load(url, direct) {
+    const task = pdfjsLib.getDocument({
+      url: url,
+      // A signed storage link is cross-origin and is answered with a wildcard
+      // Access-Control-Allow-Origin, which a browser refuses to pair with
+      // credentials - and the link carries its own authorisation, so it does
+      // not want them. The streaming route is same-origin and sits behind the
+      // session, so it does.
+      withCredentials: !direct,
+      disableRange: false,
+      disableStream: false,
+    });
+    task.onProgress = onProgress;
+    return task.promise;
+  }
+
+  const direct   = view.dataset.direct === '1';
+  const fallback = view.dataset.fallbackUrl;
+
+  load(view.dataset.pdfUrl, direct).catch(function (err) {
+    // The signed link is the fast path, not the only one. A bucket with no CORS
+    // rule for this origin, a link that has outlived the reading session, or
+    // storage that cannot be reached all land here - and the document is still
+    // readable through PHP, so take the slow path rather than tell the reader
+    // it is unavailable. Logged either way: this is the path that costs 29 MB
+    // of PHP throughput per read, so it should not go unnoticed.
+    if (!direct || !fallback) throw err;
+    console.warn('[pdf-viewer] direct fetch refused, falling back to the stream', err);
+    setStatus('Loading document…');
+    return load(fallback, false);
+  }).then(function (pdf) {
+    opened = true;
     setStatus('');
 
     const holders  = new Map();   // page number -> holder element

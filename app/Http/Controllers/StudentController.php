@@ -95,11 +95,22 @@ class StudentController extends Controller
         Store::incrementViews($id);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Viewed Bluebook', 'document' => $bluebook['title']]);
 
+        $bluebook = Store::getBluebook($id);
+
+        // Fetched straight from storage where the disk can sign a link, so the
+        // object does not travel through PHP on every read and the viewer can
+        // range-request it instead of waiting for all of it. Null on a disk
+        // that cannot sign, and null is the signal to use the streaming route.
+        $fileUrl = $bluebook['hasFile']
+            ? Store::bluebookFileUrl($bluebook['filePath'])
+            : null;
+
         return view('pages.student-bluebook-view', [
             'user'         => $user,
             'active'       => 'bluebooks',
-            'bluebook'     => Store::getBluebook($id),
+            'bluebook'     => $bluebook,
             'isBookmarked' => Store::isBookmarked($user['email'], $id),
+            'fileUrl'      => $fileUrl,
         ]);
     }
 

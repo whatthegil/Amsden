@@ -31,6 +31,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Bluebook Link Lifetime
+    |--------------------------------------------------------------------------
+    |
+    | Minutes a signed document link stays valid. PDF.js keeps range-requesting
+    | the object for as long as the reader has it open, so this has to cover a
+    | reading session rather than a single request - a link that expires partway
+    | through leaves the reader on a page that will not draw. Long enough to
+    | read, short enough that a copied link is not a lasting one.
+    |
+    */
+
+    'bluebook_link_ttl' => (int) env('BLUEBOOK_LINK_TTL', 60),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |

@@ -90,9 +90,21 @@
                also removes the built-in viewer's download and print controls,
                and lets the watermark sit over the pages instead of beside
                them. --}}
+          {{-- Where the disk can sign a link the document is fetched straight
+               from storage: the object stops travelling through PHP on every
+               read, and the bucket answers range requests, so the first page
+               arrives after a few kilobytes instead of after all 29 MB. The
+               streaming route stays as the fallback - it is what serves a disk
+               that cannot sign, and what the viewer retries on if the direct
+               fetch is refused (a bucket without CORS configured, or a link
+               that has outlived the reading session). --}}
           <div class="pdf-view watermark-overlay"
                id="pdf-view"
-               data-pdf-url="{{ route('student.bluebook.file', $bluebook['id']) }}"
+               data-pdf-url="{{ $fileUrl ?? route('student.bluebook.file', $bluebook['id']) }}"
+               @if($fileUrl)
+                 data-direct="1"
+                 data-fallback-url="{{ route('student.bluebook.file', $bluebook['id']) }}"
+               @endif
                data-worker-url="/vendor/pdfjs/pdf.worker.min.js">
             <div class="pdf-status" id="pdf-status">Loading document&hellip;</div>
             <div class="pdf-pages" id="pdf-pages"></div>

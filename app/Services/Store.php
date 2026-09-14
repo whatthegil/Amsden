@@ -24,6 +24,53 @@ class Store
         return config('filesystems.bluebooks', 'local');
     }
 
+    /**
+     * A URL the browser can fetch a document from directly, or null.
+     *
+     * Every view used to pull the whole object from storage through PHP and out
+     * again - tens of megabytes per read, logged at one point as 'executing too
+     * slow (7.46 sec)' with a Guzzle stack underneath it. Worse for the reader,
+     * that response has to go out chunked with no Content-Length (declaring one
+     * is what nginx rejected in d96a734), and with no length there is nothing
+     * for PDF.js to range-request against: it must hold the entire file before
+     * it can draw page one.
+     *
+     * A signed URL hands the fetch to the bucket, which answers ranges, so the
+     * first page arrives after a few kilobytes rather than the whole document.
+     *
+     * Null when the disk cannot sign one - the local driver in development -
+     * and the caller falls back to streaming through PHP.
+     */
+    public static function bluebookFileUrl(string $path, ?int $minutes = null): ?string
+    {
+        $disk = Storage::disk(self::bluebookDisk());
+
+        if (!$disk->providesTemporaryUrls()) {
+            return null;
+        }
+
+        // The link has to outlive the read, not the request: PDF.js keeps
+        // fetching ranges for as long as the document is open, so a link that
+        // expires mid-read leaves the reader on a page that will not draw.
+        $minutes ??= (int) config('filesystems.bluebook_link_ttl', 60);
+
+        try {
+            return $disk->temporaryUrl($path, now()->addMinutes($minutes), [
+                // The archive is read-only by design and the wrapper app has no
+                // PDF viewer of its own, so the object must never arrive as a
+                // download, whatever the bucket has recorded against it.
+                'ResponseContentType'        => 'application/pdf',
+                'ResponseContentDisposition' => 'inline',
+            ]);
+        } catch (\Throwable $e) {
+            // Misconfigured credentials or an endpoint that cannot sign. The
+            // stream through PHP still works, so this degrades rather than
+            // fails - but it is the slow path, so it should be noticed.
+            report($e);
+            return null;
+        }
+    }
+
     public static function now(): string
     {
         return now()->setTimezone('Asia/Manila')->format('Y-m-d H:i:s');
