@@ -68,7 +68,18 @@ class SystemCheck extends Command
 
         $rasterizer = $found['mutool'] ?? $found['gs'] ?? $found['pdftoppm'];
         $engine     = $found['tesseract'] ?? (PHP_OS_FAMILY === 'Windows' ? 'windows-ocr' : null);
-        $stamper    = $found['mutool'] ?? $found['qpdf'] ?? $found['gs'];
+
+        // Only what the stamper actually implements counts. Listing every tool
+        // that could in principle do the job made this report contradict
+        // bluebooks:watermark on the very host it was written to diagnose: this
+        // said watermarking was available because Ghostscript was installed,
+        // while the stamper refused because MuPDF was not. A check that
+        // disagrees with the thing it is checking is worse than no check.
+        $stamper      = $found['mutool'];
+        $couldStamp   = array_keys(array_filter([
+            'qpdf' => $found['qpdf'],
+            'gs'   => $found['gs'],
+        ]));
 
         $failed = 0;
 
@@ -98,13 +109,19 @@ class SystemCheck extends Command
             ]);
         } else {
             $failed++;
-            $this->capability('Document watermarking', false, [
-                'no stamper (needs one of mutool, qpdf, gs)',
+            $lines = ['mutool is not installed, and it is the only stamper implemented.'];
+
+            if ($couldStamp) {
+                $lines[] = 'This host does have ' . implode(' and ', $couldStamp) . ', which could do the same';
+                $lines[] = 'job - but nothing here drives ' . (count($couldStamp) > 1 ? 'them' : 'it') . ' yet.';
+            }
+
+            $this->capability('Document watermarking', false, array_merge($lines, [
                 'Stored PDFs are served unmarked, so a copy taken from the file route',
                 'carries nothing identifying it.',
                 'The on-screen watermark is unaffected - it is drawn in the browser, and',
                 'it is the layer a screenshot captures.',
-            ]);
+            ]));
         }
 
         // Optional: only a shortcut, and its absence costs time rather than function.
