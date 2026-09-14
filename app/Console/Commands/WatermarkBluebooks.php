@@ -27,9 +27,32 @@ class WatermarkBluebooks extends Command
 
         if (!PdfWatermarker::available()) {
             $this->error('No MuPDF binary found, so nothing here can be stamped.');
-            $this->line('  Install mutool on this host, or pin it with OCR_MUTOOL_PATH in .env.');
-            $this->line('  Until then documents are served unstamped - the viewer still draws the');
-            $this->line('  reader\'s identity over every page it renders, but the file itself is clean.');
+            $this->newLine();
+            $this->line('What this host does have:');
+
+            foreach (PdfWatermarker::hostReport() as $name => $info) {
+                // Padded before the colour tags go on, or the escape codes are
+                // counted into the column width and nothing lines up.
+                $state  = str_pad($info['found'] ? 'found' : 'not installed', 14);
+                $colour = $info['found'] ? 'green' : 'red';
+
+                $this->line(sprintf(
+                    '  %-9s <fg=%s>%s</> %s',
+                    $name,
+                    $colour,
+                    $state,
+                    $info['found'] ? ($info['version'] ?? $info['path']) : $info['note']
+                ));
+            }
+
+            $this->newLine();
+            $this->line('Any one of mutool, qpdf or Ghostscript is enough to stamp with;');
+            $this->line('pdftoppm cannot, it only turns pages into images.');
+            $this->line('Pin an unusual install path with OCR_MUTOOL_PATH in .env.');
+            $this->newLine();
+            $this->warn('Until one exists, documents are served unstamped. The viewer still draws');
+            $this->warn('the reader\'s identity over every page it renders - that is the layer a');
+            $this->warn('screenshot carries - but the stored file itself is clean.');
 
             return self::FAILURE;
         }

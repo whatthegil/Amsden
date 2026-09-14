@@ -43,6 +43,58 @@ class PdfWatermarker
         return self::mutool() !== null;
     }
 
+    /**
+     * What this host actually has, rather than what it lacks.
+     *
+     * "No MuPDF binary found" says the one tool we look for is absent; it does
+     * not say whether the host has another that would do, or none at all. On a
+     * managed container that is the difference between a backend worth writing
+     * and a dead end, so the question gets asked of every candidate at once.
+     */
+    public static function hostReport(): array
+    {
+        $candidates = [
+            'mutool' => ['names' => ['mutool'], 'note' => 'MuPDF - what the stamper uses today'],
+            'qpdf'   => ['names' => ['qpdf'],   'note' => 'can overlay one PDF onto another'],
+            'gs'     => ['names' => ['gs', 'gswin64c', 'gswin32c'], 'note' => 'Ghostscript - can draw on each page'],
+            'pdftk'  => ['names' => ['pdftk'],  'note' => 'can stamp, rarely packaged now'],
+            'pdftoppm' => ['names' => ['pdftoppm'], 'note' => 'Poppler - rasterises only, cannot stamp'],
+        ];
+
+        $report = [];
+
+        foreach ($candidates as $key => $spec) {
+            $path = BinaryFinder::find(null, $spec['names'], []);
+            $report[$key] = [
+                'found'   => $path !== null,
+                'path'    => $path,
+                'version' => $path !== null ? self::versionOf($path) : null,
+                'note'    => $spec['note'],
+            ];
+        }
+
+        return $report;
+    }
+
+    private static function versionOf(string $bin): ?string
+    {
+        foreach ([['-v'], ['--version']] as $flag) {
+            try {
+                $p = new Process(array_merge([$bin], $flag));
+                $p->setTimeout(10);
+                $p->run();
+                $out = trim($p->getOutput() ?: $p->getErrorOutput());
+                if ($out !== '') {
+                    return trim(strtok($out, "\n"));
+                }
+            } catch (\Throwable $e) {
+                // try the next flag
+            }
+        }
+
+        return null;
+    }
+
     private static function mutool(): ?string
     {
         // Same binary the OCR rasterizer looks for, so one pin configures both.

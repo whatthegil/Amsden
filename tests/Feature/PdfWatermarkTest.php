@@ -157,6 +157,35 @@ class PdfWatermarkTest extends TestCase
         $this->assertNotSame('', trim($anon));
     }
 
+    /**
+     * "No MuPDF binary found" says the one tool we look for is absent. It does
+     * not say whether the host has another that would do, or none at all - and
+     * on a managed container that is the difference between a backend worth
+     * writing and a dead end. The report asks every candidate at once.
+     */
+    public function test_the_host_report_covers_every_candidate(): void
+    {
+        $report = PdfWatermarker::hostReport();
+
+        foreach (['mutool', 'qpdf', 'gs', 'pdftk', 'pdftoppm'] as $tool) {
+            $this->assertArrayHasKey($tool, $report, "The report must say something about {$tool}.");
+            $this->assertArrayHasKey('found', $report[$tool]);
+            $this->assertArrayHasKey('note', $report[$tool], 'A tool that is missing still needs explaining.');
+        }
+
+        // Whatever it says about MuPDF has to agree with what the stamper does.
+        $this->assertSame(PdfWatermarker::available(), $report['mutool']['found']);
+
+        // A tool that was found says which one it is; one that was not, why it matters.
+        foreach ($report as $info) {
+            if ($info['found']) {
+                $this->assertNotNull($info['path']);
+            } else {
+                $this->assertNotSame('', trim($info['note']));
+            }
+        }
+    }
+
     // ── Actually writing it into a file ──────────────────────────────────────
 
     /**
