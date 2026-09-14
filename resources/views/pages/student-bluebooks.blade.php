@@ -1,4 +1,20 @@
-@php $title = 'Browse Bluebooks'; @endphp
+@php
+  $title = 'Browse Bluebooks';
+
+  // What the list is currently narrowed to, so it can be shown as removable
+  // chips. A select showing "CCS" among three other controls does not read as a
+  // restriction on the results.
+  $activeFilters = [];
+  if (($query['search'] ?? '') !== '') {
+    $activeFilters[] = ['label' => '“' . $query['search'] . '”', 'param' => 'search'];
+  }
+  if (($query['department'] ?? '') !== '') {
+    $activeFilters[] = ['label' => $query['department'], 'param' => 'department'];
+  }
+  if (($query['year'] ?? '') !== '') {
+    $activeFilters[] = ['label' => $query['year'], 'param' => 'year'];
+  }
+@endphp
 @include('partials.head')
 
 <div class="app">
@@ -12,10 +28,18 @@
     </header>
 
     <div class="content">
-      <div class="page-header">
-        <div>
-          <h1>Approved Bluebooks</h1>
-          <p>{{ count($bluebooks) }} research paper(s) available</p>
+      <div class="dash-hero slim">
+        <div class="dash-hero-top" style="margin-bottom:0;">
+          <div>
+            <h1>Browse the Archive</h1>
+            <p>
+              @if(count($activeFilters) > 0)
+                {{ count($bluebooks) }} {{ Str::plural('paper', count($bluebooks)) }} match your filters.
+              @else
+                {{ count($bluebooks) }} approved {{ Str::plural('paper', count($bluebooks)) }} to read.
+              @endif
+            </p>
+          </div>
         </div>
       </div>
 
@@ -48,37 +72,66 @@
         </div>
       </form>
 
+      @if(count($activeFilters) > 0)
+        <div class="filter-chips">
+          <span class="lead">Filtered by</span>
+          @foreach($activeFilters as $f)
+            {{-- Drops this one term and keeps the rest. --}}
+            <a class="filter-chip" href="{{ request()->fullUrlWithQuery([$f['param'] => null]) }}"
+               title="Remove this filter">
+              {{ $f['label'] }}
+              <span class="x" aria-hidden="true">&times;</span>
+              <span class="sr-only">Remove filter</span>
+            </a>
+          @endforeach
+          @if(count($activeFilters) > 1)
+            <a class="clear-all" href="{{ route('student.bluebooks') }}">Clear all</a>
+          @endif
+        </div>
+      @endif
+
       @if(count($bluebooks) > 0)
-        <div style="display:flex;flex-direction:column;gap:0.75rem;">
+        <div class="result-list">
           @foreach($bluebooks as $b)
-            <a href="{{ route('student.bluebook', $b['id']) }}" style="display:block;text-decoration:none;">
-              <div class="card" style="padding:1.5rem;transition:box-shadow 0.2s;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;">
-                  <div style="flex:1;min-width:0;">
-                    <h3 style="font-weight:600;font-size:1.05rem;color:var(--gray-800);margin-bottom:0.5rem;line-height:1.4;">{{ $b['title'] }}</h3>
-                    <div style="font-size:0.83rem;color:var(--gray-600);margin-bottom:0.75rem;">{{ implode(' • ', $b['authors']) }}</div>
-                    <div style="font-size:0.83rem;color:var(--gray-400);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $b['abstract'] }}</div>
-                  </div>
-                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.5rem;flex-shrink:0;">
-                    <span class="badge badge-blue">{{ $b['department'] }}</span>
-                    <span style="font-size:0.78rem;color:var(--gray-400);">{{ $b['year'] }}</span>
-                    <span style="font-size:0.78rem;color:var(--gray-400);">{{ $b['views'] }} views</span>
-                  </div>
+            <a class="result-item" href="{{ route('student.bluebook', $b['id']) }}">
+              <div class="result-head">
+                <div class="result-main">
+                  <div class="result-title">{{ $b['title'] }}</div>
+                  <div class="result-authors">{{ implode(' • ', $b['authors']) }}</div>
+                  <div class="result-abstract">{{ $b['abstract'] }}</div>
                 </div>
-                <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.75rem;">
+                <div class="result-side">
+                  <span class="badge badge-blue">{{ $b['department'] }}</span>
+                  <span>{{ $b['year'] }}</span>
+                  <span>{{ $b['views'] }} {{ Str::plural('view', $b['views']) }}</span>
+                </div>
+              </div>
+              @if(count($b['keywords']) > 0)
+                <div class="result-keywords">
                   @foreach(array_slice($b['keywords'], 0, 4) as $kw)
                     <span class="keyword">{{ $kw }}</span>
                   @endforeach
                 </div>
-              </div>
+              @endif
             </a>
           @endforeach
         </div>
       @else
         <div class="card">
           <div class="empty-state">
-            <div class="icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" fill="currentColor" fill-opacity="0.18"/><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <p>No bluebooks found matching your filters.</p>
+            <div class="icon">
+              <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/></svg>
+            </div>
+            {{-- An empty list has two quite different causes, and the way out of
+                 one of them is not the way out of the other. --}}
+            @if(count($activeFilters) > 0)
+              <p>No papers match these filters.</p>
+              <p style="font-size:0.8rem;color:var(--gray-400);margin-top:0.35rem;">Try removing one, or widening the year or department.</p>
+              <a href="{{ route('student.bluebooks') }}" class="btn btn-outline btn-sm" style="margin-top:0.85rem;">Clear all filters</a>
+            @else
+              <p>No papers have been approved yet.</p>
+              <p style="font-size:0.8rem;color:var(--gray-400);margin-top:0.35rem;">Approved submissions appear here as soon as they are published.</p>
+            @endif
           </div>
         </div>
       @endif

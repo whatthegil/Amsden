@@ -208,7 +208,11 @@ class UploadAndSearchTest extends TestCase
             ->get('/student/bluebooks?search=zzzznonexistentterm');
 
         $response->assertOk();
-        $response->assertSee('No bluebooks found', false);
+        // A search that matched nothing is a filter problem, so the empty state
+        // says so and offers to clear them - rather than the flat "No bluebooks
+        // found" it used to show whatever the reason was.
+        $response->assertSee('No papers match these filters', false);
+        $response->assertSee('Clear all filters', false);
     }
 
     public function test_search_ranks_a_title_match_above_a_faint_match(): void

@@ -1610,3 +1610,97 @@ a:focus-visible {
   .doc-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
   .rank-item { padding: 0.75rem 1.1rem; }
 }
+
+/* ─── Slim hero ──────────────────────────────────────────────────────────────── */
+/* For pages whose primary action is the filter bar rather than a search box, so
+   the panel carries the heading and the count and then gets out of the way. */
+.dash-hero.slim { padding: 1.5rem 2rem; margin-bottom: 1.15rem; }
+.dash-hero.slim h1 { font-size: 1.5rem; }
+
+/* ─── Active filters ─────────────────────────────────────────────────────────── */
+/* What the list is currently narrowed to. The filter bar holds the same values,
+   but a select showing "CCS" among three other controls does not read as a
+   restriction on the results - and there was nothing at all to say why a search
+   had returned four papers out of ninety. Each chip removes its own term and
+   leaves the rest alone. */
+.filter-chips {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  margin-bottom: 1.15rem;
+}
+.filter-chips .lead { font-size: 0.8rem; color: var(--gray-600); }
+.filter-chip {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  padding: 0.3rem 0.45rem 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: var(--primary-pale);
+  border: 1px solid rgba(26, 86, 219, 0.18);
+  color: var(--primary-dark);
+  font-size: 0.79rem; font-weight: 600;
+  text-decoration: none;
+  transition: background var(--transition), border-color var(--transition);
+}
+.filter-chip:hover { background: var(--primary-light); border-color: var(--primary-mid); }
+.filter-chip .x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: rgba(26, 86, 219, 0.14);
+  font-size: 0.7rem; line-height: 1;
+}
+.filter-chips .clear-all { font-size: 0.79rem; color: var(--gray-600); text-decoration: underline; }
+
+/* ─── Result rows ────────────────────────────────────────────────────────────── */
+/* These were a .card with a dozen inline styles on every element inside it, so
+   nothing about them could be adjusted in one place and none of it matched the
+   rest of the system. */
+.result-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.result-item {
+  display: block; text-decoration: none;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 1.3rem 1.45rem;
+  box-shadow: var(--shadow-xs);
+  position: relative; overflow: hidden;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+/* A bar down the leading edge on hover, rather than the whole row lifting: a
+   list of these all lifting in turn is a lot of movement to scroll past. */
+.result-item::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 3px;
+  background: var(--primary-mid);
+  opacity: 0; transition: opacity var(--transition);
+}
+.result-item:hover { border-color: var(--primary-mid); box-shadow: var(--shadow); }
+.result-item:hover::before { opacity: 1; }
+
+.result-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.25rem; }
+.result-main { flex: 1; min-width: 0; }
+.result-title {
+  font-size: 1.02rem; font-weight: 650; line-height: 1.4;
+  color: var(--gray-800); margin-bottom: 0.35rem;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.result-item:hover .result-title { color: var(--primary-dark); }
+.result-authors {
+  font-size: 0.83rem; color: var(--gray-600); margin-bottom: 0.5rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Two lines. It was one, clipped mid-word, which was rarely enough of an
+   abstract to tell two papers apart. */
+.result-abstract {
+  font-size: 0.84rem; line-height: 1.55; color: var(--gray-400);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.result-side {
+  flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem;
+  font-size: 0.78rem; color: var(--gray-400);
+}
+.result-keywords { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.85rem; }
+
+@media (max-width: 768px) {
+  .dash-hero.slim { padding: 1.25rem 1.25rem; }
+  .result-item { padding: 1.1rem 1.15rem; }
+  /* The column of badges beside the title costs width the title needs more. */
+  .result-head { flex-direction: column; gap: 0.7rem; }
+  .result-side { flex-direction: row; align-items: center; gap: 0.6rem; }
+}

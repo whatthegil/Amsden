@@ -1,0 +1,125 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Bluebook;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+/**
+ * The browse page, and what it says about the list it is showing.
+ *
+ * The filter bar holds the current values, but a select reading "CCS" among
+ * three other controls does not tell anyone why a search returned four papers
+ * out of ninety. The chips do, and each one has to remove its own term without
+ * taking the others with it.
+ */
+class BrowseBluebooksTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function student(): array
+    {
+        return [
+            'id' => 1, 'name' => 'S T', 'email' => 's@my.cspc.edu.ph',
+            'role' => 'Student', 'canUpload' => false,
+        ];
+    }
+
+    private function makeBluebook(array $overrides = []): Bluebook
+    {
+        return Bluebook::create(array_merge([
+            'title' => 'An Automated Attendance System', 'authors' => ['Dela Cruz, Maria'],
+            'year' => 2024, 'department' => 'CCS',
+            'program' => 'Bachelor of Science in Information Technology',
+            'keywords' => ['RFID', 'Automation'], 'abstract' => 'A study of attendance.',
+            'adviser' => '', 'status' => 'Approved', 'uploaded_by' => 's@my.cspc.edu.ph',
+            'uploaded_by_name' => 'S T', 'date_added' => '2024-06-15',
+        ], $overrides));
+    }
+
+    public function test_the_list_renders_as_result_rows(): void
+    {
+        $this->makeBluebook();
+        $this->makeBluebook(['title' => 'A Farm Management System', 'year' => 2023]);
+
+        $res = $this->withSession(['user' => $this->student()])->get('/student/bluebooks');
+
+        $res->assertOk();
+        $res->assertSee('result-item', false);
+        $res->assertSee('An Automated Attendance System', false);
+        $res->assertSee('A Farm Management System', false);
+        // Nothing is filtered, so nothing claims to be.
+        $res->assertDontSee('filter-chip', false);
+        $res->assertSee('approved', false);
+    }
+
+    /**
+     * The point of the chips: each drops its own term and leaves the rest, so a
+     * reader can widen one axis of a search without starting the search again.
+     */
+    public function test_each_chip_removes_only_its_own_filter(): void
+    {
+        $this->makeBluebook();
+
+        $res = $this->withSession(['user' => $this->student()])
+            ->get('/student/bluebooks?search=system&department=CCS&year=2024');
+
+        $res->assertOk();
+        $html = $res->getContent();
+
+        // Three filters, so three chips and an escape hatch for all of them.
+        $this->assertSame(3, substr_count($html, 'class="filter-chip"'));
+        $this->assertStringContainsString('clear-all', $html);
+
+        // The search chip's link keeps department and year.
+        $this->assertMatchesRegularExpression(
+            '/href="[^"]*department=CCS[^"]*year=2024[^"]*"/',
+            $html,
+            'Removing the search term must keep the other two filters.'
+        );
+        // And the year chip's link keeps search and department.
+        $this->assertMatchesRegularExpression(
+            '/href="[^"]*search=system[^"]*department=CCS[^"]*"/',
+            $html,
+            'Removing the year must keep the other two filters.'
+        );
+    }
+
+    /** One filter needs no "clear all" - the single chip already is one. */
+    public function test_a_single_filter_shows_no_clear_all(): void
+    {
+        $this->makeBluebook();
+
+        $html = $this->withSession(['user' => $this->student()])
+            ->get('/student/bluebooks?department=CCS')
+            ->getContent();
+
+        $this->assertSame(1, substr_count($html, 'class="filter-chip"'));
+        $this->assertStringNotContainsString('clear-all', $html);
+    }
+
+    /**
+     * An empty list has two quite different causes, and the way out of one is
+     * not the way out of the other. A reader whose filters matched nothing
+     * needs them cleared; a reader looking at an archive with nothing approved
+     * in it yet just needs telling.
+     */
+    public function test_the_empty_state_depends_on_why_it_is_empty(): void
+    {
+        $this->makeBluebook();
+
+        $filtered = $this->withSession(['user' => $this->student()])
+            ->get('/student/bluebooks?search=nothingmatchesthis');
+        $filtered->assertOk();
+        $filtered->assertSee('No papers match these filters', false);
+        $filtered->assertSee('Clear all filters', false);
+
+        Bluebook::query()->delete();
+
+        $bare = $this->withSession(['user' => $this->student()])->get('/student/bluebooks');
+        $bare->assertOk();
+        $bare->assertSee('No papers have been approved yet', false);
+        $bare->assertDontSee('Clear all filters', false);
+    }
+}
