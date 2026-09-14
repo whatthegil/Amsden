@@ -3,9 +3,15 @@
 /public/storage
 /storage/*.key
 /vendor
+# Every environment file, not just the three that had been thought of. A live
+# OpenAI key reached this repository's history through .env.example, and
+# .env.worker - which holds production database and bucket credentials - would
+# have been committed by default under the old list. Templates are the only
+# ones that stay, and they carry no values.
 .env
-.env.backup
-.env.bak*
+.env.*
+!.env.example
+!.env.*.example
 .phpunit.result.cache
 docker-compose.override.yml
 Homestead.json
