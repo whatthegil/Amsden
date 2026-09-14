@@ -66,9 +66,12 @@ Route::prefix('student')->middleware('role:Student,Faculty')->group(function () 
     Route::get('/dashboard',                   [StudentController::class, 'dashboard'])->name('student.dashboard');
 
     Route::get('/bluebooks',                   [StudentController::class, 'bluebooks'])->name('student.bluebooks');
-    Route::get('/bluebooks/{id}',              [StudentController::class, 'bluebookView'])->name('student.bluebook');
-    Route::get('/bluebooks/{id}/file',         [StudentController::class, 'bluebookFile'])->name('student.bluebook.file');
-    Route::post('/bluebooks/{id}/flag-capture', [StudentController::class, 'flagCaptureAttempt'])->name('student.bluebook.flag-capture');
+    // Throttled as well as the file route: this page is where a signed link is
+    // minted, so a loop over the id range collects one link per document
+    // without ever asking for a file.
+    Route::get('/bluebooks/{id}',              [StudentController::class, 'bluebookView'])->middleware('throttle:bluebook-read')->name('student.bluebook');
+    Route::get('/bluebooks/{id}/file',         [StudentController::class, 'bluebookFile'])->middleware('throttle:bluebook-read')->name('student.bluebook.file');
+    Route::post('/bluebooks/{id}/flag-capture', [StudentController::class, 'flagCaptureAttempt'])->middleware('throttle:capture-flag')->name('student.bluebook.flag-capture');
     Route::post('/bluebooks/{id}/reprocess-ocr', [StudentController::class, 'reprocessOcr'])->name('student.bluebook.reprocess-ocr');
 
     Route::get('/upload',                      [StudentController::class, 'uploadForm'])->name('student.upload');

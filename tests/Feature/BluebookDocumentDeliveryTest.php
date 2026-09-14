@@ -49,6 +49,8 @@ class BluebookDocumentDeliveryTest extends TestCase
     /** A disk that can sign one is used, and the streaming route is kept as the retry. */
     public function test_the_document_is_fetched_straight_from_storage_when_it_can_be_signed(): void
     {
+        config(['filesystems.bluebook_direct_fetch' => true]);
+
         $disk = Mockery::mock();
         $disk->shouldReceive('providesTemporaryUrls')->andReturn(true);
         $disk->shouldReceive('temporaryUrl')->once()->andReturn('https://bucket.example/paper.pdf?sig=abc');
@@ -85,15 +87,40 @@ class BluebookDocumentDeliveryTest extends TestCase
     /** The helper reports honestly rather than throwing on a disk that cannot sign. */
     public function test_a_disk_that_cannot_sign_reports_no_url(): void
     {
+        config(['filesystems.bluebook_direct_fetch' => true]);
+
         $this->assertNull(
             Store::bluebookFileUrl('bluebooks/paper.pdf'),
             'The local driver cannot sign a URL, so the caller must be told to stream instead.'
         );
     }
 
+    /**
+     * For its lifetime a signed link is a bearer token: it reads the stored PDF
+     * with no session, no role check, and none of the watermarking the viewer
+     * applies. That is a wider opening than the session route, so it is not
+     * something an install should get without having asked for it.
+     */
+    public function test_the_direct_link_is_off_unless_it_has_been_asked_for(): void
+    {
+        $this->assertFalse(
+            config('filesystems.bluebook_direct_fetch'),
+            'Direct fetch must default to off - the secure posture is the default.'
+        );
+
+        $disk = Mockery::mock();
+        $disk->shouldReceive('providesTemporaryUrls')->andReturn(true);
+        $disk->shouldNotReceive('temporaryUrl');      // must not even be asked
+        Storage::shouldReceive('disk')->andReturn($disk);
+
+        $this->assertNull(Store::bluebookFileUrl('bluebooks/paper.pdf'));
+    }
+
     /** Signing failure is a slow path, not a broken one. */
     public function test_a_signing_failure_degrades_to_the_stream(): void
     {
+        config(['filesystems.bluebook_direct_fetch' => true]);
+
         $disk = Mockery::mock();
         $disk->shouldReceive('providesTemporaryUrls')->andReturn(true);
         $disk->shouldReceive('temporaryUrl')->andThrow(new \RuntimeException('no credentials'));

@@ -53,6 +53,62 @@
   // Above 1.5 the memory cost on a phone outweighs the sharpness gained.
   const scaleFor = () => Math.min(window.devicePixelRatio || 1, 1.5);
 
+  // ── The watermark, in the page rather than over it ─────────────────────────
+  // There is a watermark div covering the whole document, and a div can be
+  // taken off in developer tools. Measured against the guard that protects it,
+  // six ways out of ten got past: z-index behind the content, a transform off
+  // screen, filter: opacity(0), clip-path, scale, and position: static all move
+  // it out of the way without touching the four properties the guard watches -
+  // and watching more properties only invites the next one.
+  //
+  // Drawing the identity into the canvas puts it in the same pixels as the
+  // document. There is no property that removes it, because it is not a layer:
+  // taking it off means not rendering the page. The overlay stays as well - it
+  // covers the abstract, the metadata and the rest of the screen, which the
+  // canvas does not.
+  const detail = document.getElementById('bluebook-detail');
+  const viewer = detail ? (detail.dataset.viewer || '').trim() : '';
+
+  function stampedAt() {
+    const d = new Date(), p = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+           ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  // Drawn after the page, so it sits over the content rather than under it.
+  function stamp(canvas) {
+    const ctx   = canvas.getContext('2d');
+    const who   = viewer || 'CSPC ARCHIVE';
+    const when  = stampedAt() + ' · CSPC ARCHIVE';
+
+    // The tile scales with the page: a phone render is not covered edge to edge
+    // and a desktop one is not left with four lonely marks in the corners.
+    const tile = Math.max(260, Math.round(canvas.width / 2.2));
+    const size = Math.max(11, Math.round(tile / 24));
+
+    ctx.save();
+    // Light enough to read the thesis through, dark enough to survive the
+    // contrast knocked out of a photographed screen.
+    ctx.globalAlpha  = 0.13;
+    ctx.fillStyle    = '#0f2350';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (let y = tile / 2; y < canvas.height + tile; y += tile) {
+      for (let x = tile / 2; x < canvas.width + tile; x += tile) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(-22 * Math.PI / 180);
+        ctx.font = '600 ' + size + 'px Inter, system-ui, sans-serif';
+        ctx.fillText(who, 0, 0);
+        ctx.font = '500 ' + Math.round(size * 0.85) + 'px Inter, system-ui, sans-serif';
+        ctx.fillText(when, 0, size * 1.35);
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+
   // A page reserves its height with padding-top and holds its canvas out of
   // flow, so it contributes no intrinsic width of its own. Measure the page
   // list instead, which is the element that actually has a width, and take its
@@ -188,6 +244,9 @@
         return task.promise.then(function () {
           tasks.delete(num);
           holder.textContent = '';
+          // Stamped before it is shown, so there is no frame in which a clean
+          // page is on screen to be captured.
+          stamp(canvas);
           // Scrolled far away while this was drawing: drop it rather than keep
           // a canvas for a page nowhere near the viewport.
           if (!keep.has(num)) return;

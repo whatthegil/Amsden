@@ -42,7 +42,26 @@ return [
     |
     */
 
-    'bluebook_link_ttl' => (int) env('BLUEBOOK_LINK_TTL', 60),
+    'bluebook_link_ttl' => (int) env('BLUEBOOK_LINK_TTL', 30),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Direct Document Fetch
+    |--------------------------------------------------------------------------
+    |
+    | Whether the browser fetches a document straight from storage on a signed
+    | link. It is much faster - the object stops travelling through PHP and the
+    | bucket answers ranges, so the first page arrives after a few kilobytes
+    | rather than after all of it - and it is a real widening: for the link's
+    | lifetime anyone holding it reads the stored PDF with no session, no role
+    | check, and none of the watermarking the viewer applies.
+    |
+    | Off by default. The archive exists to make documents hard to take away,
+    | so the trade is the institution's to make rather than the default.
+    |
+    */
+
+    'bluebook_direct_fetch' => (bool) env('BLUEBOOK_DIRECT_FETCH', false),
 
     /*
     |--------------------------------------------------------------------------

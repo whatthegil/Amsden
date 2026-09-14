@@ -186,6 +186,7 @@ document.querySelectorAll('[data-href]').forEach(row => {
   if (viewingDocument) {
     const detailEl = document.getElementById('bluebook-detail');
     const viewer   = (detailEl.dataset.viewer || '').trim();
+    let   wmTexture = '';   // the tile, rebuilt each time the timestamp moves on
     const logoImg  = new Image();
     logoImg.src    = '/images/cspc-logo.png';
 
@@ -229,16 +230,55 @@ document.querySelectorAll('[data-href]').forEach(row => {
 
       const wm = document.createElement('div');
       wm.id = 'cbams-wm';
-      Object.assign(wm.style, {
+      wmTexture = 'url(' + canvas.toDataURL() + ')';
+      applyWatermarkStyle(wm);
+      document.body.appendChild(wm);
+    }
+
+    // Every property that decides whether the overlay is actually covering the
+    // document, asserted as !important so a stylesheet cannot quietly win.
+    //
+    // The guard used to check four of these and treat the rest as safe. It was
+    // not: measured against it, z-index behind the content, a transform off
+    // screen, filter: opacity(0), clip-path, scale and position: static all got
+    // past untouched. Listing more properties to watch only invites the next
+    // one, so nothing is watched now - the whole set is written back on every
+    // pass, which returns the overlay from any of them without having to know
+    // which was used.
+    function applyWatermarkStyle(wm) {
+      const style = {
         position:         'fixed',
-        inset:            '0',
-        zIndex:           '9998',
+        top:              '0',
+        left:             '0',
+        right:            '0',
+        bottom:           '0',
+        width:            'auto',
+        height:           'auto',
+        margin:           '0',
+        zIndex:           '2147483645',
         pointerEvents:    'none',
-        backgroundImage:  'url(' + canvas.toDataURL() + ')',
+        display:          'block',
+        visibility:       'visible',
+        opacity:          '1',
+        filter:           'none',
+        backdropFilter:   'none',
+        clipPath:         'none',
+        mask:             'none',
+        transform:        'none',
+        scale:            '1',
+        rotate:           '0deg',
+        translate:        'none',
+        mixBlendMode:     'normal',
+        contentVisibility: 'visible',
+        backgroundImage:  wmTexture,
         backgroundRepeat: 'repeat',
         backgroundSize:   '420px 200px',
-      });
-      document.body.appendChild(wm);
+        backgroundPosition: '0 0',
+      };
+      for (const prop in style) {
+        // setProperty needs the hyphenated name for !important to take.
+        wm.style.setProperty(prop.replace(/[A-Z]/g, m => '-' + m.toLowerCase()), style[prop], 'important');
+      }
     }
 
     logoImg.onload  = buildWatermark;
@@ -259,18 +299,51 @@ document.querySelectorAll('[data-href]').forEach(row => {
     (function guardWatermark() {
       let strikes = 0;
 
+      // Whether the overlay is covering the document. This decides what goes in
+      // the audit log - it does NOT decide whether to put the overlay back,
+      // because a check can only recognise what it was told to look for. The
+      // previous one watched four properties and six ways past it worked; this
+      // one measures the laid-out box as well, and there is still no reason to
+      // believe it is complete.
       function violated() {
         const wm = document.getElementById('cbams-wm');
         if (!wm) return true;
+
         const cs = getComputedStyle(wm);
-        return cs.display === 'none'
+        const r  = wm.getBoundingClientRect();
+
+        // Covering the viewport, painted, opaque, unfiltered, and in front.
+        // Note the absolute values: a transform moving the overlay off the top
+        // of the screen leaves a negative offset, which a > test reads as fine.
+        return r.width  < innerWidth  - 4
+            || r.height < innerHeight - 4
+            || Math.abs(r.top) > 4 || Math.abs(r.left) > 4
+            || cs.display === 'none'
             || cs.visibility === 'hidden'
-            || parseFloat(cs.opacity) < 0.5
-            || !wm.style.backgroundImage;
+            || parseFloat(cs.opacity) < 0.9
+            || cs.backgroundImage === 'none' || !cs.backgroundImage
+            || parseInt(cs.zIndex || '0', 10) < 1000
+            || (cs.filter && cs.filter !== 'none')
+            || (cs.clipPath && cs.clipPath !== 'none')
+            || (cs.transform && cs.transform !== 'none');
+      }
+
+      // Put the style back, whatever was done to it. Unconditional on purpose:
+      // re-asserting every property costs less than a check and, unlike a
+      // check, it does not have to recognise the attack to undo it. The node
+      // observer is detached across the write so our own changes do not come
+      // back round as tampering.
+      function enforce() {
+        const wm = document.getElementById('cbams-wm');
+        if (!wm) { buildWatermark(); watchNode(); return; }
+
+        if (nodeWatch) nodeWatch.disconnect();
+        applyWatermarkStyle(wm);
+        if (nodeWatch) { nodeWatch.takeRecords(); nodeWatch.observe(wm, { attributes: true }); }
       }
 
       function restore() {
-        buildWatermark();
+        enforce();
         if (++strikes === 3) {
           // Repeated tampering is deliberate, so record it once.
           flagWatermarkTampering();
@@ -292,10 +365,36 @@ document.querySelectorAll('[data-href]').forEach(row => {
         }).catch(() => {});
       }
 
+      // The overlay being taken out of the body.
       new MutationObserver(() => { if (violated()) restore(); })
-        .observe(document.body, { childList: true, subtree: false, attributes: true, attributeFilter: ['style', 'class'] });
+        .observe(document.body, { childList: true, attributes: true, attributeFilter: ['style', 'class'] });
 
-      setInterval(() => { if (violated()) restore(); }, 1000);
+      // The overlay's own attributes. Watching the body never saw these, so a
+      // style set straight on the node went unnoticed until the next poll -
+      // which is a full second of clean document to photograph. Re-attached
+      // when the node is replaced, since the observer goes with the old one.
+      let nodeWatch = null, watched = null;
+      function watchNode() {
+        const wm = document.getElementById('cbams-wm');
+        if (!wm || wm === watched) return;
+        if (nodeWatch) nodeWatch.disconnect();
+        // Anything reaching this observer came from outside, because our own
+        // writes happen with it detached - so the style goes back without
+        // asking what changed, and only the log needs to know.
+        nodeWatch = new MutationObserver(function () {
+          const tampered = violated();
+          enforce();
+          if (tampered && ++strikes === 3) flagWatermarkTampering();
+        });
+        nodeWatch.observe(wm, { attributes: true });
+        watched = wm;
+      }
+      watchNode();
+
+      // A backstop for what no observer sees - a rule added to a stylesheet
+      // rather than to the node. Re-asserted every pass whether or not anything
+      // looks wrong, for the same reason as above.
+      setInterval(() => { watchNode(); const bad = violated(); enforce(); if (bad) restore(); }, 1000);
     })();
   }
 

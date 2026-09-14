@@ -43,6 +43,19 @@ class Store
      */
     public static function bluebookFileUrl(string $path, ?int $minutes = null): ?string
     {
+        // Off unless asked for, because of what the link is: for its lifetime
+        // it is a bearer token. Anyone holding it reads the document with no
+        // session, no role check, and no watermark - the copy it returns is the
+        // stored PDF, not what the viewer draws. Handing that to a reader who
+        // can pass it on is a wider opening than the session route, where the
+        // same bytes at least require being logged in as someone.
+        //
+        // The speed is real and so is the cost, so this is a setting rather
+        // than a decision taken here. BLUEBOOK_DIRECT_FETCH=true turns it on.
+        if (!config('filesystems.bluebook_direct_fetch', false)) {
+            return null;
+        }
+
         $disk = Storage::disk(self::bluebookDisk());
 
         if (!$disk->providesTemporaryUrls()) {

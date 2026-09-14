@@ -75,5 +75,26 @@ class RouteServiceProvider extends ServiceProvider
             $email = $request->session()->get('user')['email'] ?? null;
             return Limit::perHour(15)->by($email ?? $request->ip());
         });
+
+        // The archive is meant to be read a document at a time, and every
+        // control around it - the watermark, the capture log, the wrapper app's
+        // FLAG_SECURE - assumes a person reading. None of it slows down a loop
+        // over the id range, which until now could pull the whole archive as
+        // fast as storage would serve it. A reader opens a handful of documents
+        // in an hour; a scraper wants hundreds.
+        RateLimiter::for('bluebook-read', function (Request $request) {
+            $email = $request->session()->get('user')['email'] ?? null;
+            return Limit::perMinute(30)->by($email ?? $request->ip());
+        });
+
+        // The capture log is evidence, so it must not be floodable into
+        // uselessness by a page that has been told to post in a loop. Generous
+        // enough for the real thing: the viewer reports a focus loss, a tab
+        // switch and a keypress, which a restless reader can genuinely trip a
+        // few times a minute.
+        RateLimiter::for('capture-flag', function (Request $request) {
+            $email = $request->session()->get('user')['email'] ?? null;
+            return Limit::perMinute(20)->by($email ?? $request->ip());
+        });
     }
 }

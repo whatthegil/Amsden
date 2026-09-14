@@ -127,6 +127,18 @@ class StudentController extends Controller
             abort(404);
         }
 
+        // The bytes leaving, recorded separately from the page being opened.
+        // Until now only the page was logged, so a request straight to this
+        // route - a script with a session cookie, or a reader saving the file -
+        // left nothing behind at all, and the log read as though the document
+        // had only ever been looked at in the viewer.
+        Store::addLog([
+            'userName' => $user['name'] ?? 'Unknown',
+            'email'    => $user['email'] ?? 'Unknown',
+            'action'   => 'Downloaded Bluebook File',
+            'document' => $bluebook['title'],
+        ]);
+
         // The document is streamed rather than handed to Storage::response().
         // That helper sets Content-Length from the object's recorded size and
         // then streams the body separately; when the two disagree nginx aborts
