@@ -16,6 +16,7 @@ class WatermarkBluebooks extends Command
 {
     protected $signature = 'bluebooks:watermark
                             {--dry-run   : Report what would be stamped, and whether this host can, without writing}
+                            {--self-test : Stamp a PDF this makes up, to prove the stamper works here without touching the archive}
                             {--id=*      : Only these bluebook ids}
                             {--force     : Stamp again even if the document already carries a mark}';
 
@@ -23,6 +24,10 @@ class WatermarkBluebooks extends Command
 
     public function handle(): int
     {
+        if ($this->option('self-test')) {
+            return $this->selfTest();
+        }
+
         $dry = (bool) $this->option('dry-run');
 
         if (!PdfWatermarker::available()) {
@@ -117,6 +122,66 @@ class WatermarkBluebooks extends Command
         }
 
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * Exercise the stamper on a file nobody needs.
+     *
+     * The Ghostscript backend cannot be tried where it was written - there is
+     * no Ghostscript there - so this exists to be run on the host that does
+     * have it, without a real thesis being the thing that finds out it is
+     * wrong.
+     */
+    private function selfTest(): int
+    {
+        $result = PdfWatermarker::selfTest();
+
+        if (!($result['ok'] ?? false)) {
+            $this->error('Self-test failed: ' . ($result['reason'] ?? 'unknown'));
+            if ($result['backend'] ?? null) {
+                $this->line('  Backend tried: ' . $result['backend']);
+            }
+
+            return self::FAILURE;
+        }
+
+        $this->info('Stamped a generated PDF using: ' . $result['backend']);
+        $this->line(sprintf('  %s bytes in, %s bytes out', number_format($result['src_bytes']), number_format($result['out_bytes'])));
+        $this->line('  output is a PDF: ' . ($result['is_pdf'] ? 'yes' : 'NO'));
+
+        if ($result['mark_drawn'] === null) {
+            $this->warn('  Nothing here can rasterize, so whether the mark actually appears is unknown.');
+            $this->line('  A file came out and it is a PDF; that is all this host can tell you.');
+
+            return self::SUCCESS;
+        }
+
+        $this->line(sprintf(
+            '  ink on page 1: %.2f%% before, %.2f%% after',
+            $result['ink_before'] * 100,
+            $result['ink_after'] * 100
+        ));
+        $this->line('  mark rendered: ' . ($result['mark_drawn'] ? 'yes' : 'NO'));
+
+        if ($result['content_survived'] !== null) {
+            $this->line('  original text survived: ' . ($result['content_survived'] ? 'yes' : 'NO'));
+        }
+
+        // A stamper that loses the document is worse than one that does
+        // nothing, so either of these is a failure rather than a warning.
+        if (!$result['mark_drawn'] || $result['content_survived'] === false) {
+            $this->newLine();
+            $this->error($result['content_survived'] === false
+                ? 'The document did not survive stamping. Do NOT run the backfill with this backend.'
+                : 'The mark did not reach the page. Do not run the backfill with this backend.');
+
+            return self::FAILURE;
+        }
+
+        $this->newLine();
+        $this->info('The mark reaches the page and the document survives. Safe to use on this host.');
+
+        return self::SUCCESS;
     }
 
     /**

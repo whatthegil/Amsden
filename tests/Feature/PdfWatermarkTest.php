@@ -186,6 +186,58 @@ class PdfWatermarkTest extends TestCase
         }
     }
 
+    /**
+     * The self-test exists so the Ghostscript backend can be proved on the one
+     * host that has Ghostscript - the one holding the live archive - without a
+     * real thesis being what finds out it is wrong.
+     *
+     * It asks whether the mark RENDERS, not whether a tool can read it back as
+     * characters. Those differ: pdftotext reports nothing for a mark MuPDF
+     * extracts six times a page, because the font the stamper adds carries no
+     * ToUnicode map. Asking the wrong question there would have condemned a
+     * backend that works.
+     */
+    public function test_the_self_test_measures_ink_rather_than_extracted_text(): void
+    {
+        if (!PdfWatermarker::available()) {
+            $this->markTestSkipped('No stamping binary on this host.');
+        }
+
+        $result = PdfWatermarker::selfTest();
+
+        $this->assertTrue($result['ok'], 'The stamper should succeed on a document it generated itself.');
+        $this->assertContains($result['backend'], ['mutool', 'gs']);
+        $this->assertTrue($result['is_pdf']);
+
+        if ($result['mark_drawn'] === null) {
+            $this->markTestSkipped('Nothing on this host can rasterize, so ink cannot be measured.');
+        }
+
+        $this->assertTrue($result['mark_drawn'], 'Stamping must put more ink on the page than was there before.');
+        $this->assertGreaterThan($result['ink_before'], $result['ink_after']);
+    }
+
+    /**
+     * The sample declared a /Length of 52 for a 45-byte stream. MuPDF warned,
+     * stamped the page, and drew nothing - so the self-test reported a broken
+     * stamper when the only broken thing was the document handed to it.
+     */
+    public function test_the_generated_sample_declares_a_truthful_stream_length(): void
+    {
+        $method = new \ReflectionMethod(PdfWatermarker::class, 'samplePdf');
+        $method->setAccessible(true);
+        $pdf = $method->invoke(null);
+
+        $this->assertMatchesRegularExpression('/<< \/Length (\d+) >>\nstream\n/', $pdf);
+        preg_match('/<< \/Length (\d+) >>\nstream\n(.*?)endstream/s', $pdf, $m);
+
+        $this->assertSame(
+            (int) $m[1],
+            strlen($m[2]),
+            'The declared stream length must match the bytes actually in the stream.'
+        );
+    }
+
     // ── Actually writing it into a file ──────────────────────────────────────
 
     /**

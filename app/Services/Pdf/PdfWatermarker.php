@@ -37,10 +37,52 @@ class PdfWatermarker
      */
     public const VIEWER_OFFSET = 150.0;
 
+    /** Gap between marks, in points. Matches STEP in resources/pdf/watermark.js. */
+    private const TILE = 300;
+
     /** Is there a binary that can do this? */
     public static function available(): bool
     {
-        return self::mutool() !== null;
+        return self::stamper() !== null;
+    }
+
+    /**
+     * Which tool will do the stamping, and how.
+     *
+     * MuPDF first because it edits the document in place: the original objects
+     * are kept and a content stream is appended to each page. Ghostscript
+     * cannot do that - pdfwrite rebuilds the file from its own interpretation
+     * of the input - but it is what the Laravel Cloud container actually has,
+     * and a rebuilt PDF carrying the mark beats a pristine one carrying
+     * nothing.
+     *
+     * @return array{kind: string, bin: string}|null
+     */
+    private static function stamper(): ?array
+    {
+        if ($bin = self::mutool()) {
+            return ['kind' => 'mutool', 'bin' => $bin];
+        }
+
+        if ($bin = self::ghostscript()) {
+            return ['kind' => 'gs', 'bin' => $bin];
+        }
+
+        return null;
+    }
+
+    /** The name of the tool that would be used, for diagnostics. */
+    public static function backend(): ?string
+    {
+        return self::stamper()['kind'] ?? null;
+    }
+
+    private static function ghostscript(): ?string
+    {
+        return BinaryFinder::find(config('ocr.ghostscript_path'), ['gs', 'gswin64c', 'gswin32c'], [
+            'C:\\Program Files\\gs\\gs*\\bin\\gswin64c.exe',
+            'C:\\Program Files (x86)\\gs\\gs*\\bin\\gswin32c.exe',
+        ]);
     }
 
     /**
@@ -110,13 +152,18 @@ class PdfWatermarker
      */
     public static function stampFile(string $src, string $dest, string $line1, string $line2 = '', float $offset = 0.0): bool
     {
-        $bin = self::mutool();
+        $stamper = self::stamper();
 
-        if ($bin === null) {
+        if ($stamper === null) {
             Log::warning('[watermark] no PDF binary available; document left unstamped', ['src' => basename($src)]);
             return false;
         }
 
+        if ($stamper['kind'] === 'gs') {
+            return self::stampWithGhostscript($stamper['bin'], $src, $dest, $line1, $line2, $offset);
+        }
+
+        $bin    = $stamper['bin'];
         $script = resource_path('pdf/watermark.js');
 
         if (!is_file($script)) {
@@ -231,6 +278,117 @@ class PdfWatermarker
         }
     }
 
+    /**
+     * Stamp with Ghostscript, by giving it a page hook rather than a script.
+     *
+     * pdfwrite re-interprets and rewrites the whole file, so unlike the MuPDF
+     * path nothing of the original structure is preserved - but the text and
+     * images come through, and the mark ends up in the page content where it
+     * belongs.
+     *
+     * The drawing is installed as /EndPage, which the interpreter calls as each
+     * page finishes, with the page count and a reason code on the stack. Reason
+     * 2 means the page is being discarded by a device change, so it is passed
+     * through untouched; anything else is a real page and gets the mark. The
+     * procedure has to leave a boolean behind saying whether to emit the page,
+     * which is what the `dup ... if` is doing - the copy feeds the `if`, the
+     * original is the return value.
+     */
+    private static function stampWithGhostscript(
+        string $bin, string $src, string $dest, string $line1, string $line2, float $offset
+    ): bool {
+        $size    = (float) config('watermark.size', 11);
+        $opacity = (float) config('watermark.opacity', 0.13);
+
+        $program = sprintf(
+            '<< /EndPage { exch pop 2 ne dup { gsave '
+            // Tile against the real page, not an assumed one: this archive has
+            // A4 and Letter in it, and pages the scanner left at odd sizes.
+            . 'currentpagedevice /PageSize get aload pop /ph exch def /pw exch def '
+            // Transparency is a Ghostscript extension. Where it is missing the
+            // mark would otherwise be laid down opaque in navy, straight over
+            // the words underneath, so fall back to a pale ink instead of a
+            // dark one at an opacity that was never applied.
+            . 'systemdict /.setopacityalpha known '
+            . '{ %.2F .setopacityalpha 0.06 0.14 0.31 setrgbcolor } '
+            . '{ 0.87 0.88 0.92 setrgbcolor } ifelse '
+            . '/Helvetica findfont %.1F scalefont setfont '
+            . '%.1F %d ph %d add { /yy exch def '
+            . '%.1F %d pw %d add { /xx exch def '
+            . 'gsave xx yy translate -22 rotate '
+            . '0 0 moveto (%s) show '
+            . '0 -%.1F moveto (%s) show '
+            . 'grestore } for } for '
+            . 'grestore } if } >> setpagedevice',
+            $opacity,
+            $size,
+            40.0 + $offset, self::TILE, self::TILE,
+            20.0 + $offset, self::TILE, self::TILE,
+            self::escapePostScript($line1),
+            $size + 3,
+            self::escapePostScript($line2)
+        );
+
+        $process = new Process([
+            $bin, '-q', '-dBATCH', '-dNOPAUSE', '-dSAFER',
+            '-sDEVICE=pdfwrite',
+            // Keep the text as text. Without this Ghostscript is free to turn
+            // an awkward font into outlines or a bitmap, and a thesis that
+            // arrives as pictures of words cannot be searched or read aloud.
+            '-dSubsetFonts=true', '-dEmbedAllFonts=true',
+            '-o', $dest,
+            '-c', $program,
+            '-f', $src,
+        ]);
+        $process->setTimeout((float) config('watermark.timeout', 120));
+
+        try {
+            $process->mustRun();
+        } catch (ProcessFailedException $e) {
+            Log::error('[watermark] ghostscript stamping failed', [
+                'src'   => basename($src),
+                'error' => trim($process->getErrorOutput() ?: $e->getMessage()),
+            ]);
+            return false;
+        }
+
+        if (!is_file($dest) || filesize($dest) < 1024) {
+            Log::error('[watermark] ghostscript produced no usable file', ['dest' => basename($dest)]);
+            @unlink($dest);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * A PostScript string literal ends at its first unescaped bracket, the same
+     * as a PDF one - so a title carrying one would truncate the mark and leave
+     * the rest of the program as garbage.
+     */
+    private static function escapePostScript(string $text): string
+    {
+        $out = '';
+
+        foreach (preg_split('//u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $char) {
+            $code = mb_ord($char, 'UTF-8');
+
+            if ($char === '(' || $char === ')' || $char === '\\') {
+                $out .= '\\' . $char;
+            } elseif ($code !== false && $code >= 32 && $code < 127) {
+                $out .= $char;
+            } elseif ($code !== false && $code < 256) {
+                // Octal, for the same reason the MuPDF script uses it: the
+                // program travels through an argument that is re-encoded on the
+                // way in, and an escape survives that where a raw byte does not.
+                $out .= '\\' . str_pad(decoct($code), 3, '0', STR_PAD_LEFT);
+            }
+            // Anything with no single-byte form is dropped rather than mangled.
+        }
+
+        return $out;
+    }
+
     /** A local copy of a document that may be sitting in object storage. */
     private static function pullToTemp(string $path): ?string
     {
@@ -295,6 +453,224 @@ class PdfWatermarker
     }
 
     // ── The two marks ────────────────────────────────────────────────────────
+
+    /**
+     * Stamp a document this makes up, and report what happened.
+     *
+     * The Ghostscript path cannot be tried on the machine it was written on -
+     * there is no Ghostscript here - and the only host that has it is the one
+     * holding the live archive. Proving it there by stamping a real thesis
+     * would mean finding out it was wrong by damaging one. This makes its own
+     * PDF instead, so the backend can be exercised on the host that will run
+     * it, against a file nobody needs.
+     *
+     * @return array<string,mixed>
+     */
+    public static function selfTest(): array
+    {
+        $backend = self::backend();
+
+        if ($backend === null) {
+            return ['ok' => false, 'backend' => null, 'reason' => 'no stamping binary on this host'];
+        }
+
+        $src  = self::tempPath();
+        $dest = self::tempPath();
+
+        file_put_contents($src, self::samplePdf());
+
+        try {
+            $ok = self::stampFile($src, $dest, 'CSPC ARCHIVE SELFTEST', 'stamped by ' . $backend);
+
+            if (!$ok) {
+                return ['ok' => false, 'backend' => $backend, 'reason' => 'the stamper reported failure (see the log)'];
+            }
+
+            $result = [
+                'ok'        => true,
+                'backend'   => $backend,
+                'src_bytes' => filesize($src),
+                'out_bytes' => filesize($dest),
+                'is_pdf'    => str_starts_with((string) file_get_contents($dest, false, null, 0, 5), '%PDF'),
+            ];
+
+            // Whether the mark RENDERS, not whether a tool can read it back as
+            // characters. Those are different questions, and the first attempt
+            // asked the wrong one: pdftotext reports nothing for a mark MuPDF
+            // extracts six times a page, because the font the stamper adds
+            // carries no ToUnicode map and Poppler cannot map the glyphs back.
+            // The mark was on the page the whole time. Ink on the page is the
+            // thing that matters and the thing every backend can be asked
+            // about, so count that instead.
+            $before = self::inkFraction($src);
+            $after  = self::inkFraction($dest);
+
+            $result['ink_before'] = $before;
+            $result['ink_after']  = $after;
+            $result['mark_drawn'] = ($before !== null && $after !== null) ? $after > $before + 0.001 : null;
+
+            // The document's own words are still worth checking as text: if
+            // they survive extraction they certainly survived stamping.
+            $pdftotext = BinaryFinder::find(config('ocr.pdftotext_path'), ['pdftotext'], []);
+
+            if ($pdftotext) {
+                $txt = self::tempPath() . '.txt';
+                $p   = new Process([$pdftotext, '-q', $dest, $txt]);
+                $p->setTimeout(30);
+                $p->run();
+
+                $text = is_file($txt) ? (string) file_get_contents($txt) : '';
+                @unlink($txt);
+
+                $result['content_survived'] = str_contains($text, 'Original text');
+            } else {
+                $result['content_survived'] = null;
+            }
+
+            return $result;
+        } finally {
+            @unlink($src);
+            @unlink($dest);
+        }
+    }
+
+    /**
+     * How much of page one is not white, as a fraction.
+     *
+     * Rendered to a grey PGM because that format is a short ASCII header
+     * followed by one byte per pixel - no image library needed, which matters
+     * on a host whose PHP build is not ours to choose.
+     *
+     * Null when nothing here can rasterize, which is not a failure: it means
+     * this check cannot be run, and saying so is better than guessing.
+     */
+    private static function inkFraction(string $pdf): ?float
+    {
+        $out = self::tempPath() . '.pgm';
+
+        if ($bin = self::mutool()) {
+            $cmd = [$bin, 'draw', '-F', 'pgm', '-r', '50', '-o', $out, $pdf, '1'];
+        } elseif ($bin = BinaryFinder::find(config('ocr.pdftoppm_path'), ['pdftoppm'], [])) {
+            // pdftoppm appends its own -1 and extension to the prefix given.
+            $prefix = self::tempPath();
+            $cmd    = [$bin, '-gray', '-r', '50', '-f', '1', '-l', '1', $pdf, $prefix];
+            $out    = $prefix . '-1.pgm';
+        } elseif ($bin = self::ghostscript()) {
+            $cmd = [$bin, '-q', '-dBATCH', '-dNOPAUSE', '-dSAFER', '-sDEVICE=pgmraw',
+                    '-r50', '-dFirstPage=1', '-dLastPage=1', '-o', $out, $pdf];
+        } else {
+            return null;
+        }
+
+        try {
+            $p = new Process($cmd);
+            $p->setTimeout(60);
+            $p->run();
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        if (!is_file($out)) {
+            return null;
+        }
+
+        try {
+            return self::darkFractionOfPgm((string) file_get_contents($out));
+        } finally {
+            @unlink($out);
+        }
+    }
+
+    /** P5 greymap: "P5", width, height, maxval, then one byte per pixel. */
+    private static function darkFractionOfPgm(string $pgm): ?float
+    {
+        if (!str_starts_with($pgm, 'P5')) {
+            return null;
+        }
+
+        // Three whitespace-separated numbers follow the magic, with comment
+        // lines allowed anywhere between them.
+        $offset = 2;
+        $fields = [];
+
+        while (count($fields) < 3 && $offset < strlen($pgm)) {
+            $char = $pgm[$offset];
+
+            if (ctype_space($char)) {
+                $offset++;
+            } elseif ($char === '#') {
+                $offset = strpos($pgm, "\n", $offset) ?: strlen($pgm);
+            } else {
+                $end = $offset;
+                while ($end < strlen($pgm) && !ctype_space($pgm[$end])) {
+                    $end++;
+                }
+                $fields[] = (int) substr($pgm, $offset, $end - $offset);
+                $offset   = $end;
+            }
+        }
+
+        if (count($fields) < 3) {
+            return null;
+        }
+
+        $pixels = substr($pgm, $offset + 1);
+        $total  = strlen($pixels);
+
+        if ($total === 0) {
+            return null;
+        }
+
+        // Anything below near-white counts. The mark is pale by design, so the
+        // threshold has to sit close to white or it would not see it at all.
+        $dark = 0;
+        for ($i = 0; $i < $total; $i++) {
+            if (ord($pixels[$i]) < 250) {
+                $dark++;
+            }
+        }
+
+        return $dark / $total;
+    }
+
+    /** A minimal, valid, one-page PDF with a line of text on it. */
+    private static function samplePdf(): string
+    {
+        // Measured, not counted by hand. The first version of this declared 52
+        // for a 45-byte stream, and MuPDF said so - "PDF stream Length
+        // incorrect" - then stamped the page without drawing the mark. The
+        // self-test correctly reported a failure that was entirely this
+        // function's fault, which is a good way to lose an afternoon
+        // suspecting the stamper.
+        $content = "BT /F1 14 Tf 72 700 Td (Original text) Tj ET\n";
+
+        $objects = [
+            "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+            "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
+            "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R"
+                . " /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n",
+            "4 0 obj\n<< /Length " . strlen($content) . " >>\nstream\n" . $content . "endstream\nendobj\n",
+            "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
+        ];
+
+        $pdf     = "%PDF-1.4\n";
+        $offsets = [];
+
+        foreach ($objects as $i => $object) {
+            $offsets[$i + 1] = strlen($pdf);
+            $pdf .= $object;
+        }
+
+        $start = strlen($pdf);
+        $pdf  .= "xref\n0 " . (count($objects) + 1) . "\n0000000000 65535 f \n";
+
+        for ($i = 1; $i <= count($objects); $i++) {
+            $pdf .= sprintf("%010d 00000 n \n", $offsets[$i]);
+        }
+
+        return $pdf . "trailer\n<< /Size " . (count($objects) + 1) . " /Root 1 0 R >>\n"
+            . "startxref\n{$start}\n%%EOF\n";
+    }
 
     /** Where the document came from. Written into the stored file, once. */
     public static function provenanceLines(array $bluebook): array
