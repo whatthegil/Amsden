@@ -69,7 +69,14 @@ class ProcessBluebookOcr implements ShouldQueue
             }
         }
 
-        $bluebook->ocr_text = $result['text'];
+        // The archive's own mark is real text in the file, so it comes back out
+        // of it - six times a page. Left in the index it is a phrase every
+        // document shares, which is both useless to search and actively
+        // misleading to the similarity checker.
+        $bluebook->ocr_text = \App\Services\Pdf\PdfWatermarker::stripMarks(
+            $result['text'],
+            ['title' => $bluebook->title, 'year' => $bluebook->year]
+        );
         $bluebook->ocr_status = 'completed';
         $bluebook->ocr_error = null;
         $bluebook->ocr_engine = $result['engine'];

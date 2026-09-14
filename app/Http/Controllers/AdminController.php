@@ -64,10 +64,18 @@ class AdminController extends Controller
         $fileData = [];
         if ($request->hasFile('file')) {
             $file = $request->file('file');
+            $path = $file->store('bluebooks', Store::bluebookDisk());
+
+            $stamped = Store::stampStoredBluebook($path, [
+                'title' => $request->input('title'),
+                'year'  => (int) $request->input('year'),
+            ]);
+
             $fileData = [
-                'filePath'         => $file->store('bluebooks', Store::bluebookDisk()),
+                'filePath'         => $path,
                 'fileOriginalName' => $file->getClientOriginalName(),
                 'fileSize'         => $file->getSize(),
+                'watermarkedAt'    => $stamped ? now() : null,
             ];
         }
 
@@ -121,7 +129,16 @@ class AdminController extends Controller
                 Storage::disk(Store::bluebookDisk())->delete($existing['filePath']);
             }
             $file = $request->file('file');
-            $fields['filePath']         = $file->store('bluebooks', Store::bluebookDisk());
+            $path = $file->store('bluebooks', Store::bluebookDisk());
+
+            // A replacement is a new document as far as the mark is concerned.
+            $stamped = Store::stampStoredBluebook($path, [
+                'title' => $request->input('title'),
+                'year'  => (int) $request->input('year'),
+            ]);
+
+            $fields['watermarkedAt']    = $stamped ? now() : null;
+            $fields['filePath']         = $path;
             $fields['fileOriginalName'] = $file->getClientOriginalName();
             $fields['fileSize']         = $file->getSize();
         }

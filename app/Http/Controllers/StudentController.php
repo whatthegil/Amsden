@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\ProcessBluebookOcr;
 use App\Services\LiteratureReviewService;
 use App\Services\OcrService;
+use App\Services\Pdf\PdfWatermarker;
 use App\Services\PdfTextExtractor;
 use App\Services\SimilarityService;
 use App\Services\Store;
@@ -148,13 +149,33 @@ class StudentController extends Controller
         //
         // and the browser gets a 503 instead of a PDF. Letting the response go
         // out chunked, with no declared length, removes the disagreement.
-        $stream = $disk->readStream($bluebook['filePath']);
+        // The stored file carries where the document came from. This adds who
+        // asked for it, so a copy that leaves here names the account it left
+        // with. Best effort: a host with no MuPDF binary, or a document that
+        // will not stamp, serves the stored file rather than nothing - the
+        // provenance mark is still on it, and the viewer still draws the
+        // reader's identity over every page it renders.
+        $temp = null;
 
-        if ($stream === false) {
+        if (config('watermark.per_viewer', true)) {
+            $lines = PdfWatermarker::viewerLines($user);
+            $temp  = PdfWatermarker::stampToTemp(
+                $bluebook['filePath'], $lines[0], $lines[1], PdfWatermarker::VIEWER_OFFSET
+            );
+        }
+
+        $stream = $temp !== null
+            ? @fopen($temp, 'rb')
+            : $disk->readStream($bluebook['filePath']);
+
+        if ($stream === false || $stream === null) {
+            if ($temp !== null) {
+                @unlink($temp);
+            }
             abort(404);
         }
 
-        return response()->stream(function () use ($stream) {
+        return response()->stream(function () use ($stream, $temp) {
             // These documents run to tens of megabytes, so on a slow connection
             // the send outlives the default execution limit. Hitting it mid-file
             // truncates the response, and the viewer is handed a PDF that ends
@@ -179,6 +200,13 @@ class StudentController extends Controller
                 flush();
             }
             fclose($stream);
+
+            // The stamped copy exists only for this response. Dropped here
+            // rather than on a schedule, because it is a whole document and
+            // there is one per read.
+            if ($temp !== null) {
+                @unlink($temp);
+            }
         }, 200, [
             'Content-Type'        => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . ($bluebook['fileOriginalName'] ?? 'document.pdf') . '"',
@@ -298,6 +326,13 @@ class StudentController extends Controller
             $file  = $request->file('file');
             $path  = $file->store('bluebooks', Store::bluebookDisk());
 
+            // Stamped before the record exists, so there is no window in which
+            // the archive holds a document nobody has marked.
+            $stamped = Store::stampStoredBluebook($path, [
+                'title' => $title,
+                'year'  => (int) $request->input('year'),
+            ]);
+
             $bluebook = Store::addBluebook([
                 'title'          => $title,
                 'authors'        => array_map('trim', explode(';', $request->input('authors'))),
@@ -314,6 +349,7 @@ class StudentController extends Controller
                 'filePath'         => $path,
                 'fileOriginalName' => $file->getClientOriginalName(),
                 'fileSize'         => $file->getSize(),
+                'watermarkedAt'    => $stamped ? now() : null,
             ]);
             Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Uploaded Bluebook', 'document' => $title]);
             ProcessBluebookOcr::dispatch($bluebook['id']);
@@ -491,6 +527,11 @@ class StudentController extends Controller
                     report($e);
                 }
             }
+
+            // The file a student checks may be one they downloaded from here,
+            // which carries the archive's mark on every page. Comparing that
+            // against the archive would score the watermark as matching text.
+            $text = PdfWatermarker::stripMarks($text);
         } catch (\Throwable $e) {
             report($e);
             @unlink($tmpPath);

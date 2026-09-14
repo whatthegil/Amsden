@@ -84,6 +84,28 @@ class Store
         }
     }
 
+    /**
+     * Write the archive's own mark into a freshly stored document.
+     *
+     * Done once, here, rather than at each of the three places a file can be
+     * uploaded from - the student form, the admin create, and the admin
+     * replace - so a fourth cannot quietly arrive unstamped.
+     *
+     * Best effort on purpose: a document that could not be stamped is still a
+     * document, and refusing the upload over a missing binary would lose the
+     * archive to protect it. The failure is logged by the stamper.
+     */
+    public static function stampStoredBluebook(string $path, array $meta): bool
+    {
+        if (!config('watermark.stored', true)) {
+            return false;
+        }
+
+        [$line1, $line2] = \App\Services\Pdf\PdfWatermarker::provenanceLines($meta);
+
+        return \App\Services\Pdf\PdfWatermarker::stampInPlace($path, $line1, $line2);
+    }
+
     public static function now(): string
     {
         return now()->setTimezone('Asia/Manila')->format('Y-m-d H:i:s');
@@ -223,6 +245,9 @@ class Store
             'file_path'          => $bookData['filePath'] ?? null,
             'file_original_name' => $bookData['fileOriginalName'] ?? null,
             'file_size'           => $bookData['fileSize'] ?? null,
+            // Null where the mark could not be written, which is what the
+            // backfill command looks for.
+            'watermarked_at'      => $bookData['watermarkedAt'] ?? null,
         ]);
         return self::bookToArray($b);
     }
@@ -239,6 +264,10 @@ class Store
             $b->file_path          = $fields['filePath'];
             $b->file_original_name = $fields['fileOriginalName'] ?? null;
             $b->file_size          = $fields['fileSize'] ?? null;
+            // The mark belongs to the file, so replacing the file replaces it -
+            // and a replacement that could not be stamped must not inherit the
+            // old file's claim to have been.
+            $b->watermarked_at     = $fields['watermarkedAt'] ?? null;
         }
         $b->save();
     }
