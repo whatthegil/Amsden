@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessBluebookOcr;
+use App\Models\Bluebook;
 use App\Services\LiteratureReviewService;
 use App\Services\OcrService;
 use App\Services\Pdf\PdfWatermarker;
@@ -102,7 +103,11 @@ class StudentController extends Controller
         // object does not travel through PHP on every read and the viewer can
         // range-request it instead of waiting for all of it. Null on a disk
         // that cannot sign, and null is the signal to use the streaming route.
-        $fileUrl = $bluebook['hasFile']
+        //
+        // Not under a restrictive waiver, though: a signed link hands over the
+        // stored file whole, so a partial document has to come through the
+        // route that cuts it down, and a consultation-only one is not sent.
+        $fileUrl = $bluebook['hasFile'] && $bluebook['accessLevel'] === Bluebook::ACCESS_PUBLIC
             ? Store::bluebookFileUrl($bluebook['filePath'])
             : null;
 
@@ -126,6 +131,28 @@ class StudentController extends Controller
 
         if (!$disk->exists($bluebook['filePath'])) {
             abort(404);
+        }
+
+        // The author's access permission waiver. Enforced here, on the bytes,
+        // rather than in the viewer - the viewer only asks for this route, and
+        // anything it was told to hide would still be in what it was sent.
+        $accessLevel = $bluebook['accessLevel'];
+        $partial     = null;
+
+        if ($accessLevel === Bluebook::ACCESS_CONSULTATION) {
+            abort(403, 'This bluebook is available only after consultation with the author.');
+        }
+
+        if ($accessLevel === Bluebook::ACCESS_PARTIAL) {
+            $pageList = Bluebook::visiblePageList($bluebook['accessParts']);
+            $partial  = $pageList !== null
+                ? PdfWatermarker::keepPagesToTemp($bluebook['filePath'], $pageList)
+                : null;
+
+            // Failing closed: the only other thing to send is every page.
+            if ($partial === null) {
+                abort(503, 'The permitted parts of this bluebook could not be prepared. Please try again later.');
+            }
         }
 
         // The bytes leaving, recorded separately from the page being opened.
@@ -157,7 +184,22 @@ class StudentController extends Controller
         // reader's identity over every page it renders.
         $temp = null;
 
-        if (config('watermark.per_viewer', true)) {
+        if ($partial !== null) {
+            // Already a local copy, cut down to the permitted pages; stamp that
+            // rather than the whole stored file, and serve it unstamped if the
+            // stamp will not take.
+            $temp = $partial;
+
+            if (config('watermark.per_viewer', true)) {
+                $lines   = PdfWatermarker::viewerLines($user);
+                $stamped = $partial . '.stamped.pdf';
+
+                if (PdfWatermarker::stampFile($partial, $stamped, $lines[0], $lines[1], PdfWatermarker::VIEWER_OFFSET)) {
+                    @unlink($partial);
+                    $temp = $stamped;
+                }
+            }
+        } elseif (config('watermark.per_viewer', true)) {
             $lines = PdfWatermarker::viewerLines($user);
             $temp  = PdfWatermarker::stampToTemp(
                 $bluebook['filePath'], $lines[0], $lines[1], PdfWatermarker::VIEWER_OFFSET
@@ -310,7 +352,14 @@ class StudentController extends Controller
                 'pages'      => ['required', 'integer', 'min:1'],
                 'keywords'   => ['required', 'string'],
                 'abstract'   => ['required', 'string'],
+                'access_level'   => ['required', 'in:' . implode(',', array_keys(Bluebook::ACCESS_LEVELS))],
+                'access_parts'   => ['required_if:access_level,' . Bluebook::ACCESS_PARTIAL, 'array'],
+                'access_parts.*' => ['in:' . implode(',', array_keys(Bluebook::ACCESS_PARTS))],
+            ], [
+                'access_level.required'    => 'Please choose an access permission waiver.',
+                'access_parts.required_if' => 'Please tick at least one part that readers may see.',
             ]);
+            $accessParts = $this->accessPartsFrom($request);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return view('pages.student-upload', [
                 'user'    => $user,
@@ -350,6 +399,8 @@ class StudentController extends Controller
                 'fileOriginalName' => $file->getClientOriginalName(),
                 'fileSize'         => $file->getSize(),
                 'watermarkedAt'    => $stamped ? now() : null,
+                'accessLevel'      => $request->input('access_level'),
+                'accessParts'      => $accessParts,
             ]);
             Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Uploaded Bluebook', 'document' => $title]);
             ProcessBluebookOcr::dispatch($bluebook['id']);
@@ -371,6 +422,52 @@ class StudentController extends Controller
             'success' => 'Bluebook uploaded successfully! It is now pending admin approval.',
             'old'     => [],
         ]);
+    }
+
+    /**
+     * The parts a partial waiver opens, each with the pages it occupies.
+     *
+     * The page range is what the waiver is enforced by - the served copy holds
+     * those pages and no others - so a part ticked without a usable range is an
+     * error rather than something to guess at.
+     *
+     * @return array<string, array{from: int, to: int}>|null
+     */
+    private function accessPartsFrom(Request $request): ?array
+    {
+        if ($request->input('access_level') !== Bluebook::ACCESS_PARTIAL) {
+            return null;
+        }
+
+        $pages  = (int) $request->input('pages');
+        $from   = (array) $request->input('part_from', []);
+        $to     = (array) $request->input('part_to', []);
+        $parts  = [];
+
+        foreach (array_keys(Bluebook::ACCESS_PARTS) as $key) {
+            if (!in_array($key, (array) $request->input('access_parts', []), true)) {
+                continue;
+            }
+
+            $label = Bluebook::ACCESS_PARTS[$key];
+            $start = filter_var($from[$key] ?? null, FILTER_VALIDATE_INT);
+            $end   = filter_var($to[$key] ?? null, FILTER_VALIDATE_INT);
+
+            if ($start === false || $end === false) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'access_parts' => "Please enter the page range for {$label}.",
+                ]);
+            }
+            if ($start < 1 || $end < $start || $end > $pages) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'access_parts' => "The page range for {$label} must run forward and fall within pages 1 to {$pages}.",
+                ]);
+            }
+
+            $parts[$key] = ['from' => $start, 'to' => $end];
+        }
+
+        return $parts;
     }
 
     public function myUploads()

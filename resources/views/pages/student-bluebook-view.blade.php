@@ -83,7 +83,21 @@
         </div>
 
         <h4 style="font-size:0.82rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--gray-400);margin-bottom:0.6rem;">Document</h4>
-        @if($bluebook['hasFile'])
+        @if($bluebook['hasFile'] && $bluebook['accessLevel'] === 'consultation')
+          <div class="alert alert-info" style="margin-bottom:0.5rem;">
+            The author has not permitted this bluebook for general use. It is accessible after consultation with the author.
+          </div>
+          <div style="font-size:0.78rem;color:var(--gray-400);">Access logged for: {{ $user['email'] }}</div>
+        @elseif($bluebook['hasFile'])
+          @if($bluebook['accessLevel'] === 'partial')
+            <div class="alert alert-info" style="margin-bottom:0.75rem;">
+              The author has permitted only certain parts of this bluebook to be viewed:
+              @foreach($bluebook['accessParts'] as $key => $range)
+                <strong>{{ \App\Models\Bluebook::ACCESS_PARTS[$key] ?? $key }}</strong>
+                (pp. {{ $range['from'] }}–{{ $range['to'] }}){{ $loop->last ? '.' : ',' }}
+              @endforeach
+            </div>
+          @endif
           {{-- Rendered page by page to canvas by PDF.js rather than handed to
                the browser's own viewer in an iframe. Android's WebView ships no
                PDF renderer at all, so the iframe was simply blank there; this

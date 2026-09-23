@@ -248,6 +248,8 @@ class Store
             // Null where the mark could not be written, which is what the
             // backfill command looks for.
             'watermarked_at'      => $bookData['watermarkedAt'] ?? null,
+            'access_level'        => $bookData['accessLevel'] ?? Bluebook::ACCESS_PUBLIC,
+            'access_parts'        => $bookData['accessParts'] ?? null,
         ]);
         return self::bookToArray($b);
     }
@@ -462,6 +464,8 @@ class Store
             'ocrEngine'        => $b->ocr_engine,
             'ocrRasterizer'    => $b->ocr_rasterizer,
             'ocrProcessedAt'   => $b->ocr_processed_at ? $b->ocr_processed_at->format('Y-m-d H:i:s') : null,
+            'accessLevel'      => $b->access_level ?: Bluebook::ACCESS_PUBLIC,
+            'accessParts'      => $b->access_parts ?? [],
         ];
     }
 

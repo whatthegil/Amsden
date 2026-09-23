@@ -279,6 +279,74 @@ class PdfWatermarker
     }
 
     /**
+     * Copy only the listed pages of a document held on a disk into a temp file.
+     *
+     * This is how a partial access waiver is honoured: the reader is sent a
+     * document that does not contain the withheld chapters, rather than the
+     * whole one with the viewer asked to skip them. The page list is in the
+     * form Bluebook::visiblePageList() returns ("1-12,40-58").
+     *
+     * The caller owns the returned path and must delete it. Null means the
+     * pages could not be cut out - and unlike stamping, that must stop the
+     * document being served, because the fallback would be every page.
+     */
+    public static function keepPagesToTemp(string $path, string $pageList): ?string
+    {
+        if (!preg_match('/^\d+(-\d+)?(,\d+(-\d+)?)*$/', $pageList)) {
+            return null;
+        }
+
+        self::pruneTemp(60);
+
+        $src = self::pullToTemp($path);
+        if ($src === null) {
+            return null;
+        }
+
+        $dest = self::tempPath();
+
+        try {
+            if ($bin = self::mutool()) {
+                $command = [$bin, 'merge', '-o', $dest, $src, $pageList];
+            } elseif ($bin = self::ghostscript()) {
+                $command = [
+                    $bin, '-q', '-dBATCH', '-dNOPAUSE', '-dSAFER',
+                    '-sDEVICE=pdfwrite', '-dSubsetFonts=true', '-dEmbedAllFonts=true',
+                    '-sPageList=' . $pageList,
+                    '-o', $dest, '-f', $src,
+                ];
+            } else {
+                Log::warning('[access] no PDF binary available; partial document withheld', ['path' => $path]);
+                return null;
+            }
+
+            $process = new Process($command);
+            $process->setTimeout((float) config('watermark.timeout', 120));
+
+            try {
+                $process->mustRun();
+            } catch (ProcessFailedException $e) {
+                Log::error('[access] page extraction failed', [
+                    'path'  => $path,
+                    'error' => trim($process->getErrorOutput() ?: $e->getMessage()),
+                ]);
+                @unlink($dest);
+                return null;
+            }
+
+            if (!is_file($dest) || filesize($dest) < 512) {
+                Log::error('[access] page extraction produced no usable file', ['path' => $path]);
+                @unlink($dest);
+                return null;
+            }
+
+            return $dest;
+        } finally {
+            @unlink($src);
+        }
+    }
+
+    /**
      * Stamp with Ghostscript, by giving it a page hook rather than a script.
      *
      * pdfwrite re-interprets and rewrites the whole file, so unlike the MuPDF
