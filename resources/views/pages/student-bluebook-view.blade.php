@@ -46,7 +46,6 @@
           <span class="meta-pill">{{ $bluebook['year'] }}</span>
           <span class="meta-pill">{{ $bluebook['pages'] }} pages</span>
           <span class="meta-pill">{{ $bluebook['views'] }} views</span>
-          <span class="meta-pill badge-green">Approved</span>
         </div>
 
         <div style="font-size:0.9rem;color:var(--gray-600);margin-bottom:1.5rem;">
@@ -71,14 +70,6 @@
           <div class="info-row">
             <span class="key">Adviser</span>
             <span class="val">{{ $bluebook['adviser'] }}</span>
-          </div>
-          <div class="info-row">
-            <span class="key">Uploaded By</span>
-            <span class="val">{{ $bluebook['uploadedByName'] }}</span>
-          </div>
-          <div class="info-row">
-            <span class="key">Date Added</span>
-            <span class="val">{{ $bluebook['dateAdded'] }}</span>
           </div>
         </div>
 

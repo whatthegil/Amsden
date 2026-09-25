@@ -122,4 +122,22 @@ class BrowseBluebooksTest extends TestCase
         $bare->assertSee('No papers have been approved yet', false);
         $bare->assertDontSee('Clear all filters', false);
     }
+
+    public function test_the_paper_page_keeps_program_and_adviser_but_not_upload_details(): void
+    {
+        $bluebook = $this->makeBluebook([
+            'adviser' => 'Dr. Adviser Name', 'uploaded_by_name' => 'Uploader Person', 'date_added' => '2024-06-15',
+        ]);
+
+        $res = $this->withSession(['user' => $this->student()])->get("/student/bluebooks/{$bluebook->id}");
+
+        $res->assertOk();
+        $res->assertSee('Bachelor of Science in Information Technology');
+        $res->assertSee('Dr. Adviser Name');
+        $res->assertDontSee('Uploaded By');
+        $res->assertDontSee('Uploader Person');
+        $res->assertDontSee('Date Added');
+        $res->assertDontSee('2024-06-15');
+        $res->assertDontSee('meta-pill badge-green', false);
+    }
 }
