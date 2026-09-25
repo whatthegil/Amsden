@@ -12,7 +12,7 @@
     </header>
 
     <div class="content form-page">
-      <x-page-hero plain heading="{{ $isEdit ? 'Edit User' : 'Add New User' }}"
+      <x-page-hero heading="{{ $isEdit ? 'Edit User' : 'Add New User' }}"
                    sub="{{ $isEdit ? 'Update this account and what it is allowed to do.' : 'Create an account for a student, faculty member or administrator.' }}">
         <x-slot name="action">
           <a href="{{ route('admin.users') }}" class="btn btn-sm btn-outline">&larr; Back</a>

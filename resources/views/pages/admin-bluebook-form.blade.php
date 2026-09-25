@@ -12,7 +12,7 @@
     </header>
 
     <div class="content form-page">
-      <x-page-hero plain heading="{{ $isEdit ? 'Edit Bluebook' : 'Add New Bluebook' }}"
+      <x-page-hero heading="{{ $isEdit ? 'Edit Bluebook' : 'Add New Bluebook' }}"
                    sub="{{ $isEdit ? 'Update the details of this research paper.' : 'Register a new capstone research paper in the archive.' }}">
         <x-slot name="action">
           <a href="{{ route('admin.bluebooks') }}" class="btn btn-sm btn-outline">&larr; Back</a>

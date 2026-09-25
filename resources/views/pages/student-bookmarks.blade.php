@@ -91,7 +91,7 @@
     </div>
 
     <footer class="app-footer">
-      C-BAMS &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
+      C-BAMS &copy; {{ date('Y') }} &mdash; Camarines Sur Polytechnic Colleges. All Rights Reserved.
     </footer>
   </main>
 </div>

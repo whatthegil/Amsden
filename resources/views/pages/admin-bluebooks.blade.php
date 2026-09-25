@@ -12,7 +12,7 @@
     </header>
 
     <div class="content">
-      <x-page-hero plain heading="Bluebooks"
+      <x-page-hero heading="Bluebooks"
                    sub="{{ count($bluebooks) }} {{ Str::plural('record', count($bluebooks)) }} in the archive.">
         <x-slot name="action">
           <a href="{{ route('admin.bluebooks.new') }}" class="btn btn-sm btn-primary">

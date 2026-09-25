@@ -12,7 +12,7 @@
     </header>
 
     <div class="content">
-      <x-page-hero plain heading="Users"
+      <x-page-hero heading="Users"
                    sub="{{ count($users) }} {{ Str::plural('account', count($users)) }} registered.">
         <x-slot name="action">
           <a href="{{ route('admin.users.new') }}" class="btn btn-sm btn-primary">

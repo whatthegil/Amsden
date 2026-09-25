@@ -1883,76 +1883,84 @@ a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
   .access-range input { font-size: 16px; }
 }
 
-/* ─── Admin pages ────────────────────────────────────────────────────────────── */
-/* Scoped to pages carrying the admin sidebar, so the student side keeps its look.
-   The admin pages are working screens - long tables, filters, row actions - and
-   read best calm: one blue for actions, rows that stay one line tall, and no
-   banner between the top bar and the table. */
+/* ─── Signed-in pages ────────────────────────────────────────────────────────── */
+/* Every page inside .app (admin and student; not the login screens). These are
+   working screens - lists, filters, forms, row actions - and read best calm:
+   one blue for actions, rows that stay one line tall, and no banner between the
+   top bar and the content. The two dashboards keep their full .dash-hero. */
 
 .clip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
 
-/* Page header (x-page-hero plain): a heading row instead of the blue panel. */
-.page-head {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;
+/* .dash-hero.slim (x-page-hero, and the pages that build it by hand) draws as a
+   heading row rather than the blue panel. */
+.app .dash-hero.slim {
+  background: none; color: var(--gray-800); box-shadow: none;
+  padding: 0; border-radius: 0; overflow: visible; margin-bottom: 1.25rem;
 }
-.page-head h2 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; color: var(--gray-800); }
-.page-head p { font-size: 0.9rem; color: var(--gray-600); margin-top: 0.2rem; }
-.page-head-action { display: flex; gap: 0.5rem; flex-shrink: 0; }
+.app .dash-hero.slim::before,
+.app .dash-hero.slim::after { display: none; }
+.app .dash-hero.slim .dash-hero-top { align-items: flex-end; }
+.app .dash-hero.slim h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; color: var(--gray-800); margin-bottom: 0.2rem; }
+.app .dash-hero.slim p { font-size: 0.9rem; color: var(--gray-600); }
+.app .dash-hero.slim .hero-tally { color: var(--gray-600); }
+.app .dash-hero.slim .hero-tally .sep { color: var(--gray-400); }
+.app .dash-hero.slim .hero-tally .dot { filter: saturate(1.8) brightness(0.8); }
+.app .dash-hero.slim .btn-on-hero { background: var(--primary); border: none; color: var(--white); }
+.app .dash-hero.slim .btn-on-hero:hover { background: var(--primary-dark); }
 
-.app:has(.sidebar-admin) .topbar { background: rgba(255, 255, 255, 0.96); }
+.app .topbar { background: rgba(255, 255, 255, 0.96); }
 
 /* One blue for every primary action, instead of the purple gradient. */
-.app:has(.sidebar-admin) .btn-primary {
+.app .btn-primary {
   background: var(--primary); box-shadow: none;
 }
-.app:has(.sidebar-admin) .btn-primary:hover {
+.app .btn-primary:hover {
   background: var(--primary-dark); filter: none; box-shadow: var(--shadow-xs);
 }
 
 /* Filters: inputs and buttons the same height, on one line where they fit. */
-.app:has(.sidebar-admin) .filter-bar { align-items: flex-end; }
-.app:has(.sidebar-admin) .filter-group input,
-.app:has(.sidebar-admin) .filter-group select { height: 40px; padding-top: 0; padding-bottom: 0; }
-.app:has(.sidebar-admin) .filter-group { min-width: 140px; }
-.app:has(.sidebar-admin) .filter-group select { max-width: 240px; }
-.app:has(.sidebar-admin) .filter-bar .btn {
+.app .filter-bar { align-items: flex-end; }
+.app .filter-group input,
+.app .filter-group select { height: 40px; padding-top: 0; padding-bottom: 0; }
+.app .filter-group { min-width: 140px; }
+.app .filter-group select { max-width: 240px; }
+.app .filter-bar .btn {
   height: 40px; padding: 0 1.1rem; justify-content: center; transform: none;
 }
 
 /* Tables: rows stay one line; actions sit side by side. */
-.app:has(.sidebar-admin) tbody td { padding: 0.75rem 0.6rem; }
-.app:has(.sidebar-admin) thead th { padding-left: 0.6rem; padding-right: 0.6rem; }
-.app:has(.sidebar-admin) tbody td:first-child, .app:has(.sidebar-admin) thead th:first-child { padding-left: 1.1rem; }
-.app:has(.sidebar-admin) td .badge,
-.app:has(.sidebar-admin) td .btn { white-space: nowrap; }
-.app:has(.sidebar-admin) td strong,
-.app:has(.sidebar-admin) td.mono { white-space: nowrap; }
-.app:has(.sidebar-admin) .td-actions { flex-wrap: nowrap; }
-.app:has(.sidebar-admin) .td-actions:has(.reject-box[open]) { flex-wrap: wrap; }
-.app:has(.sidebar-admin) .td-actions .btn { padding: 0.4rem 0.8rem; }
+.app tbody td { padding: 0.75rem 0.6rem; }
+.app thead th { padding-left: 0.6rem; padding-right: 0.6rem; }
+.app tbody td:first-child, .app thead th:first-child { padding-left: 1.1rem; }
+.app td .badge,
+.app td .btn { white-space: nowrap; }
+.app td strong,
+.app td.mono { white-space: nowrap; }
+.app .td-actions { flex-wrap: nowrap; }
+.app .td-actions:has(.reject-box[open]) { flex-wrap: wrap; }
+.app .td-actions .btn { padding: 0.4rem 0.8rem; }
 
 /* Row actions in quieter colours, so a column of them does not shout. */
-.app:has(.sidebar-admin) .td-actions .btn-success {
+.app .td-actions .btn-success {
   background: var(--green-light); color: var(--green); border: 1px solid rgba(6, 118, 71, 0.22);
 }
-.app:has(.sidebar-admin) .td-actions .btn-success:hover { background: #c6f4d6; }
-.app:has(.sidebar-admin) .td-actions .btn-warning,
-.app:has(.sidebar-admin) .td-actions .btn-danger {
+.app .td-actions .btn-success:hover { background: #c6f4d6; }
+.app .td-actions .btn-warning,
+.app .td-actions .btn-danger {
   background: var(--white); color: var(--red); border: 1px solid rgba(217, 45, 32, 0.3);
 }
-.app:has(.sidebar-admin) .td-actions .btn-warning:hover,
-.app:has(.sidebar-admin) .td-actions .btn-danger:hover { background: var(--red-light); }
-.app:has(.sidebar-admin) .reject-box form .btn-warning {
+.app .td-actions .btn-warning:hover,
+.app .td-actions .btn-danger:hover { background: var(--red-light); }
+.app .reject-box form .btn-warning {
   background: var(--red); color: var(--white); border-color: var(--red);
 }
 
 /* Form cards: a quiet header row rather than a purple band. */
-.app:has(.sidebar-admin) .form-card-header {
+.app .form-card-header {
   background: var(--white); border-bottom: 1px solid var(--gray-100); padding: 1.1rem 2rem;
 }
-.app:has(.sidebar-admin) .form-card-header h2 { color: var(--gray-800); font-size: 1.05rem; }
-.app:has(.sidebar-admin) .form-card-header .icon { color: var(--primary); }
+.app .form-card-header h2 { color: var(--gray-800); font-size: 1.05rem; }
+.app .form-card-header .icon { color: var(--primary); }
 
 /* Paging under a long table (access logs). */
 .pager {
@@ -1964,7 +1972,7 @@ a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
 .pager-page { font-weight: 600; color: var(--gray-800); }
 
 @media (max-width: 768px) {
-  .page-head { align-items: flex-start; }
-  .app:has(.sidebar-admin) .td-actions { flex-wrap: wrap; }
-  .app:has(.sidebar-admin) .filter-group select { max-width: none; }
+  .app .dash-hero.slim .dash-hero-top { align-items: flex-start; }
+  .app .td-actions { flex-wrap: wrap; }
+  .app .filter-group select { max-width: none; }
 }

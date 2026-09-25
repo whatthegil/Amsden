@@ -12,7 +12,7 @@
     </header>
 
     <div class="content">
-      <x-page-hero plain heading="Access Logs"
+      <x-page-hero heading="Access Logs"
                    sub="{{ number_format($total) }} {{ Str::plural('entry', $total) }} — who opened what, and when." />
 
       <form method="GET" action="{{ route('admin.logs') }}" class="filter-bar">

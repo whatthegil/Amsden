@@ -1,5 +1,5 @@
 {{--
-  The banner every in-app page opens on.
+  The header every in-app page opens on.
 
   These were a .page-header each: a heading, a line of grey text and sometimes a
   button, repeated across a dozen files with nothing holding them in step. One
@@ -10,47 +10,27 @@
 
     <x-page-hero heading="Bluebooks" sub="12 records found">
       <x-slot name="action">
-        <a href="..." class="btn btn-sm btn-on-hero">Add Bluebook</a>
+        <a href="..." class="btn btn-sm btn-primary">Add Bluebook</a>
       </x-slot>
     </x-page-hero>
 
-  The `action` slot renders on the panel, so anything put in it wants
-  .btn-on-hero rather than .btn-primary - a filled primary button on the blue
-  disappears into it.
-
-  `plain` draws a heading row instead of the blue panel, for the admin's
-  working pages: there the panel is 130px repeating the title already in the
-  top bar and pushing the table below the fold. Its action slot takes ordinary
-  .btn-primary / .btn-outline buttons.
+  It renders as .dash-hero.slim, which the stylesheet draws as a plain heading
+  row; only the two dashboards (full .dash-hero) keep the blue banner, since
+  theirs holds the welcome and the search.
 --}}
-@props(['heading', 'sub' => null, 'slim' => true, 'plain' => false])
+@props(['heading', 'sub' => null, 'slim' => true])
 
-@if($plain)
-  <div class="page-head">
-    <div class="page-head-text">
-      <h2>{{ $heading }}</h2>
+<div class="dash-hero{{ $slim ? ' slim' : '' }}">
+  <div class="dash-hero-top" style="margin-bottom:0;">
+    <div>
+      <h1>{{ $heading }}</h1>
       @if($sub)
         <p>{{ $sub }}</p>
       @endif
       {{ $slot }}
     </div>
     @isset($action)
-      <div class="page-head-action">{{ $action }}</div>
+      <div style="flex-shrink:0;">{{ $action }}</div>
     @endisset
   </div>
-@else
-  <div class="dash-hero{{ $slim ? ' slim' : '' }}">
-    <div class="dash-hero-top" style="margin-bottom:0;">
-      <div>
-        <h1>{{ $heading }}</h1>
-        @if($sub)
-          <p>{{ $sub }}</p>
-        @endif
-        {{ $slot }}
-      </div>
-      @isset($action)
-        <div style="flex-shrink:0;">{{ $action }}</div>
-      @endisset
-    </div>
-  </div>
-@endif
+</div>
