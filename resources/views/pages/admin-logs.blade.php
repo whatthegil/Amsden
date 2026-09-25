@@ -12,8 +12,8 @@
     </header>
 
     <div class="content">
-      <x-page-hero heading="Access Logs"
-                   sub="{{ count($logs) }} {{ Str::plural('entry', count($logs)) }} — who opened what, and when." />
+      <x-page-hero plain heading="Access Logs"
+                   sub="{{ number_format($total) }} {{ Str::plural('entry', $total) }} — who opened what, and when." />
 
       <form method="GET" action="{{ route('admin.logs') }}" class="filter-bar">
         <div class="filter-group grow">
@@ -53,11 +53,11 @@
               <tbody>
                 @foreach($logs as $i => $log)
                   <tr>
-                    <td class="mono">{{ $i + 1 }}</td>
-                    <td style="font-weight:600;">{{ $log['userName'] }}</td>
+                    <td class="mono">{{ $offset + $i + 1 }}</td>
+                    <td style="font-weight:600;white-space:nowrap;">{{ $log['userName'] }}</td>
                     <td class="mono" style="font-size:0.82rem;">{{ $log['email'] }}</td>
                     <td><span class="badge badge-blue">{{ $log['action'] }}</span></td>
-                    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.85rem;">{{ $log['document'] }}</td>
+                    <td style="font-size:0.85rem;"><div class="clip" style="max-width:150px;" title="{{ $log['document'] }}">{{ $log['document'] }}</div></td>
                     <td class="mono" style="font-size:0.82rem;white-space:nowrap;">{{ $log['timestamp'] }}</td>
                     <td>
                       @php
@@ -74,6 +74,20 @@
               </tbody>
             </table>
           </div>
+          @if($pages > 1)
+            <div class="pager">
+              <span>Showing {{ number_format($offset + 1) }}&ndash;{{ number_format($offset + count($logs)) }} of {{ number_format($total) }}</span>
+              <div class="pager-links">
+                @if($page > 1)
+                  <a class="btn btn-outline btn-sm" href="{{ route('admin.logs', array_merge($query, ['page' => $page - 1])) }}">&larr; Newer</a>
+                @endif
+                <span class="pager-page">Page {{ $page }} of {{ $pages }}</span>
+                @if($page < $pages)
+                  <a class="btn btn-outline btn-sm" href="{{ route('admin.logs', array_merge($query, ['page' => $page + 1])) }}">Older &rarr;</a>
+                @endif
+              </div>
+            </div>
+          @endif
         </div>
       @else
         <div class="card">
@@ -93,7 +107,7 @@
     </div>
 
     <footer class="app-footer">
-      C-BAMS &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
+      C-BAMS &copy; {{ date('Y') }} &mdash; Camarines Sur Polytechnic Colleges. All Rights Reserved.
     </footer>
   </main>
 </div>

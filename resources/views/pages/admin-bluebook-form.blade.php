@@ -12,10 +12,10 @@
     </header>
 
     <div class="content form-page">
-      <x-page-hero heading="{{ $isEdit ? 'Edit Bluebook' : 'Add New Bluebook' }}"
+      <x-page-hero plain heading="{{ $isEdit ? 'Edit Bluebook' : 'Add New Bluebook' }}"
                    sub="{{ $isEdit ? 'Update the details of this research paper.' : 'Register a new capstone research paper in the archive.' }}">
         <x-slot name="action">
-          <a href="{{ route('admin.bluebooks') }}" class="btn btn-sm btn-on-hero">&larr; Back</a>
+          <a href="{{ route('admin.bluebooks') }}" class="btn btn-sm btn-outline">&larr; Back</a>
         </x-slot>
       </x-page-hero>
 
@@ -155,7 +155,7 @@
     </div>
 
     <footer class="app-footer">
-      C-BAMS &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
+      C-BAMS &copy; {{ date('Y') }} &mdash; Camarines Sur Polytechnic Colleges. All Rights Reserved.
     </footer>
   </main>
 </div>

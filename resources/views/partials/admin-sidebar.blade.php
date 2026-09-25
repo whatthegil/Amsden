@@ -1,5 +1,5 @@
 <meta name="auth-user" data-name="{{ $user['name'] ?? '' }}" data-email="{{ $user['email'] ?? '' }}">
-<aside class="sidebar">
+<aside class="sidebar sidebar-admin">
   <div class="sidebar-brand">
     <div class="sidebar-brand-icon">
       <img src="/images/cspc-logo.png" alt="CSPC" width="26" height="26" style="border-radius:4px;object-fit:cover;">

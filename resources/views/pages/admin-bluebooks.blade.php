@@ -12,10 +12,10 @@
     </header>
 
     <div class="content">
-      <x-page-hero heading="Bluebooks"
+      <x-page-hero plain heading="Bluebooks"
                    sub="{{ count($bluebooks) }} {{ Str::plural('record', count($bluebooks)) }} in the archive.">
         <x-slot name="action">
-          <a href="{{ route('admin.bluebooks.new') }}" class="btn btn-sm btn-on-hero">
+          <a href="{{ route('admin.bluebooks.new') }}" class="btn btn-sm btn-primary">
             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
             Add Bluebook
           </a>
@@ -85,11 +85,11 @@
                 @foreach($bluebooks as $i => $b)
                   <tr>
                     <td class="mono">{{ $i + 1 }}</td>
-                    <td style="max-width:260px;">
+                    <td style="max-width:220px;">
                       <div style="font-weight:600;color:var(--primary-dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $b['title'] }}</div>
-                      <div style="font-size:0.78rem;color:var(--gray-400);margin-top:0.2rem;">{{ $b['program'] }}</div>
+                      <div class="clip" style="max-width:220px;font-size:0.78rem;color:var(--gray-400);margin-top:0.2rem;" title="{{ $b['program'] }}">{{ $b['program'] }}</div>
                     </td>
-                    <td style="font-size:0.83rem;">{{ implode(', ', array_slice($b['authors'], 0, 2)) }}{{ count($b['authors']) > 2 ? '…' : '' }}</td>
+                    <td style="font-size:0.83rem;"><div class="clip" style="max-width:140px;" title="{{ implode('; ', $b['authors']) }}">{{ implode(', ', array_slice($b['authors'], 0, 2)) }}{{ count($b['authors']) > 2 ? '…' : '' }}</div></td>
                     <td><span class="badge badge-blue">{{ $b['department'] }}</span></td>
                     <td>{{ $b['year'] }}</td>
                     <td>
@@ -167,7 +167,7 @@
     </div>
 
     <footer class="app-footer">
-      C-BAMS &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
+      C-BAMS &copy; {{ date('Y') }} &mdash; Camarines Sur Polytechnic Colleges. All Rights Reserved.
     </footer>
   </main>
 </div>

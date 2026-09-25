@@ -12,10 +12,10 @@
     </header>
 
     <div class="content">
-      <x-page-hero heading="Users"
+      <x-page-hero plain heading="Users"
                    sub="{{ count($users) }} {{ Str::plural('account', count($users)) }} registered.">
         <x-slot name="action">
-          <a href="{{ route('admin.users.new') }}" class="btn btn-sm btn-on-hero">
+          <a href="{{ route('admin.users.new') }}" class="btn btn-sm btn-primary">
             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
             Add User
           </a>
@@ -124,7 +124,7 @@
     </div>
 
     <footer class="app-footer">
-      C-BAMS &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
+      C-BAMS &copy; {{ date('Y') }} &mdash; Camarines Sur Polytechnic Colleges. All Rights Reserved.
     </footer>
   </main>
 </div>

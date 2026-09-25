@@ -12,10 +12,10 @@
     </header>
 
     <div class="content form-page">
-      <x-page-hero heading="{{ $isEdit ? 'Edit User' : 'Add New User' }}"
+      <x-page-hero plain heading="{{ $isEdit ? 'Edit User' : 'Add New User' }}"
                    sub="{{ $isEdit ? 'Update this account and what it is allowed to do.' : 'Create an account for a student, faculty member or administrator.' }}">
         <x-slot name="action">
-          <a href="{{ route('admin.users') }}" class="btn btn-sm btn-on-hero">&larr; Back</a>
+          <a href="{{ route('admin.users') }}" class="btn btn-sm btn-outline">&larr; Back</a>
         </x-slot>
       </x-page-hero>
 
@@ -63,7 +63,7 @@
     </div>
 
     <footer class="app-footer">
-      C-BAMS &copy; {{ date('Y') }} &mdash; CSPC. All Rights Reserved.
+      C-BAMS &copy; {{ date('Y') }} &mdash; Camarines Sur Polytechnic Colleges. All Rights Reserved.
     </footer>
   </main>
 </div>

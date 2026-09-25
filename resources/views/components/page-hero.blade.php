@@ -17,20 +17,40 @@
   The `action` slot renders on the panel, so anything put in it wants
   .btn-on-hero rather than .btn-primary - a filled primary button on the blue
   disappears into it.
---}}
-@props(['heading', 'sub' => null, 'slim' => true])
 
-<div class="dash-hero{{ $slim ? ' slim' : '' }}">
-  <div class="dash-hero-top" style="margin-bottom:0;">
-    <div>
-      <h1>{{ $heading }}</h1>
+  `plain` draws a heading row instead of the blue panel, for the admin's
+  working pages: there the panel is 130px repeating the title already in the
+  top bar and pushing the table below the fold. Its action slot takes ordinary
+  .btn-primary / .btn-outline buttons.
+--}}
+@props(['heading', 'sub' => null, 'slim' => true, 'plain' => false])
+
+@if($plain)
+  <div class="page-head">
+    <div class="page-head-text">
+      <h2>{{ $heading }}</h2>
       @if($sub)
         <p>{{ $sub }}</p>
       @endif
       {{ $slot }}
     </div>
     @isset($action)
-      <div style="flex-shrink:0;">{{ $action }}</div>
+      <div class="page-head-action">{{ $action }}</div>
     @endisset
   </div>
-</div>
+@else
+  <div class="dash-hero{{ $slim ? ' slim' : '' }}">
+    <div class="dash-hero-top" style="margin-bottom:0;">
+      <div>
+        <h1>{{ $heading }}</h1>
+        @if($sub)
+          <p>{{ $sub }}</p>
+        @endif
+        {{ $slot }}
+      </div>
+      @isset($action)
+        <div style="flex-shrink:0;">{{ $action }}</div>
+      @endisset
+    </div>
+  </div>
+@endif

@@ -354,10 +354,24 @@ class AdminController extends Controller
     public function logs(Request $request)
     {
         $q = $request->only(['search', 'action']);
+
+        // The log only grows; printing all of it made one page of every entry
+        // ever recorded. Newest first, a page at a time.
+        $all     = Store::getLogs($q['search'] ?? null, $q['action'] ?? null);
+        $perPage = 50;
+        $total   = count($all);
+        $pages   = max(1, (int) ceil($total / $perPage));
+        $page    = min($pages, max(1, (int) $request->query('page', 1)));
+        $offset  = ($page - 1) * $perPage;
+
         return view('pages.admin-logs', [
             'user'         => session('user'),
             'active'       => 'logs',
-            'logs'         => Store::getLogs($q['search'] ?? null, $q['action'] ?? null),
+            'logs'         => array_slice($all, $offset, $perPage),
+            'total'        => $total,
+            'page'         => $page,
+            'pages'        => $pages,
+            'offset'       => $offset,
             'actions'      => Store::getLogActions(),
             'query'        => $q,
             'pendingCount' => Store::getPendingCount(),
