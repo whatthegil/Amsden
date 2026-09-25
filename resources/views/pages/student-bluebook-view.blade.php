@@ -143,6 +143,6 @@
 
 @if($bluebook['hasFile'])
   <script src="/vendor/pdfjs/pdf.min.js"></script>
-  <script src="/js/pdf-viewer.js"></script>
+  <script src="/js/pdf-viewer.js?v={{ filemtime(public_path('js/pdf-viewer.js')) }}"></script>
 @endif
 @include('partials.footer')
