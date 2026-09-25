@@ -8,6 +8,11 @@ mkdir -p storage/app/public storage/framework/cache/data storage/framework/sessi
          storage/framework/views storage/logs
 chown -R www-data:www-data storage bootstrap/cache
 
+# mod_php needs prefork, and Apache refuses to start with a second MPM loaded,
+# which is what Railway's container ends up with. Keep prefork only.
+rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.*
+a2enmod -q mpm_prefork
+
 # Railway routes traffic to $PORT, not 80.
 PORT="${PORT:-8080}"
 sed -ri "s/^Listen .*/Listen ${PORT}/" /etc/apache2/ports.conf
