@@ -17,6 +17,9 @@ return [
     | is served, per request, with who asked for it, so a leaked file names the
     | account that fetched it.
     |
+    | "stored" is off by default: the library wants the mark to be the crest
+    | and the reader's email only, and the stored stamp is neither.
+    |
     | Both need a MuPDF binary on the host (see ocr.mutool_path - it is the same
     | one the rasterizer uses). Without it a document is served unstamped rather
     | than not at all: this is a protection, and losing it must not lose the
@@ -25,7 +28,7 @@ return [
     |
     */
 
-    'stored'     => (bool) env('WATERMARK_STORED', true),
+    'stored'     => (bool) env('WATERMARK_STORED', false),
 
     /*
     | Costs a stamping pass per view - well under a second on a 180-page

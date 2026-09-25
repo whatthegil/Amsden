@@ -816,14 +816,16 @@ class PdfWatermarker
         return trim($cleaned);
     }
 
-    /** Who asked for it. Written into what is served, per request. */
+    /**
+     * Who asked for it. Written into what is served, per request.
+     *
+     * The reader's email and nothing else: the library wants the mark to be
+     * the crest and the address, with no timestamp or archive name beside it.
+     */
     public static function viewerLines(?array $user): array
     {
         $who = trim((string) ($user['email'] ?? '')) ?: 'unidentified viewer';
 
-        return [
-            $who,
-            Store::now() . ' · CSPC ARCHIVE',
-        ];
+        return [$who, ''];
     }
 }

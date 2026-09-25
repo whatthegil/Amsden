@@ -76,34 +76,25 @@ class DocumentProtectionTest extends TestCase
     }
 
     /**
-     * The guard used to decide whether to restore by recognising the attack,
-     * which is why six of them walked past. It now writes the whole style back
-     * on every pass without asking what changed, so a way of hiding the overlay
-     * that nobody anticipated is undone by the same code as the rest.
+     * The watermark belongs to the document only: nothing is laid over the
+     * rest of the screen (the sidebar, the abstract, the details).
      */
-    public function test_the_overlay_is_reasserted_rather_than_inspected(): void
+    public function test_nothing_is_laid_over_the_whole_page(): void
     {
         $js = file_get_contents(public_path('js/main.js'));
 
-        $this->assertStringContainsString(
-            'function applyWatermarkStyle',
-            $js,
-            'The overlay style must be re-assertable as a whole.'
-        );
+        $this->assertStringNotContainsString('cbams-wm', $js);
+        $this->assertStringNotContainsString('function buildWatermark', $js);
+    }
 
-        $this->assertMatchesRegularExpression(
-            "/setProperty\([\s\S]*?'important'\)/",
-            $js,
-            'Critical properties must be set !important so a stylesheet cannot win.'
-        );
+    /** The in-page stamp is the CSPC logo and the reader's email, nothing else. */
+    public function test_the_page_stamp_is_the_logo_and_the_email(): void
+    {
+        $js = file_get_contents(public_path('js/pdf-viewer.js'));
 
-        foreach (['filter', 'clipPath', 'transform', 'zIndex', 'scale', 'mixBlendMode'] as $prop) {
-            $this->assertMatchesRegularExpression(
-                '/\b' . preg_quote($prop, '/') . '\s*:/',
-                $js,
-                "The re-asserted style must cover {$prop}, which was a measured bypass."
-            );
-        }
+        $this->assertStringContainsString('/images/cspc-logo.png', $js);
+        $this->assertStringNotContainsString('CSPC ARCHIVE', $js);
+        $this->assertStringNotContainsString('stampedAt', $js);
     }
 
     // ── Getting at the archive in bulk ───────────────────────────────────────

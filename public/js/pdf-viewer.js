@@ -54,55 +54,53 @@
   const scaleFor = () => Math.min(window.devicePixelRatio || 1, 1.5);
 
   // ── The watermark, in the page rather than over it ─────────────────────────
-  // There is a watermark div covering the whole document, and a div can be
-  // taken off in developer tools. Measured against the guard that protects it,
-  // six ways out of ten got past: z-index behind the content, a transform off
-  // screen, filter: opacity(0), clip-path, scale, and position: static all move
-  // it out of the way without touching the four properties the guard watches -
-  // and watching more properties only invites the next one.
-  //
-  // Drawing the identity into the canvas puts it in the same pixels as the
-  // document. There is no property that removes it, because it is not a layer:
-  // taking it off means not rendering the page. The overlay stays as well - it
-  // covers the abstract, the metadata and the rest of the screen, which the
-  // canvas does not.
+  // The watermark belongs to the document only, so it is drawn here, into the
+  // rendered PDF pages, and nowhere else on the screen. A div laid over the page
+  // could be taken off in developer tools; drawing the identity into the canvas
+  // puts it in the same pixels as the document. There is no property that
+  // removes it, because it is not a layer: taking it off means not rendering
+  // the page.
   const detail = document.getElementById('bluebook-detail');
   const viewer = detail ? (detail.dataset.viewer || '').trim() : '';
 
-  function stampedAt() {
-    const d = new Date(), p = (n) => String(n).padStart(2, '0');
-    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
-           ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
-  }
+  // The mark is the CSPC crest with the reader's email under it - nothing
+  // else. The crest is fetched now; the document takes far longer to arrive,
+  // so it is in hand by the time the first page is drawn.
+  const logo = new Image();
+  logo.src = '/images/cspc-logo.png';
 
   // Drawn after the page, so it sits over the content rather than under it.
   function stamp(canvas) {
-    const ctx   = canvas.getContext('2d');
-    const who   = viewer || 'CSPC ARCHIVE';
-    const when  = stampedAt() + ' · CSPC ARCHIVE';
+    const ctx = canvas.getContext('2d');
 
     // The tile scales with the page: a phone render is not covered edge to edge
     // and a desktop one is not left with four lonely marks in the corners.
     const tile = Math.max(260, Math.round(canvas.width / 2.2));
     const size = Math.max(11, Math.round(tile / 24));
+    const crest = Math.round(tile * 0.28);
+    const hasLogo = logo.complete && logo.naturalWidth > 0;
 
     ctx.save();
-    // Light enough to read the thesis through, dark enough to survive the
-    // contrast knocked out of a photographed screen.
-    ctx.globalAlpha  = 0.13;
     ctx.fillStyle    = '#0f2350';
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
+    ctx.font         = '600 ' + size + 'px Inter, system-ui, sans-serif';
 
     for (let y = tile / 2; y < canvas.height + tile; y += tile) {
       for (let x = tile / 2; x < canvas.width + tile; x += tile) {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(-22 * Math.PI / 180);
-        ctx.font = '600 ' + size + 'px Inter, system-ui, sans-serif';
-        ctx.fillText(who, 0, 0);
-        ctx.font = '500 ' + Math.round(size * 0.85) + 'px Inter, system-ui, sans-serif';
-        ctx.fillText(when, 0, size * 1.35);
+        // Light enough to read the thesis through, dark enough to survive the
+        // contrast knocked out of a photographed screen.
+        if (hasLogo) {
+          ctx.globalAlpha = 0.09;
+          ctx.drawImage(logo, -crest / 2, -crest - size * 0.4, crest, crest);
+        }
+        if (viewer) {
+          ctx.globalAlpha = 0.14;
+          ctx.fillText(viewer, 0, size * 0.6);
+        }
         ctx.restore();
       }
     }

@@ -157,6 +157,21 @@ class PdfWatermarkTest extends TestCase
         $this->assertNotSame('', trim($anon));
     }
 
+    /** The served mark is the reader's email alone - no timestamp, no archive name. */
+    public function test_the_viewer_mark_is_the_email_only(): void
+    {
+        $this->assertSame(
+            ['tester@my.cspc.edu.ph', ''],
+            PdfWatermarker::viewerLines(['email' => 'tester@my.cspc.edu.ph'])
+        );
+    }
+
+    /** The provenance stamp is neither the crest nor an email, so it is off unless asked for. */
+    public function test_the_stored_stamp_is_off_by_default(): void
+    {
+        $this->assertFalse(config('watermark.stored'));
+    }
+
     /**
      * "No MuPDF binary found" says the one tool we look for is absent. It does
      * not say whether the host has another that would do, or none at all - and
