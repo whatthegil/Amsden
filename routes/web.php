@@ -55,7 +55,6 @@ Route::prefix('admin')->middleware('role:Admin')->group(function () {
     Route::post('/users/{id}/edit',            [AdminController::class, 'userUpdate'])->name('admin.users.update');
     Route::post('/users/{id}/enable-upload',   [AdminController::class, 'enableUpload'])->name('admin.users.enableUpload');
     Route::post('/users/{id}/disable-upload',  [AdminController::class, 'disableUpload'])->name('admin.users.disableUpload');
-    Route::post('/users/{id}/make-admin',      [AdminController::class, 'makeAdmin'])->name('admin.users.makeAdmin');
 
     Route::get('/logs',                        [AdminController::class, 'logs'])->name('admin.logs');
 });

@@ -276,19 +276,6 @@ class AdminController extends Controller
         return redirect()->route('admin.users')->with('success', 'User updated successfully');
     }
 
-    public function makeAdmin(int $id)
-    {
-        $user   = session('user');
-        $target = $this->findUser($id);
-        if (!$target) return redirect()->route('admin.users');
-        if ($target['role'] === 'Admin') {
-            return redirect()->route('admin.users')->with('success', "{$target['name']} is already an admin");
-        }
-        Store::updateUser($id, ['role' => 'Admin']);
-        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Granted Admin Role', 'document' => $target['name']]);
-        return redirect()->route('admin.users')->with('success', "{$target['name']} is now an admin");
-    }
-
     private function findUser(int $id): ?array
     {
         foreach (Store::getUsers() as $u) {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use App\Services\Store;
 use Closure;
 use Illuminate\Http\Request;
@@ -31,6 +32,22 @@ class EnsureRole
             ]);
             return redirect()->route('login');
         }
+
+        // The session holds a copy of the account taken at login, so a role
+        // or upload-permission change made by an admin would otherwise not
+        // apply until the user logged out and back in. Re-read it each time.
+        $account = User::find($user['id'] ?? null);
+        if (!$account) {
+            session()->forget('user');
+            return redirect()->route('login');
+        }
+        $user = array_merge($user, [
+            'name'      => $account->name,
+            'email'     => $account->email,
+            'role'      => $account->role,
+            'canUpload' => (bool) $account->can_upload,
+        ]);
+        session(['user' => $user]);
 
         if (!in_array($user['role'], $roles, true)) {
             Store::addLog([
