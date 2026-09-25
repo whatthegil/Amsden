@@ -1803,7 +1803,7 @@ a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
   .saved-when { margin-left: 0; width: 100%; }
 }
 
-/* ── Access permission waiver (upload form) ───────────────────────────────── */
+/* ── Access permission waiver (admin bluebook edit form) ─────────────────── */
 .access-waiver {
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);

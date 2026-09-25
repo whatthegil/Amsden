@@ -25,6 +25,9 @@
           <h2>{{ $isEdit ? 'Edit Record' : 'Bluebook Details' }}</h2>
         </div>
         <div class="form-card-body">
+          @if ($errors->any())
+            <div class="alert alert-error" role="alert">{{ $errors->first() }}</div>
+          @endif
           <form method="POST" action="{{ $isEdit ? route('admin.bluebooks.update', $bluebook['id']) : route('admin.bluebooks.store') }}" enctype="multipart/form-data">
             @csrf
 
@@ -97,6 +100,46 @@
               <textarea id="bb-form-abstract" name="abstract" rows="5" placeholder="Brief description of the research paper…" required>{{ $bluebook['abstract'] ?? '' }}</textarea>
             </div>
 
+            @if ($isEdit)
+              @php
+                $accessLevel = old('access_level', $bluebook['accessLevel']);
+                $savedParts  = $bluebook['accessParts'] ?? [];
+                $checked     = (array) old('access_parts', array_keys($savedParts));
+              @endphp
+              <fieldset class="access-waiver">
+                <legend>Access Permission Waiver</legend>
+                <p class="form-hint" style="margin:0 0 0.75rem;">How much of this bluebook readers may see once it is approved, as agreed with the author.</p>
+
+                @foreach(\App\Models\Bluebook::ACCESS_LEVELS as $value => $label)
+                  <label class="access-option">
+                    <input type="radio" name="access_level" value="{{ $value }}" required
+                           @checked($accessLevel === $value) onchange="toggleAccessParts()">
+                    <span>{{ $label }}</span>
+                  </label>
+                @endforeach
+
+                <div id="access-parts" class="access-parts" @if($accessLevel !== 'partial') hidden @endif>
+                  <p class="form-hint" style="margin:0 0 0.5rem;">Tick each part readers may see and give the PDF pages it covers. Pages you do not list are left out of what readers receive.</p>
+                  @foreach(\App\Models\Bluebook::ACCESS_PARTS as $key => $label)
+                    <div class="access-part">
+                      <label class="access-option">
+                        <input type="checkbox" name="access_parts[]" value="{{ $key }}"
+                               @checked(in_array($key, $checked, true)) onchange="toggleAccessParts()">
+                        <span>{{ $label }}</span>
+                      </label>
+                      <span class="access-range">
+                        <label class="sr-only" for="part-from-{{ $key }}">{{ $label }} first page</label>
+                        <input id="part-from-{{ $key }}" type="number" min="1" name="part_from[{{ $key }}]" placeholder="From" value="{{ old("part_from.$key", $savedParts[$key]['from'] ?? '') }}">
+                        <span aria-hidden="true">–</span>
+                        <label class="sr-only" for="part-to-{{ $key }}">{{ $label }} last page</label>
+                        <input id="part-to-{{ $key }}" type="number" min="1" name="part_to[{{ $key }}]" placeholder="To" value="{{ old("part_to.$key", $savedParts[$key]['to'] ?? '') }}">
+                      </span>
+                    </div>
+                  @endforeach
+                </div>
+              </fieldset>
+            @endif
+
             <div class="form-actions">
               <a href="{{ route('admin.bluebooks') }}" class="btn btn-outline">Cancel</a>
               <button type="submit" class="btn btn-primary">{{ $isEdit ? 'Update Bluebook' : 'Add Bluebook' }}</button>
@@ -126,5 +169,27 @@
     </footer>
   </main>
 </div>
+
+@if ($isEdit)
+<script>
+// The part list only applies to a partial waiver, and a part's page range only
+// once it is ticked - then the range is required, since it is what decides
+// which pages readers are sent.
+function toggleAccessParts() {
+  const chosen  = document.querySelector('input[name="access_level"]:checked');
+  const partial = !!chosen && chosen.value === 'partial';
+  document.getElementById('access-parts').hidden = !partial;
+
+  document.querySelectorAll('.access-part').forEach(function (row) {
+    const on = partial && row.querySelector('input[type="checkbox"]').checked;
+    row.querySelectorAll('.access-range input').forEach(function (input) {
+      input.disabled = !on;
+      input.required = on;
+    });
+  });
+}
+toggleAccessParts();
+</script>
+@endif
 
 @include('partials.footer')

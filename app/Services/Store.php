@@ -271,6 +271,10 @@ class Store
             // old file's claim to have been.
             $b->watermarked_at     = $fields['watermarkedAt'] ?? null;
         }
+        if (array_key_exists('accessLevel', $fields)) {
+            $b->access_level = $fields['accessLevel'];
+            $b->access_parts = $fields['accessParts'] ?? null;
+        }
         $b->save();
     }
 

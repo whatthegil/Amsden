@@ -352,14 +352,7 @@ class StudentController extends Controller
                 'pages'      => ['required', 'integer', 'min:1'],
                 'keywords'   => ['required', 'string'],
                 'abstract'   => ['required', 'string'],
-                'access_level'   => ['required', 'in:' . implode(',', array_keys(Bluebook::ACCESS_LEVELS))],
-                'access_parts'   => ['required_if:access_level,' . Bluebook::ACCESS_PARTIAL, 'array'],
-                'access_parts.*' => ['in:' . implode(',', array_keys(Bluebook::ACCESS_PARTS))],
-            ], [
-                'access_level.required'    => 'Please choose an access permission waiver.',
-                'access_parts.required_if' => 'Please tick at least one part that readers may see.',
             ]);
-            $accessParts = $this->accessPartsFrom($request);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return view('pages.student-upload', [
                 'user'    => $user,
@@ -399,8 +392,8 @@ class StudentController extends Controller
                 'fileOriginalName' => $file->getClientOriginalName(),
                 'fileSize'         => $file->getSize(),
                 'watermarkedAt'    => $stamped ? now() : null,
-                'accessLevel'      => $request->input('access_level'),
-                'accessParts'      => $accessParts,
+                // The access permission waiver is recorded by the admin on the
+                // edit form while the upload is pending review.
             ]);
             Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Uploaded Bluebook', 'document' => $title]);
             ProcessBluebookOcr::dispatch($bluebook['id']);
@@ -422,52 +415,6 @@ class StudentController extends Controller
             'success' => 'Bluebook uploaded successfully! It is now pending admin approval.',
             'old'     => [],
         ]);
-    }
-
-    /**
-     * The parts a partial waiver opens, each with the pages it occupies.
-     *
-     * The page range is what the waiver is enforced by - the served copy holds
-     * those pages and no others - so a part ticked without a usable range is an
-     * error rather than something to guess at.
-     *
-     * @return array<string, array{from: int, to: int}>|null
-     */
-    private function accessPartsFrom(Request $request): ?array
-    {
-        if ($request->input('access_level') !== Bluebook::ACCESS_PARTIAL) {
-            return null;
-        }
-
-        $pages  = (int) $request->input('pages');
-        $from   = (array) $request->input('part_from', []);
-        $to     = (array) $request->input('part_to', []);
-        $parts  = [];
-
-        foreach (array_keys(Bluebook::ACCESS_PARTS) as $key) {
-            if (!in_array($key, (array) $request->input('access_parts', []), true)) {
-                continue;
-            }
-
-            $label = Bluebook::ACCESS_PARTS[$key];
-            $start = filter_var($from[$key] ?? null, FILTER_VALIDATE_INT);
-            $end   = filter_var($to[$key] ?? null, FILTER_VALIDATE_INT);
-
-            if ($start === false || $end === false) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'access_parts' => "Please enter the page range for {$label}.",
-                ]);
-            }
-            if ($start < 1 || $end < $start || $end > $pages) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'access_parts' => "The page range for {$label} must run forward and fall within pages 1 to {$pages}.",
-                ]);
-            }
-
-            $parts[$key] = ['from' => $start, 'to' => $end];
-        }
-
-        return $parts;
     }
 
     public function myUploads()
