@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+!.env.example
+vendor
+android-wrapper
+Bluebooks
+storage/app/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+tests
+.phpunit.result.cache
