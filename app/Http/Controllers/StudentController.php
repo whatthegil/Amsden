@@ -417,6 +417,31 @@ class StudentController extends Controller
         ]);
     }
 
+    /**
+     * The library's waiver form, for an author whose bluebook has been
+     * approved and is waiting on the signed copy before it is posted.
+     */
+    public function downloadWaiver(int $id)
+    {
+        $user     = session('user');
+        $bluebook = Store::getBluebook($id);
+        if (!$bluebook || $bluebook['uploadedBy'] !== $user['email']
+            || $bluebook['status'] !== Bluebook::STATUS_AWAITING_WAIVER) {
+            return redirect()->route('student.my-uploads');
+        }
+
+        $form = Bluebook::waiverFormPath();
+        if (!is_file($form)) {
+            report(new \RuntimeException("Waiver form missing at {$form}"));
+            return redirect()->route('student.my-uploads')
+                ->with('error', 'The waiver form is not available yet. Please get a copy from the CSPC Library.');
+        }
+
+        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Downloaded Waiver', 'document' => $bluebook['title']]);
+        $name = 'Access Permission Waiver - ' . \Illuminate\Support\Str::limit(preg_replace('/[^\w\s-]/u', '', $bluebook['title']), 60, '') . '.pdf';
+        return response()->download($form, $name, ['Content-Type' => 'application/pdf']);
+    }
+
     public function myUploads()
     {
         $user = session('user');

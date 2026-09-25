@@ -44,6 +44,18 @@
           <a href="{{ route('admin.bluebooks') }}?status=Pending" class="btn btn-primary btn-sm">Review now</a>
         </div>
       @endif
+      @if($stats['awaitingWaiver'] > 0)
+        <div class="callout">
+          <div class="callout-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M7 3h7l5 5v13H7a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
+          </div>
+          <div class="callout-body">
+            <strong>{{ $stats['awaitingWaiver'] }} approved {{ Str::plural('bluebook', $stats['awaitingWaiver']) }} awaiting a signed waiver</strong>
+            <span>Not posted in Browse until the author hands the printed waiver in to the library.</span>
+          </div>
+          <a href="{{ route('admin.bluebooks') }}?status={{ urlencode(\App\Models\Bluebook::STATUS_AWAITING_WAIVER) }}" class="btn btn-primary btn-sm">View</a>
+        </div>
+      @endif
 
       <div class="grid-2">
         <div class="card">
@@ -61,6 +73,7 @@
                       <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $b['title'] }}</td>
                       <td>
                         @if($b['status'] === 'Approved') <span class="badge badge-green">Approved</span>
+                        @elseif($b['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER) <span class="badge badge-blue">Awaiting Waiver</span>
                         @elseif($b['status'] === 'Pending') <span class="badge badge-yellow">Pending</span>
                         @else <span class="badge badge-red">Rejected</span>
                         @endif

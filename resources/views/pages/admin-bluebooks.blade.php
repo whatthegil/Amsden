@@ -53,7 +53,7 @@
           <label for="bluebooks-filter-status">Status</label>
           <select id="bluebooks-filter-status" name="status">
             <option value="">All Status</option>
-            @foreach(['Approved','Pending','Rejected'] as $s)
+            @foreach(['Approved', \App\Models\Bluebook::STATUS_AWAITING_WAIVER, 'Pending', 'Rejected'] as $s)
               <option value="{{ $s }}" {{ ($query['status'] ?? '') === $s ? 'selected' : '' }}>{{ $s }}</option>
             @endforeach
           </select>
@@ -94,6 +94,7 @@
                     <td>{{ $b['year'] }}</td>
                     <td>
                       @if($b['status'] === 'Approved') <span class="badge badge-green">Approved</span>
+                      @elseif($b['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER) <span class="badge badge-blue">Awaiting Waiver</span>
                       @elseif($b['status'] === 'Pending') <span class="badge badge-yellow">Pending</span>
                       @else <span class="badge badge-red">Rejected</span>
                       @endif
@@ -115,6 +116,10 @@
                           </form>
                           <form method="POST" action="{{ route('admin.bluebooks.reject', $b['id']) }}" style="display:inline;">
                             @csrf <button type="submit" class="btn btn-warning btn-sm">Reject</button>
+                          </form>
+                        @elseif($b['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER)
+                          <form method="POST" action="{{ route('admin.bluebooks.waiverReceived', $b['id']) }}" style="display:inline;">
+                            @csrf <button type="submit" class="btn btn-success btn-sm" title="The signed waiver was handed in; post this bluebook in Browse">Waiver Received</button>
                           </form>
                         @endif
                         @if($b['hasFile'] && $b['ocrStatus'] !== 'processing')

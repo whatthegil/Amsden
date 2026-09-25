@@ -4,6 +4,7 @@
   $approvedCount = count(array_filter($bluebooks, fn($b) => $b['status'] === 'Approved'));
   $pendingCount  = count(array_filter($bluebooks, fn($b) => $b['status'] === 'Pending'));
   $rejectedCount = count(array_filter($bluebooks, fn($b) => $b['status'] === 'Rejected'));
+  $waiverCount   = count(array_filter($bluebooks, fn($b) => $b['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER));
 @endphp
 @include('partials.head')
 
@@ -29,12 +30,16 @@
                 @if($approvedCount > 0)
                   <span><span class="dot" style="background:#7ee2b8;"></span> {{ $approvedCount }} approved</span>
                 @endif
-                @if($pendingCount > 0)
+                @if($waiverCount > 0)
                   @if($approvedCount > 0)<span class="sep">&middot;</span>@endif
+                  <span><span class="dot" style="background:#93c5fd;"></span> {{ $waiverCount }} awaiting your waiver</span>
+                @endif
+                @if($pendingCount > 0)
+                  @if($approvedCount > 0 || $waiverCount > 0)<span class="sep">&middot;</span>@endif
                   <span><span class="dot" style="background:#fbbf24;"></span> {{ $pendingCount }} awaiting review</span>
                 @endif
                 @if($rejectedCount > 0)
-                  @if($approvedCount > 0 || $pendingCount > 0)<span class="sep">&middot;</span>@endif
+                  @if($approvedCount > 0 || $waiverCount > 0 || $pendingCount > 0)<span class="sep">&middot;</span>@endif
                   <span><span class="dot" style="background:#fca5a5;"></span> {{ $rejectedCount }} not published</span>
                 @endif
               </div>
@@ -54,13 +59,18 @@
       @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
       @endif
+      @if(session('error'))
+        <div class="alert alert-error" role="alert">{{ session('error') }}</div>
+      @endif
 
       @if(count($bluebooks) > 0)
         <div class="submission-list">
           @foreach($bluebooks as $b)
             @php
+              $awaitingWaiver = $b['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER;
               $state = $b['status'] === 'Approved' ? 'approved'
-                     : ($b['status'] === 'Pending' ? 'pending' : 'rejected');
+                     : ($awaitingWaiver ? 'waiver'
+                     : ($b['status'] === 'Pending' ? 'pending' : 'rejected'));
             @endphp
             <div class="submission is-{{ $state }}">
               <div class="submission-head">
@@ -71,6 +81,7 @@
                 @endif
                 <div style="flex-shrink:0;">
                   @if($b['status'] === 'Approved') <span class="badge badge-green">Approved</span>
+                  @elseif($awaitingWaiver) <span class="badge badge-blue">Awaiting Waiver</span>
                   @elseif($b['status'] === 'Pending') <span class="badge badge-yellow">Pending Review</span>
                   @else <span class="badge badge-red">Rejected</span>
                   @endif
@@ -94,6 +105,14 @@
               <div class="submission-note">
                 @if($b['status'] === 'Approved')
                   Published to the archive and readable by students and faculty.
+                @elseif($awaitingWaiver)
+                  Approved. Download the access permission waiver, print and sign it, and hand it in to the CSPC Library. Your bluebook is posted once the library receives it.
+                  <div style="margin-top:0.6rem;">
+                    <a href="{{ route('student.my-uploads.waiver', $b['id']) }}" class="btn btn-primary btn-sm">
+                      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+                      Download Waiver
+                    </a>
+                  </div>
                 @elseif($b['status'] === 'Pending')
                   Waiting for an administrator to review it. Nothing is needed from you.
                 @else

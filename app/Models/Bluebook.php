@@ -6,6 +6,19 @@ use Illuminate\Database\Eloquent\Model;
 
 class Bluebook extends Model
 {
+    /**
+     * Approved by an admin but not yet posted: the author still has to hand the
+     * signed, printed access permission waiver in to the library. Only
+     * 'Approved' bluebooks are shown to readers, so this keeps it out of Browse.
+     */
+    public const STATUS_AWAITING_WAIVER = 'Awaiting Waiver';
+
+    /** The library's official waiver form, downloaded by authors to print. */
+    public static function waiverFormPath(): string
+    {
+        return resource_path('forms/access-permission-waiver.pdf');
+    }
+
     /** Access permission waiver: every part may be read. */
     public const ACCESS_PUBLIC = 'public';
     /** Not for general use; readable only after consulting the author. */

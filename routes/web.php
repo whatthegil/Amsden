@@ -44,6 +44,7 @@ Route::prefix('admin')->middleware('role:Admin')->group(function () {
     Route::get('/bluebooks/{id}/edit',         [AdminController::class, 'bluebookEditForm'])->name('admin.bluebooks.edit');
     Route::post('/bluebooks/{id}/edit',        [AdminController::class, 'bluebookUpdate'])->name('admin.bluebooks.update');
     Route::post('/bluebooks/{id}/approve',     [AdminController::class, 'bluebookApprove'])->name('admin.bluebooks.approve');
+    Route::post('/bluebooks/{id}/waiver-received', [AdminController::class, 'bluebookWaiverReceived'])->name('admin.bluebooks.waiverReceived');
     Route::post('/bluebooks/{id}/reject',      [AdminController::class, 'bluebookReject'])->name('admin.bluebooks.reject');
     Route::post('/bluebooks/{id}/reprocess-ocr', [AdminController::class, 'bluebookReprocessOcr'])->name('admin.bluebooks.reprocessOcr');
     Route::post('/bluebooks/{id}/delete',       [AdminController::class, 'bluebookDelete'])->name('admin.bluebooks.delete');
@@ -84,6 +85,7 @@ Route::prefix('student')->middleware('role:Student,Faculty')->group(function () 
     Route::post('/literature-review',           [StudentController::class, 'literatureReview'])->middleware('throttle:literature-review-ai')->name('student.literature-review.post');
 
     Route::get('/my-uploads',                  [StudentController::class, 'myUploads'])->name('student.my-uploads');
+    Route::get('/my-uploads/{id}/waiver',      [StudentController::class, 'downloadWaiver'])->name('student.my-uploads.waiver');
     Route::get('/history',                     [StudentController::class, 'history'])->name('student.history');
     Route::get('/bookmarks',                   [StudentController::class, 'bookmarks'])->name('student.bookmarks');
 

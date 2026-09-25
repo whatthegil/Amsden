@@ -1710,6 +1710,7 @@ a:focus-visible {
 }
 .submission.is-approved::before { background: var(--green); }
 .submission.is-pending::before  { background: var(--yellow); }
+.submission.is-waiver::before   { background: var(--primary); }
 .submission.is-rejected::before { background: var(--red); }
 
 .submission-head {

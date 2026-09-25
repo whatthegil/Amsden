@@ -133,6 +133,7 @@
                       <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;">{{ $b['title'] }}</td>
                       <td>
                         @if($b['status'] === 'Approved') <span class="badge badge-green">Approved</span>
+                        @elseif($b['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER) <span class="badge badge-blue">Awaiting Waiver</span>
                         @elseif($b['status'] === 'Pending') <span class="badge badge-yellow">Pending</span>
                         @else <span class="badge badge-red">Rejected</span>
                         @endif

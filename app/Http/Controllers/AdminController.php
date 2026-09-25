@@ -20,6 +20,7 @@ class AdminController extends Controller
         $pending   = array_filter($bluebooks, fn($b) => $b['status'] === 'Pending');
         $approved  = array_filter($bluebooks, fn($b) => $b['status'] === 'Approved');
         $rejected  = array_filter($bluebooks, fn($b) => $b['status'] === 'Rejected');
+        $awaiting  = array_filter($bluebooks, fn($b) => $b['status'] === Bluebook::STATUS_AWAITING_WAIVER);
         $recent    = array_reverse($bluebooks);
 
         return view('pages.admin-dashboard', [
@@ -31,6 +32,7 @@ class AdminController extends Controller
                 'approved'        => count($approved),
                 'pending'         => count($pending),
                 'rejected'        => count($rejected),
+                'awaitingWaiver'  => count($awaiting),
                 'totalUsers'      => count(Store::getUsers()),
                 'recentLogs'      => Store::getRecentLogs(5),
                 'recentBluebooks' => array_slice($recent, 0, 5),
@@ -211,11 +213,26 @@ class AdminController extends Controller
     {
         $user     = session('user');
         $bluebook = Store::getBluebook($id);
-        if ($bluebook) {
-            Store::setBluebookStatus($id, 'Approved');
-            Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Approved Bluebook', 'document' => $bluebook['title']]);
+        if (!$bluebook || $bluebook['status'] !== 'Pending') {
+            return redirect()->route('admin.bluebooks');
         }
-        return redirect()->route('admin.bluebooks')->with('success', 'Bluebook approved successfully');
+        // Approval is not posting: the author must first hand in the printed,
+        // signed waiver, which the admin records with waiverReceived().
+        Store::setBluebookStatus($id, Bluebook::STATUS_AWAITING_WAIVER);
+        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Approved Bluebook', 'document' => $bluebook['title']]);
+        return redirect()->route('admin.bluebooks')->with('success', 'Bluebook approved. It will be posted once the author hands in the signed waiver.');
+    }
+
+    public function bluebookWaiverReceived(int $id)
+    {
+        $user     = session('user');
+        $bluebook = Store::getBluebook($id);
+        if (!$bluebook || $bluebook['status'] !== Bluebook::STATUS_AWAITING_WAIVER) {
+            return redirect()->route('admin.bluebooks');
+        }
+        Store::setBluebookStatus($id, 'Approved');
+        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Received Waiver', 'document' => $bluebook['title']]);
+        return redirect()->route('admin.bluebooks')->with('success', 'Waiver received. The bluebook is now posted in Browse.');
     }
 
     public function bluebookReject(int $id)
