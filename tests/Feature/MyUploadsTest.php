@@ -93,7 +93,9 @@ class MyUploadsTest extends TestCase
     /** A failure is worth something only if it says what failed. */
     public function test_a_failed_extraction_shows_the_reason_and_offers_a_retry(): void
     {
+        // Retrying is only offered once the bluebook is posted.
         $this->upload([
+            'status'     => 'Approved',
             'file_path'  => 'bluebooks/p.pdf',
             'ocr_status' => 'failed',
             'ocr_error'  => 'No rasterizer binary was found on this host',

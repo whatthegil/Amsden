@@ -149,7 +149,8 @@
                       <span style="color:var(--gray-400);">This paper can be found by the words inside it.</span>
                     @endif
                   </span>
-                  @if($b['ocrStatus'] !== 'processing')
+                  {{-- Only once posted: before that the file may still be replaced. --}}
+                  @if($b['status'] === 'Approved' && $b['ocrStatus'] !== 'processing')
                     <form method="POST" action="{{ route('student.bluebook.reprocess-ocr', $b['id']) }}">
                       @csrf
                       <button type="submit" class="btn btn-outline btn-sm">

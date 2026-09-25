@@ -316,6 +316,11 @@ class StudentController extends Controller
             abort(403);
         }
 
+        // Only for posted bluebooks - before that the file may still be
+        // replaced (a re-upload after rejection runs OCR on its own).
+        if ($bluebook['status'] !== 'Approved') {
+            return redirect()->route('student.my-uploads')->with('success', 'OCR can be reprocessed once the bluebook is posted');
+        }
         if ($bluebook['ocrStatus'] === 'processing' && !$bluebook['ocrStuck']) {
             return redirect()->route('student.my-uploads')->with('success', 'OCR is already processing for this bluebook');
         }

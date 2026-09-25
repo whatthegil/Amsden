@@ -229,4 +229,42 @@ class RejectAndReuploadTest extends TestCase
 
         Queue::assertPushed(ProcessBluebookOcr::class);
     }
+
+    public function test_author_re_extract_button_only_for_posted_bluebooks(): void
+    {
+        $this->makeBluebook('Pending', ['title' => 'Pending One']);
+        $this->makeBluebook(Bluebook::STATUS_AWAITING_WAIVER, ['title' => 'Waiting One']);
+        $this->makeBluebook('Rejected', ['title' => 'Rejected One', 'ocr_status' => 'failed']);
+
+        $res = $this->withSession(['user' => $this->author()])->get('/student/my-uploads');
+        $res->assertOk();
+        $res->assertDontSee('student/bluebooks/', false);
+
+        $posted = $this->makeBluebook('Approved', ['title' => 'Posted One']);
+
+        $this->withSession(['user' => $this->author()])
+            ->get('/student/my-uploads')
+            ->assertSee("student/bluebooks/{$posted->id}/reprocess-ocr", false);
+    }
+
+    public function test_author_reprocess_is_refused_before_posting(): void
+    {
+        $bluebook = $this->makeBluebook(Bluebook::STATUS_AWAITING_WAIVER);
+
+        $this->withSession(['user' => $this->author()])
+            ->post("/student/bluebooks/{$bluebook->id}/reprocess-ocr")
+            ->assertRedirect(route('student.my-uploads'));
+
+        Queue::assertNotPushed(ProcessBluebookOcr::class);
+    }
+
+    public function test_author_reprocess_runs_for_posted_bluebooks(): void
+    {
+        $bluebook = $this->makeBluebook('Approved');
+
+        $this->withSession(['user' => $this->author()])
+            ->post("/student/bluebooks/{$bluebook->id}/reprocess-ocr");
+
+        Queue::assertPushed(ProcessBluebookOcr::class);
+    }
 }
