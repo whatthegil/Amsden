@@ -69,7 +69,7 @@ class AccessWaiverTest extends TestCase
     public function test_admin_edit_form_shows_the_waiver_with_its_saved_choice(): void
     {
         $bluebook = $this->makeBluebook();
-        $bluebook->update(['access_level' => Bluebook::ACCESS_CONSULTATION]);
+        $bluebook->update(['access_level' => Bluebook::ACCESS_CONSULTATION, 'waiver_recorded_at' => now()]);
 
         $res = $this->withSession(['user' => $this->admin()])->get("/admin/bluebooks/{$bluebook->id}/edit");
 

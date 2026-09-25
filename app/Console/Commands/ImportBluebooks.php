@@ -207,6 +207,7 @@ class ImportBluebooks extends Command
                 'abstract'           => $meta['abstract'],
                 'adviser'            => '',
                 'status'             => 'Approved',
+                'waiver_recorded_at' => now(),
                 'uploaded_by'        => 'library@cspc.edu.ph',
                 'uploaded_by_name'   => 'CSPC Library',
                 'pages'              => $meta['pages'],

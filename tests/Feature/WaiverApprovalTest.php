@@ -104,6 +104,7 @@ class WaiverApprovalTest extends TestCase
     public function test_waiver_received_posts_the_bluebook(): void
     {
         $bluebook = $this->makeBluebook(Bluebook::STATUS_AWAITING_WAIVER);
+        $bluebook->update(['waiver_recorded_at' => now()]);
 
         $this->withSession(['user' => $this->admin()])
             ->post("/admin/bluebooks/{$bluebook->id}/waiver-received")
@@ -127,9 +128,62 @@ class WaiverApprovalTest extends TestCase
         $this->assertSame('Pending', $bluebook->fresh()->status);
     }
 
-    public function test_admin_list_offers_waiver_received(): void
+    public function test_waiver_received_is_refused_until_the_level_is_recorded(): void
+    {
+        $bluebook = $this->makeBluebook(Bluebook::STATUS_AWAITING_WAIVER);
+
+        $this->withSession(['user' => $this->admin()])
+            ->post("/admin/bluebooks/{$bluebook->id}/waiver-received")
+            ->assertRedirect(route('admin.bluebooks.edit', $bluebook->id))
+            ->assertSessionHasErrors('access_level');
+
+        $this->assertSame(Bluebook::STATUS_AWAITING_WAIVER, $bluebook->fresh()->status);
+    }
+
+    public function test_saving_the_level_on_the_edit_form_unlocks_posting(): void
+    {
+        $bluebook = $this->makeBluebook(Bluebook::STATUS_AWAITING_WAIVER);
+
+        $this->withSession(['user' => $this->admin()])
+            ->post("/admin/bluebooks/{$bluebook->id}/edit", [
+                'title' => 'Waiver Flow Paper', 'authors' => 'Dela Cruz, Maria', 'year' => 2024,
+                'department' => 'CCS', 'program' => 'Bachelor of Science in Information Technology',
+                'keywords' => 'sample', 'abstract' => 'A sample abstract.', 'adviser' => 'Dr. Adviser',
+                'pages' => 10, 'access_level' => Bluebook::ACCESS_CONSULTATION,
+            ]);
+        $this->assertNotNull($bluebook->fresh()->waiver_recorded_at);
+
+        $this->withSession(['user' => $this->admin()])
+            ->post("/admin/bluebooks/{$bluebook->id}/waiver-received");
+
+        $this->assertSame('Approved', $bluebook->fresh()->status);
+        $this->assertSame(Bluebook::ACCESS_CONSULTATION, $bluebook->fresh()->access_level);
+    }
+
+    public function test_admin_list_asks_for_the_level_before_offering_waiver_received(): void
     {
         $this->makeBluebook(Bluebook::STATUS_AWAITING_WAIVER);
+
+        $this->withSession(['user' => $this->admin()])
+            ->get('/admin/bluebooks')
+            ->assertOk()
+            ->assertSee('Set Waiver Level')
+            ->assertDontSee('>Waiver Received<', false);
+    }
+
+    public function test_edit_form_preselects_nothing_until_the_level_is_recorded(): void
+    {
+        $bluebook = $this->makeBluebook(Bluebook::STATUS_AWAITING_WAIVER);
+
+        $res = $this->withSession(['user' => $this->admin()])->get("/admin/bluebooks/{$bluebook->id}/edit");
+
+        $res->assertOk()->assertSee('Not recorded yet');
+        $this->assertDoesNotMatchRegularExpression('/name="access_level" value="\w+" required\s+checked/', $res->getContent());
+    }
+
+    public function test_admin_list_offers_waiver_received(): void
+    {
+        $this->makeBluebook(Bluebook::STATUS_AWAITING_WAIVER)->update(['waiver_recorded_at' => now()]);
 
         $this->withSession(['user' => $this->admin()])
             ->get('/admin/bluebooks')

@@ -117,6 +117,8 @@
                           <form method="POST" action="{{ route('admin.bluebooks.reject', $b['id']) }}" style="display:inline;">
                             @csrf <button type="submit" class="btn btn-warning btn-sm">Reject</button>
                           </form>
+                        @elseif($b['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER && !$b['waiverRecorded'])
+                          <a href="{{ route('admin.bluebooks.edit', $b['id']) }}" class="btn btn-primary btn-sm" title="Record the access level from the signed waiver first">Set Waiver Level</a>
                         @elseif($b['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER)
                           <form method="POST" action="{{ route('admin.bluebooks.waiverReceived', $b['id']) }}" style="display:inline;">
                             @csrf <button type="submit" class="btn btn-success btn-sm" title="The signed waiver was handed in; post this bluebook in Browse">Waiver Received</button>

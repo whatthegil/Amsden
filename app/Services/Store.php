@@ -250,6 +250,7 @@ class Store
             'watermarked_at'      => $bookData['watermarkedAt'] ?? null,
             'access_level'        => $bookData['accessLevel'] ?? Bluebook::ACCESS_PUBLIC,
             'access_parts'        => $bookData['accessParts'] ?? null,
+            'waiver_recorded_at'  => $bookData['waiverRecordedAt'] ?? null,
         ]);
         return self::bookToArray($b);
     }
@@ -274,6 +275,7 @@ class Store
         if (array_key_exists('accessLevel', $fields)) {
             $b->access_level = $fields['accessLevel'];
             $b->access_parts = $fields['accessParts'] ?? null;
+            $b->waiver_recorded_at = now();
         }
         $b->save();
     }
@@ -470,6 +472,7 @@ class Store
             'ocrProcessedAt'   => $b->ocr_processed_at ? $b->ocr_processed_at->format('Y-m-d H:i:s') : null,
             'accessLevel'      => $b->access_level ?: Bluebook::ACCESS_PUBLIC,
             'accessParts'      => $b->access_parts ?? [],
+            'waiverRecorded'   => $b->waiver_recorded_at !== null,
         ];
     }
 

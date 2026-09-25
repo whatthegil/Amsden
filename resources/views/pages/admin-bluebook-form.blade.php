@@ -102,13 +102,20 @@
 
             @if ($isEdit)
               @php
-                $accessLevel = old('access_level', $bluebook['accessLevel']);
-                $savedParts  = $bluebook['accessParts'] ?? [];
+                // Until it is recorded, the stored level is only the column
+                // default, not anything the author chose - so pre-select nothing.
+                $accessLevel = old('access_level', $bluebook['waiverRecorded'] ? $bluebook['accessLevel'] : null);
+                $savedParts  = $bluebook['waiverRecorded'] ? ($bluebook['accessParts'] ?? []) : [];
                 $checked     = (array) old('access_parts', array_keys($savedParts));
               @endphp
               <fieldset class="access-waiver">
                 <legend>Access Permission Waiver</legend>
-                <p class="form-hint" style="margin:0 0 0.75rem;">How much of this bluebook readers may see once it is approved, as agreed with the author.</p>
+                <p class="form-hint" style="margin:0 0 0.75rem;">
+                  Copy what the author ticked on the signed waiver.
+                  @unless($bluebook['waiverRecorded'])
+                    <strong>Not recorded yet</strong> &mdash; this bluebook cannot be posted until it is.
+                  @endunless
+                </p>
 
                 @foreach(\App\Models\Bluebook::ACCESS_LEVELS as $value => $label)
                   <label class="access-option">

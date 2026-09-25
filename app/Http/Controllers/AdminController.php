@@ -95,6 +95,8 @@ class AdminController extends Controller
             'abstract'       => $request->input('abstract'),
             'adviser'        => $request->input('adviser'),
             'status'         => 'Approved',
+            // Added by the library itself, so posted as public with no waiver step.
+            'waiverRecordedAt' => now(),
             'uploadedBy'     => $user['email'],
             'uploadedByName' => $user['name'],
             'pages'          => (int)$request->input('pages'),
@@ -229,6 +231,12 @@ class AdminController extends Controller
         $bluebook = Store::getBluebook($id);
         if (!$bluebook || $bluebook['status'] !== Bluebook::STATUS_AWAITING_WAIVER) {
             return redirect()->route('admin.bluebooks');
+        }
+        // Posting without the author's chosen level would publish it as
+        // public by default, whatever the signed waiver says.
+        if (!$bluebook['waiverRecorded']) {
+            return redirect()->route('admin.bluebooks.edit', $id)
+                ->withErrors(['access_level' => 'Set the access level from the signed waiver before posting this bluebook.']);
         }
         Store::setBluebookStatus($id, 'Approved');
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Received Waiver', 'document' => $bluebook['title']]);
