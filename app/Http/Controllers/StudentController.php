@@ -16,6 +16,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StudentController extends Controller
 {
+    use Concerns\ReadsAccessWaiver;
+
     public function policy()
     {
         return view('pages.policy', ['user' => session('user')]);
@@ -352,7 +354,8 @@ class StudentController extends Controller
                 'pages'      => ['required', 'integer', 'min:1'],
                 'keywords'   => ['required', 'string'],
                 'abstract'   => ['required', 'string'],
-            ]);
+            ] + $this->accessWaiverRules(), $this->accessWaiverMessages());
+            $accessParts = $this->accessPartsFrom($request);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return view('pages.student-upload', [
                 'user'    => $user,
@@ -392,8 +395,12 @@ class StudentController extends Controller
                 'fileOriginalName' => $file->getClientOriginalName(),
                 'fileSize'         => $file->getSize(),
                 'watermarkedAt'    => $stamped ? now() : null,
-                // The access permission waiver is recorded by the admin on the
-                // edit form while the upload is pending review.
+                // What the author asks for. It is not recorded as the waiver
+                // until the admin checks it against the signed form, so the
+                // bluebook cannot be posted on the author's word alone.
+                'accessLevel'      => $request->input('access_level'),
+                'accessParts'      => $accessParts,
+                'waiverRequestedAt' => now(),
             ]);
             Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Uploaded Bluebook', 'document' => $title]);
             ProcessBluebookOcr::dispatch($bluebook['id']);

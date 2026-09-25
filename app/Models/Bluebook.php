@@ -50,7 +50,7 @@ class Bluebook extends Model
         'file_path', 'file_original_name', 'file_size',
         'ocr_status', 'ocr_text', 'ocr_error', 'ocr_engine', 'ocr_rasterizer', 'ocr_processed_at',
         'watermarked_at',
-        'access_level', 'access_parts', 'waiver_recorded_at', 'rejection_reason',
+        'access_level', 'access_parts', 'waiver_requested_at', 'waiver_recorded_at', 'rejection_reason',
     ];
 
     protected $casts = [
@@ -62,6 +62,7 @@ class Bluebook extends Model
         'ocr_processed_at' => 'datetime',
         'watermarked_at'   => 'datetime',
         'access_parts'     => 'array',
+        'waiver_requested_at' => 'datetime',
         'waiver_recorded_at' => 'datetime',
     ];
 

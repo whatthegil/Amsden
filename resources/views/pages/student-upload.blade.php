@@ -105,6 +105,17 @@
               <textarea id="upload-abstract" name="abstract" rows="5" required placeholder="Brief description of your research paper…">{{ $old['abstract'] ?? '' }}</textarea>
             </div>
 
+            @php
+              $oldParts = [];
+              foreach (array_keys(\App\Models\Bluebook::ACCESS_PARTS) as $key) {
+                $oldParts[$key] = ['from' => $old['part_from'][$key] ?? '', 'to' => $old['part_to'][$key] ?? ''];
+              }
+            @endphp
+            <x-access-waiver :level="$old['access_level'] ?? null" :parts="$oldParts"
+                             :checked="(array) ($old['access_parts'] ?? [])">
+              Choose how much of your bluebook readers may see. Tick the same choice on the signed waiver you hand in to the library.
+            </x-access-waiver>
+
             <div class="form-actions">
               <a href="{{ route('student.dashboard') }}" class="btn btn-outline">Cancel</a>
               <button type="submit" class="btn btn-primary">Submit for Review</button>

@@ -250,6 +250,7 @@ class Store
             'watermarked_at'      => $bookData['watermarkedAt'] ?? null,
             'access_level'        => $bookData['accessLevel'] ?? Bluebook::ACCESS_PUBLIC,
             'access_parts'        => $bookData['accessParts'] ?? null,
+            'waiver_requested_at' => $bookData['waiverRequestedAt'] ?? null,
             'waiver_recorded_at'  => $bookData['waiverRecordedAt'] ?? null,
         ]);
         return self::bookToArray($b);
@@ -474,6 +475,7 @@ class Store
             'accessLevel'      => $b->access_level ?: Bluebook::ACCESS_PUBLIC,
             'accessParts'      => $b->access_parts ?? [],
             'waiverRecorded'   => $b->waiver_recorded_at !== null,
+            'waiverRequested'  => $b->waiver_requested_at !== null,
             'rejectionReason'  => $b->rejection_reason,
         ];
     }

@@ -102,49 +102,32 @@
 
             @if ($isEdit)
               @php
-                // Until it is recorded, the stored level is only the column
-                // default, not anything the author chose - so pre-select nothing.
-                $accessLevel = old('access_level', $bluebook['waiverRecorded'] ? $bluebook['accessLevel'] : null);
-                $savedParts  = $bluebook['waiverRecorded'] ? ($bluebook['accessParts'] ?? []) : [];
-                $checked     = (array) old('access_parts', array_keys($savedParts));
+                // Pre-fill a choice somebody made: the recorded waiver, or what the
+                // author picked on upload. Otherwise the stored level is only the
+                // column default, so nothing is pre-selected.
+                $chosen     = $bluebook['waiverRecorded'] || $bluebook['waiverRequested'];
+                $savedParts = $chosen ? ($bluebook['accessParts'] ?? []) : [];
+                $parts = [];
+                foreach (array_keys(\App\Models\Bluebook::ACCESS_PARTS) as $key) {
+                  $parts[$key] = [
+                    'from' => old("part_from.$key", $savedParts[$key]['from'] ?? ''),
+                    'to'   => old("part_to.$key", $savedParts[$key]['to'] ?? ''),
+                  ];
+                }
               @endphp
-              <fieldset class="access-waiver">
-                <legend>Access Permission Waiver</legend>
-                <p class="form-hint" style="margin:0 0 0.75rem;">
+              <x-access-waiver :level="old('access_level', $chosen ? $bluebook['accessLevel'] : null)" :parts="$parts"
+                               :checked="(array) old('access_parts', array_keys($savedParts))">
+                @if($bluebook['waiverRecorded'])
                   Copy what the author ticked on the signed waiver.
-                  @unless($bluebook['waiverRecorded'])
-                    <strong>Not recorded yet</strong> &mdash; this bluebook cannot be posted until it is.
-                  @endunless
-                </p>
-
-                @foreach(\App\Models\Bluebook::ACCESS_LEVELS as $value => $label)
-                  <label class="access-option">
-                    <input type="radio" name="access_level" value="{{ $value }}" required
-                           @checked($accessLevel === $value) onchange="toggleAccessParts()">
-                    <span>{{ $label }}</span>
-                  </label>
-                @endforeach
-
-                <div id="access-parts" class="access-parts" @if($accessLevel !== 'partial') hidden @endif>
-                  <p class="form-hint" style="margin:0 0 0.5rem;">Tick each part readers may see and give the PDF pages it covers. Pages you do not list are left out of what readers receive.</p>
-                  @foreach(\App\Models\Bluebook::ACCESS_PARTS as $key => $label)
-                    <div class="access-part">
-                      <label class="access-option">
-                        <input type="checkbox" name="access_parts[]" value="{{ $key }}"
-                               @checked(in_array($key, $checked, true)) onchange="toggleAccessParts()">
-                        <span>{{ $label }}</span>
-                      </label>
-                      <span class="access-range">
-                        <label class="sr-only" for="part-from-{{ $key }}">{{ $label }} first page</label>
-                        <input id="part-from-{{ $key }}" type="number" min="1" name="part_from[{{ $key }}]" placeholder="From" value="{{ old("part_from.$key", $savedParts[$key]['from'] ?? '') }}">
-                        <span aria-hidden="true">–</span>
-                        <label class="sr-only" for="part-to-{{ $key }}">{{ $label }} last page</label>
-                        <input id="part-to-{{ $key }}" type="number" min="1" name="part_to[{{ $key }}]" placeholder="To" value="{{ old("part_to.$key", $savedParts[$key]['to'] ?? '') }}">
-                      </span>
-                    </div>
-                  @endforeach
-                </div>
-              </fieldset>
+                @else
+                  @if($bluebook['waiverRequested'])
+                    Pre-filled with what the author chose when uploading. Check it against the signed waiver and correct anything that differs.
+                  @else
+                    Copy what the author ticked on the signed waiver.
+                  @endif
+                  <strong>Not recorded yet</strong> &mdash; this bluebook cannot be posted until it is saved here.
+                @endif
+              </x-access-waiver>
             @endif
 
             <div class="form-actions">
@@ -177,26 +160,5 @@
   </main>
 </div>
 
-@if ($isEdit)
-<script>
-// The part list only applies to a partial waiver, and a part's page range only
-// once it is ticked - then the range is required, since it is what decides
-// which pages readers are sent.
-function toggleAccessParts() {
-  const chosen  = document.querySelector('input[name="access_level"]:checked');
-  const partial = !!chosen && chosen.value === 'partial';
-  document.getElementById('access-parts').hidden = !partial;
-
-  document.querySelectorAll('.access-part').forEach(function (row) {
-    const on = partial && row.querySelector('input[type="checkbox"]').checked;
-    row.querySelectorAll('.access-range input').forEach(function (input) {
-      input.disabled = !on;
-      input.required = on;
-    });
-  });
-}
-toggleAccessParts();
-</script>
-@endif
 
 @include('partials.footer')

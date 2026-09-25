@@ -41,6 +41,7 @@ class UploadAndSearchTest extends TestCase
             'pages'      => 80,
             'keywords'   => 'inventory, web-based, laboratory',
             'abstract'   => 'This study designed and built a web-based inventory system for campus laboratories.',
+            'access_level' => 'public',
         ];
     }
 

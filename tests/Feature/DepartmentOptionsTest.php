@@ -97,6 +97,7 @@ class DepartmentOptionsTest extends TestCase
             'department' => 'CSPC Buhi', 'program' => 'Bachelor of Science in Office Administration',
             'year' => 2025, 'adviser' => 'Prof X', 'pages' => 50,
             'keywords' => 'buhi, campus', 'abstract' => 'A study conducted at the CSPC Buhi campus.',
+            'access_level' => 'public',
             'file' => $pdf,
         ]);
 
