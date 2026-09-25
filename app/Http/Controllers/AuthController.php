@@ -56,14 +56,21 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $email    = $request->input('email');
-        $password = $request->input('password');
+        // Phone keyboards capitalise the first letter and autocomplete often
+        // leaves a trailing space; neither should make a valid account fail.
+        $email    = strtolower(trim((string) $request->input('email')));
+        $password = (string) $request->input('password');
 
         if (!$this->isAllowedEmail($email)) {
             return view('pages.login', ['error' => 'Only @cspc.edu.ph or @my.cspc.edu.ph email addresses are allowed.', 'success' => null, 'email' => $email]);
         }
 
-        $user = User::where('email', $email)->first();
+        $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
+        if ($user && $user->google_id && !Hash::check($password, $user->password)) {
+            // Accounts first created through Google sign-in were given a
+            // random password nobody knows, so a manual login can never work.
+            return view('pages.login', ['error' => 'This account was created with Google. Use "Sign in with Google", or ask the administrator to set a password for it.', 'success' => null, 'email' => $email]);
+        }
         if (!$user || !Hash::check($password, $user->password)) {
             return view('pages.login', ['error' => 'Invalid email or password. Please try again.', 'success' => null, 'email' => $email]);
         }

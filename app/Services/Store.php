@@ -128,7 +128,7 @@ class Store
 
     public static function findUserByEmail(string $email): ?array
     {
-        $user = User::where('email', $email)->first();
+        $user = User::whereRaw('LOWER(email) = ?', [strtolower(trim($email))])->first();
         return $user ? self::userToArray($user) : null;
     }
 
@@ -143,7 +143,7 @@ class Store
     {
         $user = User::create([
             'name'       => $userData['name'],
-            'email'      => $userData['email'],
+            'email'      => strtolower(trim($userData['email'])),
             'password'   => Hash::make($userData['password']),
             'role'       => $userData['role'] ?? 'Student',
             'can_upload' => $userData['canUpload'] ?? false,
@@ -156,7 +156,7 @@ class Store
         $user = User::find($id);
         if (!$user) return;
         if (isset($fields['name']))      $user->name       = $fields['name'];
-        if (isset($fields['email']))     $user->email      = $fields['email'];
+        if (isset($fields['email']))     $user->email      = strtolower(trim($fields['email']));
         if (isset($fields['password']))  $user->password   = Hash::make($fields['password']);
         if (isset($fields['role']))      $user->role       = $fields['role'];
         if (isset($fields['canUpload'])) $user->can_upload = $fields['canUpload'];

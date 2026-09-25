@@ -101,6 +101,36 @@ class AuthLoginTest extends TestCase
         $response->assertRedirect(route('admin.dashboard'));
     }
 
+    public function test_email_case_and_surrounding_spaces_are_ignored(): void
+    {
+        $this->makeUser([
+            'email' => 'admin@cspc.edu.ph',
+            'role'  => 'Admin',
+        ]);
+
+        $response = $this->post('/login', [
+            'email'    => ' Admin@CSPC.edu.ph ',
+            'password' => 'student123',
+        ]);
+
+        $response->assertRedirect(route('admin.dashboard'));
+    }
+
+    public function test_google_created_account_is_told_to_use_google(): void
+    {
+        $user = $this->makeUser(['email' => 'g@my.cspc.edu.ph']);
+        $user->forceFill(['google_id' => 'g-123', 'password' => Hash::make('unknowable')])->save();
+
+        $response = $this->post('/login', [
+            'email'    => 'g@my.cspc.edu.ph',
+            'password' => 'student123',
+        ]);
+
+        $response->assertOk();
+        $response->assertSee('This account was created with Google', false);
+        $this->assertNull(session('user'));
+    }
+
     public function test_registration_routes_are_gone(): void
     {
         $this->get('/register')->assertNotFound();
