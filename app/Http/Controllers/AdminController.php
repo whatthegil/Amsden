@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
 {
+    private const ROLES = ['Student', 'Faculty', 'Admin'];
+
     public function dashboard()
     {
         $user      = session('user');
@@ -231,6 +233,9 @@ class AdminController extends Controller
         if (Store::findUserByEmail($request->input('email'))) {
             return redirect()->route('admin.users')->with('success', 'Email already exists');
         }
+        if (!in_array($request->input('role'), self::ROLES, true)) {
+            return redirect()->route('admin.users')->with('success', 'Invalid role');
+        }
         Store::addUser(['name' => $request->input('name'), 'email' => $request->input('email'), 'password' => $request->input('password'), 'role' => $request->input('role')]);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Added User', 'document' => $request->input('email')]);
         return redirect()->route('admin.users')->with('success', 'User added successfully');
@@ -248,10 +253,48 @@ class AdminController extends Controller
 
     public function userUpdate(Request $request, int $id)
     {
-        $fields = ['name' => $request->input('name'), 'email' => $request->input('email'), 'role' => $request->input('role')];
+        $user   = session('user');
+        $target = $this->findUser($id);
+        if (!$target) return redirect()->route('admin.users');
+
+        $role = $request->input('role');
+        if (!in_array($role, self::ROLES, true)) {
+            return redirect()->route('admin.users')->with('success', 'Invalid role');
+        }
+        // An admin taking away their own Admin role would lock themselves out
+        // of this panel mid-session, so that has to be done by another admin.
+        if ($target['role'] === 'Admin' && $role !== 'Admin' && $id === (int) $user['id']) {
+            return redirect()->route('admin.users')->with('success', 'You cannot remove your own Admin role');
+        }
+
+        $fields = ['name' => $request->input('name'), 'email' => $request->input('email'), 'role' => $role];
         if ($request->input('password')) $fields['password'] = $request->input('password');
         Store::updateUser($id, $fields);
+        if ($target['role'] !== $role) {
+            Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => "Changed Role to $role", 'document' => $target['name']]);
+        }
         return redirect()->route('admin.users')->with('success', 'User updated successfully');
+    }
+
+    public function makeAdmin(int $id)
+    {
+        $user   = session('user');
+        $target = $this->findUser($id);
+        if (!$target) return redirect()->route('admin.users');
+        if ($target['role'] === 'Admin') {
+            return redirect()->route('admin.users')->with('success', "{$target['name']} is already an admin");
+        }
+        Store::updateUser($id, ['role' => 'Admin']);
+        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Granted Admin Role', 'document' => $target['name']]);
+        return redirect()->route('admin.users')->with('success', "{$target['name']} is now an admin");
+    }
+
+    private function findUser(int $id): ?array
+    {
+        foreach (Store::getUsers() as $u) {
+            if ($u['id'] === $id) return $u;
+        }
+        return null;
     }
 
     public function enableUpload(int $id)

@@ -97,6 +97,9 @@
                               @csrf <button type="submit" class="btn btn-success btn-sm">Enable Upload</button>
                             </form>
                           @endif
+                          <form method="POST" action="{{ route('admin.users.makeAdmin', $u['id']) }}" style="display:inline;">
+                            @csrf <button type="submit" class="btn btn-blue btn-sm">Make Admin</button>
+                          </form>
                         @endif
                       </div>
                     </td>
