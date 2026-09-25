@@ -114,9 +114,18 @@
                           <form method="POST" action="{{ route('admin.bluebooks.approve', $b['id']) }}" style="display:inline;">
                             @csrf <button type="submit" class="btn btn-success btn-sm">Approve</button>
                           </form>
-                          <form method="POST" action="{{ route('admin.bluebooks.reject', $b['id']) }}" style="display:inline;">
-                            @csrf <button type="submit" class="btn btn-warning btn-sm">Reject</button>
-                          </form>
+                          {{-- Rejecting needs a reason the author will read, so the
+                               button opens a small form rather than acting at once. --}}
+                          <details class="reject-box">
+                            <summary class="btn btn-warning btn-sm">Reject</summary>
+                            <form method="POST" action="{{ route('admin.bluebooks.reject', $b['id']) }}">
+                              @csrf
+                              <label for="reject-reason-{{ $b['id'] }}">Reason (shown to the author)</label>
+                              <textarea id="reject-reason-{{ $b['id'] }}" name="reason" rows="3" maxlength="1000" required
+                                        placeholder="e.g. The PDF is missing Chapter 3. Please upload the complete manuscript."></textarea>
+                              <button type="submit" class="btn btn-warning btn-sm">Confirm Reject</button>
+                            </form>
+                          </details>
                         @elseif($b['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER && !$b['waiverRecorded'])
                           <a href="{{ route('admin.bluebooks.edit', $b['id']) }}" class="btn btn-primary btn-sm" title="Record the access level from the signed waiver first">Set Waiver Level</a>
                         @elseif($b['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER)
@@ -124,7 +133,7 @@
                             @csrf <button type="submit" class="btn btn-success btn-sm" title="The signed waiver was handed in; post this bluebook in Browse">Waiver Received</button>
                           </form>
                         @endif
-                        @if($b['hasFile'] && $b['ocrStatus'] !== 'processing')
+                        @if($b['status'] === 'Approved' && $b['hasFile'] && $b['ocrStatus'] !== 'processing')
                           <form method="POST" action="{{ route('admin.bluebooks.reprocessOcr', $b['id']) }}" style="display:inline;">
                             @csrf <button type="submit" class="btn btn-outline btn-sm">Reprocess OCR</button>
                           </form>

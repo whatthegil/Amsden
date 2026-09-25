@@ -442,6 +442,61 @@ class StudentController extends Controller
         return response()->download($form, $name, ['Content-Type' => 'application/pdf']);
     }
 
+    /**
+     * Resubmit a rejected bluebook with a corrected PDF. Only the file is
+     * asked for - the details were already given and the admin can correct
+     * them on the edit form - and the submission goes back to review.
+     */
+    public function reupload(Request $request, int $id)
+    {
+        $user     = session('user');
+        $bluebook = Store::getBluebook($id);
+        if (!$bluebook || $bluebook['uploadedBy'] !== $user['email'] || $bluebook['status'] !== 'Rejected') {
+            return redirect()->route('student.my-uploads');
+        }
+
+        try {
+            $request->validate([
+                'file' => ['required', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile], // 35MB, PDF only
+            ], [
+                'file.required' => 'Please choose the corrected PDF to upload.',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->route('student.my-uploads')->with('error', collect($e->errors())->flatten()->first());
+        }
+
+        try {
+            $file = $request->file('file');
+            $path = $file->store('bluebooks', Store::bluebookDisk());
+            $stamped = Store::stampStoredBluebook($path, [
+                'title' => $bluebook['title'],
+                'year'  => (int) $bluebook['year'],
+            ]);
+
+            Store::updateBluebook($id, [
+                'status'           => 'Pending',
+                'rejectionReason'  => null,
+                'filePath'         => $path,
+                'fileOriginalName' => $file->getClientOriginalName(),
+                'fileSize'         => $file->getSize(),
+                'watermarkedAt'    => $stamped ? now() : null,
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+            return redirect()->route('student.my-uploads')->with('error', 'Something went wrong while uploading your file. Please try again.');
+        }
+
+        // The old file goes only once the new one is safely recorded.
+        if ($bluebook['filePath'] && $bluebook['filePath'] !== $path) {
+            Storage::disk(Store::bluebookDisk())->delete($bluebook['filePath']);
+        }
+
+        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Resubmitted Bluebook', 'document' => $bluebook['title']]);
+        ProcessBluebookOcr::dispatch($id);
+
+        return redirect()->route('student.my-uploads')->with('success', 'Your corrected bluebook was resubmitted and is waiting for review again.');
+    }
+
     public function myUploads()
     {
         $user = session('user');

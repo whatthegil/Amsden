@@ -116,7 +116,19 @@
                 @elseif($b['status'] === 'Pending')
                   Waiting for an administrator to review it. Nothing is needed from you.
                 @else
-                  Not published to the archive. Contact your adviser or the CSPC Library if you think this is wrong.
+                  Not published to the archive. Fix what is noted below and upload the corrected PDF &mdash; your other details are kept.
+                  @if(!empty($b['rejectionReason']))
+                    <div class="rejection-reason"><strong>Reason:</strong> {{ $b['rejectionReason'] }}</div>
+                  @endif
+                  <form method="POST" action="{{ route('student.my-uploads.reupload', $b['id']) }}" enctype="multipart/form-data" class="reupload-form">
+                    @csrf
+                    <label class="sr-only" for="reupload-file-{{ $b['id'] }}">Corrected PDF for {{ $b['title'] }}</label>
+                    <input id="reupload-file-{{ $b['id'] }}" type="file" name="file" accept=".pdf,application/pdf" required>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0-12l-4 4m4-4l4 4M4 20h16"/></svg>
+                      Re-upload
+                    </button>
+                  </form>
                 @endif
               </div>
 

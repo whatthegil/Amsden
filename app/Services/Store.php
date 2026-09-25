@@ -263,6 +263,7 @@ class Store
         foreach ($map as $col) {
             if (array_key_exists($col, $fields)) $b->$col = $fields[$col];
         }
+        if (array_key_exists('rejectionReason', $fields)) $b->rejection_reason = $fields['rejectionReason'];
         if (array_key_exists('filePath', $fields)) {
             $b->file_path          = $fields['filePath'];
             $b->file_original_name = $fields['fileOriginalName'] ?? null;
@@ -473,6 +474,7 @@ class Store
             'accessLevel'      => $b->access_level ?: Bluebook::ACCESS_PUBLIC,
             'accessParts'      => $b->access_parts ?? [],
             'waiverRecorded'   => $b->waiver_recorded_at !== null,
+            'rejectionReason'  => $b->rejection_reason,
         ];
     }
 

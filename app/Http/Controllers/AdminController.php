@@ -243,15 +243,25 @@ class AdminController extends Controller
         return redirect()->route('admin.bluebooks')->with('success', 'Waiver received. The bluebook is now posted in Browse.');
     }
 
-    public function bluebookReject(int $id)
+    public function bluebookReject(Request $request, int $id)
     {
         $user     = session('user');
         $bluebook = Store::getBluebook($id);
-        if ($bluebook) {
-            Store::setBluebookStatus($id, 'Rejected');
-            Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Rejected Bluebook', 'document' => $bluebook['title']]);
+        if (!$bluebook) {
+            return redirect()->route('admin.bluebooks');
         }
-        return redirect()->route('admin.bluebooks')->with('success', 'Bluebook rejected');
+
+        // The author sees this in My Uploads; it is how they know what to fix
+        // before re-uploading, so a rejection without one is not accepted.
+        $reason = trim((string) $request->input('reason'));
+        if ($reason === '') {
+            return redirect()->route('admin.bluebooks')->with('success', 'Please give a reason for rejecting "' . $bluebook['title'] . '".');
+        }
+        $reason = mb_substr($reason, 0, 1000);
+
+        Store::updateBluebook($id, ['status' => 'Rejected', 'rejectionReason' => $reason]);
+        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Rejected Bluebook', 'document' => $bluebook['title']]);
+        return redirect()->route('admin.bluebooks')->with('success', 'Bluebook rejected. The author can see your reason and re-upload.');
     }
 
     public function bluebookDelete(int $id)
@@ -280,6 +290,11 @@ class AdminController extends Controller
 
         if (!$bluebook || !$bluebook['hasFile']) {
             return redirect()->route('admin.bluebooks')->with('success', 'Bluebook has no file to process');
+        }
+        // Only for posted bluebooks - before that the file may still be
+        // replaced (a re-upload after rejection runs OCR on its own).
+        if ($bluebook['status'] !== 'Approved') {
+            return redirect()->route('admin.bluebooks')->with('success', 'OCR can be reprocessed once the bluebook is posted');
         }
         if ($bluebook['ocrStatus'] === 'processing' && !$bluebook['ocrStuck']) {
             return redirect()->route('admin.bluebooks')->with('success', 'OCR is already processing for this bluebook');

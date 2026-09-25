@@ -50,7 +50,7 @@ class Bluebook extends Model
         'file_path', 'file_original_name', 'file_size',
         'ocr_status', 'ocr_text', 'ocr_error', 'ocr_engine', 'ocr_rasterizer', 'ocr_processed_at',
         'watermarked_at',
-        'access_level', 'access_parts', 'waiver_recorded_at',
+        'access_level', 'access_parts', 'waiver_recorded_at', 'rejection_reason',
     ];
 
     protected $casts = [

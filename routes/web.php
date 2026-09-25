@@ -86,6 +86,7 @@ Route::prefix('student')->middleware('role:Student,Faculty')->group(function () 
 
     Route::get('/my-uploads',                  [StudentController::class, 'myUploads'])->name('student.my-uploads');
     Route::get('/my-uploads/{id}/waiver',      [StudentController::class, 'downloadWaiver'])->name('student.my-uploads.waiver');
+    Route::post('/my-uploads/{id}/reupload',   [StudentController::class, 'reupload'])->name('student.my-uploads.reupload');
     Route::get('/history',                     [StudentController::class, 'history'])->name('student.history');
     Route::get('/bookmarks',                   [StudentController::class, 'bookmarks'])->name('student.bookmarks');
 

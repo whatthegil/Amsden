@@ -845,6 +845,30 @@ tbody tr:hover td { background: var(--primary-light); }
 tbody tr:last-child td { border-bottom: none; }
 .td-actions { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
 
+/* Reject opens a reason form in place (admin bluebook list). */
+.reject-box > summary { list-style: none; cursor: pointer; }
+.reject-box > summary::-webkit-details-marker { display: none; }
+.reject-box[open] { flex-basis: 100%; }
+.reject-box form {
+  display: flex; flex-direction: column; gap: 0.4rem;
+  margin-top: 0.5rem; padding: 0.7rem;
+  border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+  min-width: 240px;
+}
+.reject-box label { font-size: 0.8rem; font-weight: 600; }
+.reject-box textarea { width: 100%; font: inherit; font-size: 0.85rem; }
+.reject-box form .btn { align-self: flex-start; }
+
+/* Resubmitting a rejected bluebook (My Uploads). */
+.reupload-form { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.6rem; }
+.reupload-form input[type="file"] { font-size: 0.83rem; max-width: 100%; }
+.rejection-reason {
+  margin-top: 0.5rem; padding: 0.6rem 0.75rem;
+  border-left: 3px solid var(--red); background: var(--red-light); color: var(--gray-800);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  white-space: pre-line;
+}
+
 /* ─── Badges ─────────────────────────────────────────────────────────────────── */
 .badge {
   display: inline-block;
