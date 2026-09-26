@@ -2082,3 +2082,7 @@ a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
   border: 1px solid var(--gray-200); border-radius: 999px; background: var(--white); color: var(--gray-800);
 }
 .reason-pick:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+/* Links from the archive list to the submissions not yet in it. */
+.queue-links { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-bottom: 1rem; font-size: 0.88rem; }
+.queue-links a { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--primary); font-weight: 600; }

@@ -113,9 +113,24 @@ class AdminReadBluebookTest extends TestCase
             ->assertStatus(302);
     }
 
+    public function test_the_admin_list_is_the_archive_only(): void
+    {
+        $this->makeBluebook(['title' => 'Still Pending']);
+        $this->makeBluebook(['title' => 'Turned Down', 'status' => 'Rejected']);
+        $this->makeBluebook(['title' => 'In The Archive', 'status' => 'Approved']);
+
+        $res = $this->withSession(['user' => $this->admin()])->get('/admin/bluebooks');
+
+        $res->assertSee('In The Archive');
+        $res->assertDontSee('Still Pending');
+        $res->assertDontSee('Turned Down');
+        $res->assertSee(route('admin.pending'), false);
+        $res->assertSee('1</span> rejected', false);
+    }
+
     public function test_the_admin_list_links_each_title_to_its_page(): void
     {
-        $b = $this->makeBluebook();
+        $b = $this->makeBluebook(['status' => 'Approved']);
 
         $this->withSession(['user' => $this->admin()])
             ->get('/admin/bluebooks')

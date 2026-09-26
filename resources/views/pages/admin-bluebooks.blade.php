@@ -32,6 +32,18 @@
         <div class="alert alert-success">{{ session('success') }}</div>
       @endif
 
+      {{-- Submissions not yet in the archive live on their own pages. --}}
+      @if(($pendingCount ?? 0) > 0 || ($rejectedCount ?? 0) > 0)
+        <div class="queue-links">
+          @if(($pendingCount ?? 0) > 0)
+            <a href="{{ route('admin.pending') }}"><span class="badge badge-yellow">{{ $pendingCount }}</span> pending review &rarr;</a>
+          @endif
+          @if(($rejectedCount ?? 0) > 0)
+            <a href="{{ route('admin.rejected') }}"><span class="badge badge-red">{{ $rejectedCount }}</span> rejected &rarr;</a>
+          @endif
+        </div>
+      @endif
+
       <form method="GET" action="{{ route('admin.bluebooks') }}" class="filter-bar">
         <div class="filter-group grow">
           <label for="bluebooks-filter-search">Search</label>
@@ -59,8 +71,8 @@
           <label for="bluebooks-filter-status">Status</label>
           <select id="bluebooks-filter-status" name="status">
             <option value="">All Status</option>
-            @foreach(['Approved', \App\Models\Bluebook::STATUS_AWAITING_WAIVER, 'Pending', 'Rejected'] as $s)
-              <option value="{{ $s }}" {{ ($query['status'] ?? '') === $s ? 'selected' : '' }}>{{ $s }}</option>
+            @foreach(['Approved' => 'Posted', \App\Models\Bluebook::STATUS_AWAITING_WAIVER => 'Awaiting Waiver'] as $s => $label)
+              <option value="{{ $s }}" {{ ($query['status'] ?? '') === $s ? 'selected' : '' }}>{{ $label }}</option>
             @endforeach
           </select>
         </div>
@@ -99,7 +111,7 @@
                     <td><span class="badge badge-blue">{{ $b['department'] }}</span></td>
                     <td>{{ $b['year'] }}</td>
                     <td>
-                      @if($b['status'] === 'Approved') <span class="badge badge-green">Approved</span>
+                      @if($b['status'] === 'Approved') <span class="badge badge-green">Posted</span>
                       @elseif($b['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER) <span class="badge badge-blue">Awaiting Waiver</span>
                       @elseif($b['status'] === 'Pending') <span class="badge badge-yellow">Pending</span>
                       @else <span class="badge badge-red">Rejected</span>
@@ -122,22 +134,6 @@
                         @endif
                         @if(!$canReview)
                           {{-- Reviewing is not this account's to do. --}}
-                        @elseif($b['status'] === 'Pending')
-                          <form method="POST" action="{{ route('admin.bluebooks.approve', $b['id']) }}" style="display:inline;">
-                            @csrf <button type="submit" class="btn btn-success btn-sm">Approve</button>
-                          </form>
-                          {{-- Rejecting needs a reason the author will read, so the
-                               button opens a small form rather than acting at once. --}}
-                          <details class="reject-box">
-                            <summary class="btn btn-warning btn-sm">Reject</summary>
-                            <form method="POST" action="{{ route('admin.bluebooks.reject', $b['id']) }}">
-                              @csrf
-                              <label for="reject-reason-{{ $b['id'] }}">Reason (shown to the author)</label>
-                              <textarea id="reject-reason-{{ $b['id'] }}" name="reason" rows="3" maxlength="1000" required
-                                        placeholder="e.g. The PDF is missing Chapter 3. Please upload the complete manuscript."></textarea>
-                              <button type="submit" class="btn btn-warning btn-sm">Confirm Reject</button>
-                            </form>
-                          </details>
                         @elseif($b['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER && !$b['waiverRecorded'])
                           <a href="{{ route('admin.bluebooks.edit', $b['id']) }}" class="btn btn-primary btn-sm" title="Record the access level from the signed waiver first">Set Waiver Level</a>
                         @elseif($b['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER)

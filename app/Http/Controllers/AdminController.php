@@ -76,10 +76,20 @@ class AdminController extends Controller
     {
         $q = $request->only(['search', 'department', 'year', 'status']);
 
+        // The archive: papers that are posted, or approved and waiting only for
+        // the signed waiver. Pending and Rejected have pages of their own.
+        $archive = ['Approved', Bluebook::STATUS_AWAITING_WAIVER];
+        $status  = in_array($q['status'] ?? null, $archive, true) ? $q['status'] : null;
+        $books   = array_values(array_filter(
+            Store::getBluebooks($q['search'] ?? null, $q['department'] ?? null, isset($q['year']) && $q['year'] ? (int)$q['year'] : null, $status),
+            fn($b) => in_array($b['status'], $archive, true)
+        ));
+
         return view('pages.admin-bluebooks', [
-            'user'         => session('user'),
-            'active'       => 'bluebooks',
-            'bluebooks'    => Store::getBluebooks($q['search'] ?? null, $q['department'] ?? null, isset($q['year']) && $q['year'] ? (int)$q['year'] : null, $q['status'] ?? null),
+            'user'          => session('user'),
+            'active'        => 'bluebooks',
+            'bluebooks'     => $books,
+            'rejectedCount' => count(Store::getBluebooks(null, null, null, 'Rejected')),
             'years'        => Store::getYears(),
             'query'        => $q,
             'pendingCount' => Store::getPendingCount(),

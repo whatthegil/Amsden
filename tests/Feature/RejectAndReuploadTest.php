@@ -95,12 +95,12 @@ class RejectAndReuploadTest extends TestCase
         $this->assertSame('Pending', $bluebook->fresh()->status);
     }
 
-    public function test_admin_list_asks_for_a_reason(): void
+    public function test_the_pending_queue_asks_for_a_reason(): void
     {
         $this->makeBluebook('Pending');
 
         $this->withSession(['user' => $this->admin()])
-            ->get('/admin/bluebooks')
+            ->get('/admin/pending')
             ->assertOk()
             ->assertSee('name="reason"', false)
             ->assertSee('Confirm Reject');
