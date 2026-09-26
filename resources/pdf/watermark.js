@@ -12,7 +12,9 @@
 // standard Helvetica, whose encoding is one byte per glyph, so a UTF-8 middle
 // dot arrives as two characters and prints as one. PdfWatermarker converts.
 //
-//   mutool run watermark.js <input> <output> <line1> <line2> [opacity] [size] [offset]
+//   mutool run watermark.js <input> <output> <line1> <line2> [opacity] [size] [offset] [logo]
+//
+// With a logo (a PNG path), each mark is the logo with line1 under it.
 
 var input   = scriptArgs[0];
 var output  = scriptArgs[1];
@@ -23,6 +25,7 @@ var size    = scriptArgs[5] ? parseFloat(scriptArgs[5]) : 11;
 // Shifts the grid, so a document stamped twice does not print the second mark
 // on top of the first and leave both unreadable.
 var offset  = scriptArgs[6] ? parseFloat(scriptArgs[6]) : 0;
+var logoPath = scriptArgs[7] || '';
 
 // -22 degrees, as the matrix PDF wants: cos, sin, -sin, cos.
 var COS = 0.927, SIN = 0.375;
@@ -32,6 +35,14 @@ var doc  = new PDFDocument(input);
 // "Latin" is CP1252, which is the encoding esc() below writes bytes for.
 var font = doc.addSimpleFont(new Font('Helvetica'), 'Latin');
 var pages = doc.countPages();
+
+// Added once and shared by every page, so the file grows by one image, not one
+// per page. A logo that will not load leaves the mark as text alone.
+var logo = null;
+if (logoPath) {
+    try { logo = doc.addImage(new Image(logoPath)); } catch (e) { logo = null; }
+}
+var LOGO = size * 4.2;           // drawn size of the logo, in points
 
 // The few CP1252 bytes that are not simply the Unicode code point. Everything
 // from 0xA0 to 0xFF matches Latin-1 and needs no entry, which covers the
@@ -120,6 +131,10 @@ for (var i = 0; i < pages; i++) {
     gs.put('CA', opacity);
     egs.put('CBAMSGS', doc.addObject(gs));
 
+    if (logo) {
+        dictAt(res, 'XObject').put('CBAMSLOGO', logo);
+    }
+
     // The leading Q closes the q that is prepended to the original content
     // below. Without that pairing the mark inherits whatever clip, transform or
     // colour the page's own stream happened to leave set, which on a real
@@ -133,6 +148,17 @@ for (var i = 0; i < pages; i++) {
             var py2 = (y + box[1] - size - 3).toFixed(1);
             var m   = COS + ' ' + (-SIN) + ' ' + SIN + ' ' + COS + ' ';
 
+            if (logo) {
+                // Above the text, in the same rotated frame: the matrix maps the
+                // unit square the image is drawn in to a LOGO-sized square
+                // whose corner sits size + 4 points up the rotated y axis.
+                var lift = size + 4;
+                var lx = (x + box[0] + SIN * lift).toFixed(1);
+                var ly = (y + box[1] + COS * lift).toFixed(1);
+                ops += 'q ' + (LOGO * COS).toFixed(2) + ' ' + (-LOGO * SIN).toFixed(2) + ' '
+                     + (LOGO * SIN).toFixed(2) + ' ' + (LOGO * COS).toFixed(2) + ' '
+                     + lx + ' ' + ly + ' cm /CBAMSLOGO Do Q\n';
+            }
             if (line1) {
                 ops += 'BT ' + m + px + ' ' + py + ' Tm (' + esc(line1) + ') Tj ET\n';
             }

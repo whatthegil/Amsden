@@ -196,7 +196,7 @@ class StudentController extends Controller
                 $lines   = PdfWatermarker::viewerLines($user);
                 $stamped = $partial . '.stamped.pdf';
 
-                if (PdfWatermarker::stampFile($partial, $stamped, $lines[0], $lines[1], PdfWatermarker::VIEWER_OFFSET)) {
+                if (PdfWatermarker::stampFile($partial, $stamped, $lines[0], $lines[1], PdfWatermarker::VIEWER_OFFSET, true)) {
                     @unlink($partial);
                     $temp = $stamped;
                 }
@@ -204,7 +204,7 @@ class StudentController extends Controller
         } elseif (config('watermark.per_viewer', true)) {
             $lines = PdfWatermarker::viewerLines($user);
             $temp  = PdfWatermarker::stampToTemp(
-                $bluebook['filePath'], $lines[0], $lines[1], PdfWatermarker::VIEWER_OFFSET
+                $bluebook['filePath'], $lines[0], $lines[1], PdfWatermarker::VIEWER_OFFSET, true
             );
         }
 

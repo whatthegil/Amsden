@@ -150,7 +150,7 @@ class PdfWatermarker
      * Stamp one local file to another. Both paths are absolute and local;
      * callers holding a document on a remote disk go through the helpers below.
      */
-    public static function stampFile(string $src, string $dest, string $line1, string $line2 = '', float $offset = 0.0): bool
+    public static function stampFile(string $src, string $dest, string $line1, string $line2 = '', float $offset = 0.0, bool $withLogo = false): bool
     {
         $stamper = self::stamper();
 
@@ -160,7 +160,7 @@ class PdfWatermarker
         }
 
         if ($stamper['kind'] === 'gs') {
-            return self::stampWithGhostscript($stamper['bin'], $src, $dest, $line1, $line2, $offset);
+            return self::stampWithGhostscript($stamper['bin'], $src, $dest, $line1, $line2, $offset, $withLogo);
         }
 
         $bin    = $stamper['bin'];
@@ -181,6 +181,7 @@ class PdfWatermarker
             (string) config('watermark.opacity', 0.13),
             (string) config('watermark.size', 11),
             (string) $offset,
+            $withLogo && is_file(self::logoPng()) ? self::logoPng() : '',
         ]);
         $process->setTimeout((float) config('watermark.timeout', 120));
 
@@ -255,7 +256,7 @@ class PdfWatermarker
      * The caller owns the returned path and must delete it. Null means the
      * document should be served as it is stored.
      */
-    public static function stampToTemp(string $path, string $line1, string $line2 = '', float $offset = 0.0): ?string
+    public static function stampToTemp(string $path, string $line1, string $line2 = '', float $offset = 0.0, bool $withLogo = false): ?string
     {
         // Swept here rather than on a schedule, because this app does not run
         // one and these are whole documents - a handful of dropped connections
@@ -272,7 +273,7 @@ class PdfWatermarker
         $dest = self::tempPath();
 
         try {
-            return self::stampFile($src, $dest, $line1, $line2, $offset) ? $dest : null;
+            return self::stampFile($src, $dest, $line1, $line2, $offset, $withLogo) ? $dest : null;
         } finally {
             @unlink($src);
         }
@@ -363,10 +364,11 @@ class PdfWatermarker
      * original is the return value.
      */
     private static function stampWithGhostscript(
-        string $bin, string $src, string $dest, string $line1, string $line2, float $offset
+        string $bin, string $src, string $dest, string $line1, string $line2, float $offset, bool $withLogo = false
     ): bool {
         $size    = (float) config('watermark.size', 11);
         $opacity = (float) config('watermark.opacity', 0.13);
+        $logo    = $withLogo ? self::logoPostScript($size) : '';
 
         $program = sprintf(
             '<< /EndPage { exch pop 2 ne dup { gsave '
@@ -384,6 +386,7 @@ class PdfWatermarker
             . '%.1F %d ph %d add { /yy exch def '
             . '%.1F %d pw %d add { /xx exch def '
             . 'gsave xx yy translate -22 rotate '
+            . '%s'
             . '0 0 moveto (%s) show '
             . '0 -%.1F moveto (%s) show '
             . 'grestore } for } for '
@@ -392,10 +395,16 @@ class PdfWatermarker
             $size,
             40.0 + $offset, self::TILE, self::TILE,
             20.0 + $offset, self::TILE, self::TILE,
+            $logo,
             self::escapePostScript($line1),
             $size + 3,
             self::escapePostScript($line2)
         );
+
+        // The logo's pixels make the program tens of kilobytes, past what a
+        // Windows command line holds, so it goes in a file rather than -c.
+        $programFile = substr(self::tempPath(), 0, -4) . '.ps';
+        file_put_contents($programFile, $program);
 
         $process = new Process([
             $bin, '-q', '-dBATCH', '-dNOPAUSE', '-dSAFER',
@@ -405,7 +414,7 @@ class PdfWatermarker
             // arrives as pictures of words cannot be searched or read aloud.
             '-dSubsetFonts=true', '-dEmbedAllFonts=true',
             '-o', $dest,
-            '-c', $program,
+            '-f', $programFile,
             '-f', $src,
         ]);
         $process->setTimeout((float) config('watermark.timeout', 120));
@@ -418,6 +427,8 @@ class PdfWatermarker
                 'error' => trim($process->getErrorOutput() ?: $e->getMessage()),
             ]);
             return false;
+        } finally {
+            @unlink($programFile);
         }
 
         if (!is_file($dest) || filesize($dest) < 1024) {
@@ -481,6 +492,49 @@ class PdfWatermarker
         fclose($stream);
 
         return $temp;
+    }
+
+    /** The CSPC crest drawn in the served mark, for the MuPDF stamper. */
+    private static function logoPng(): string
+    {
+        return public_path('images/cspc-logo.png');
+    }
+
+    /**
+     * The crest as PostScript, for the Ghostscript stamper, drawn above the
+     * text in the tile's rotated frame.
+     *
+     * PostScript cannot read a PNG, so resources/pdf/logo.rgbhex holds the crest
+     * already decoded: a "width height" line, then its RGB pixels as hex, flattened
+     * onto white. The image is ImageType 4 with near-white as its mask colour,
+     * which lets the page show through where the PNG was transparent. Empty when
+     * the file is missing, which leaves the mark as text.
+     */
+    private static function logoPostScript(float $size): string
+    {
+        $file = resource_path('pdf/logo.rgbhex');
+        if (!is_file($file)) {
+            return '';
+        }
+
+        $data = (string) file_get_contents($file);
+        [$head, $body] = array_pad(explode("\n", $data, 2), 2, '');
+        [$w, $h] = array_map('intval', array_pad(explode(' ', trim($head)), 2, 0));
+        $hex = preg_replace('/[^0-9a-fA-F]/', '', $body);
+
+        if ($w < 1 || $h < 1 || strlen($hex) !== $w * $h * 6) {
+            return '';
+        }
+
+        return sprintf(
+            'gsave 0 %.1F translate %.1F %.1F scale /DeviceRGB setcolorspace '
+            . '<< /ImageType 4 /Width %d /Height %d /BitsPerComponent 8 /Decode [0 1 0 1 0 1] '
+            . '/ImageMatrix [%d 0 0 -%d 0 %d] /MaskColor [235 255 235 255 235 255] '
+            . '/DataSource <%s> >> image grestore ',
+            $size + 4, $size * 4.2, $size * 4.2 * $h / $w,
+            $w, $h, $w, $h, $h,
+            $hex
+        );
     }
 
     private static function tempPath(): string

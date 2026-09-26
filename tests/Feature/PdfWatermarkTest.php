@@ -279,6 +279,36 @@ class PdfWatermarkTest extends TestCase
         @unlink($dest);
     }
 
+    /** The served copy carries the CSPC crest as an image, not only the email. */
+    public function test_the_served_mark_embeds_the_crest(): void
+    {
+        if (!PdfWatermarker::available()) {
+            $this->markTestSkipped('No MuPDF binary on this host.');
+        }
+
+        $src  = $this->realPdf();
+        $dest = storage_path('app/watermark-tmp/test-logo.pdf');
+
+        $this->assertTrue(PdfWatermarker::stampFile(
+            $src, $dest, 'tester@my.cspc.edu.ph', '', PdfWatermarker::VIEWER_OFFSET, true
+        ));
+
+        $this->assertGreaterThan(filesize($src) + 1000, filesize($dest), 'The crest image should be in the file.');
+
+        @unlink($src);
+        @unlink($dest);
+    }
+
+    /** The Ghostscript stamper gets the crest from the decoded copy committed beside the script. */
+    public function test_the_decoded_crest_matches_its_declared_size(): void
+    {
+        $data = file_get_contents(resource_path('pdf/logo.rgbhex'));
+        [$head, $body] = explode("\n", $data, 2);
+        [$w, $h] = array_map('intval', explode(' ', trim($head)));
+
+        $this->assertSame($w * $h * 6, strlen(preg_replace('/[^0-9a-f]/i', '', $body)));
+    }
+
     /**
      * A title carrying a bracket would close the PDF string literal early and
      * corrupt the content stream of every page it was written into.
