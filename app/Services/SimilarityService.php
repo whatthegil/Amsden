@@ -140,47 +140,4 @@ class SimilarityService
         return $weightSum > 0.0 ? $score / $weightSum : 0.0;
     }
 
-    /**
-     * Relevance of a free-text search query against a bluebook, for ranking
-     * search results (as opposed to computeSimilarity(), which compares two
-     * documents against each other for duplicate detection).
-     *
-     * Uses overlapCoefficient() per field — "what fraction of the query's
-     * words appear in this field" — since search queries are typically a
-     * couple of keywords, and jaccard() would unfairly punish a match against
-     * a long title/abstract/OCR text just for having other words too.
-     */
-    public static function searchRelevance(string $query, array $bluebook): float
-    {
-        $queryTokens = self::tokenize($query);
-        if (empty($queryTokens)) return 0.0;
-
-        $titleScore = self::overlapCoefficient($queryTokens, self::tokenize($bluebook['title'] ?? ''));
-
-        $keywordTokens = array_map(fn($k) => strtolower(trim($k)), $bluebook['keywords'] ?? []);
-        $keywordScore  = self::overlapCoefficient($queryTokens, $keywordTokens);
-
-        $abstractScore = self::overlapCoefficient($queryTokens, self::tokenize($bluebook['abstract'] ?? ''));
-
-        $authorTokens = self::tokenize(implode(' ', $bluebook['authors'] ?? []));
-        $authorScore  = self::overlapCoefficient($queryTokens, $authorTokens);
-
-        $ocrScore = 0.0;
-        $ocrText  = trim($bluebook['ocrText'] ?? '');
-        if ($ocrText !== '') {
-            $ocrScore = self::overlapCoefficient($queryTokens, self::tokenize($ocrText));
-        }
-
-        // Small bonus when the whole query appears as a literal phrase in the
-        // title, so an exact match ranks above documents that only share
-        // scattered individual words.
-        $phraseBonus = stripos($bluebook['title'] ?? '', trim($query)) !== false ? 0.25 : 0.0;
-
-        return $phraseBonus
-            + ($titleScore    * 0.40)
-            + ($keywordScore  * 0.20)
-            + ($abstractScore * 0.15)
-            + ($authorScore   * 0.10)
-            + ($ocrScore      * 0.15);
-    }
 }

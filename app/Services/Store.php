@@ -178,40 +178,27 @@ class Store
     public static function getBluebooks(?string $search = null, ?string $department = null, ?int $year = null, ?string $status = null): array
     {
         $query = Bluebook::query();
-        if ($search) {
-            // Match on the whole phrase OR any individual word, so e.g.
-            // "management system" also finds documents where those words
-            // appear separately. This is a broad recall filter only — actual
-            // ranking happens below via SimilarityService::searchRelevance().
-            $terms = array_unique(array_merge([$search], SimilarityService::tokenize($search)));
-            $query->where(function ($sq) use ($terms) {
-                foreach ($terms as $term) {
-                    $like = '%' . $term . '%';
-                    $sq->orWhere('title',    'LIKE', $like)
-                       ->orWhere('abstract', 'LIKE', $like)
-                       ->orWhere('authors',  'LIKE', $like)
-                       ->orWhere('keywords', 'LIKE', $like)
-                       ->orWhere('ocr_text', 'LIKE', $like);
-                }
-            });
-        }
         if ($department) $query->where('department', $department);
         if ($year)       $query->where('year', $year);
         if ($status)     $query->where('status', $status);
-        $results = $query->latest()->get()->map(fn($b) => self::bookToArray($b))->toArray();
 
-        // Rank by relevance to the query instead of upload recency, so an
-        // exact title/keyword match surfaces above a barely-matching but
-        // more recently uploaded bluebook.
-        if ($search) {
-            $scores = [];
-            foreach ($results as $b) {
-                $scores[$b['id']] = SimilarityService::searchRelevance($search, $b);
+        if ($search !== null && trim($search) !== '') {
+            // Words in any order, typos, other forms of a word, accents and
+            // the document text - see SearchService. Ranked best first.
+            $scores = SearchService::rank($search, $query);
+            if ($scores === []) {
+                return [];
             }
-            usort($results, fn($a, $b) => $scores[$b['id']] <=> $scores[$a['id']]);
+
+            $books = Bluebook::whereIn('id', array_keys($scores))->get()->keyBy('id');
+
+            return array_values(array_filter(array_map(
+                fn($id) => isset($books[$id]) ? self::bookToArray($books[$id]) : null,
+                array_keys($scores)
+            )));
         }
 
-        return $results;
+        return $query->latest()->get()->map(fn($b) => self::bookToArray($b))->toArray();
     }
 
     public static function getApprovedBluebooks(?string $search = null, ?string $department = null, ?int $year = null): array
