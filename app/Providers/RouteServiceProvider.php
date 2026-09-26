@@ -90,6 +90,15 @@ class RouteServiceProvider extends ServiceProvider
 
         RateLimiter::for('bluebook-read', function (Request $request) {
             $email = $request->session()->get('user')['email'] ?? null;
+
+            // The viewer reads a document in byte ranges - dozens of small
+            // requests for one paper - so ranges get their own, larger budget.
+            // Opening a page or a whole file is what bulk collection needs, and
+            // that keeps the tight one.
+            if ($request->headers->has('Range')) {
+                return Limit::perMinute(600)->by('range:' . ($email ?? $request->ip()));
+            }
+
             return Limit::perMinute(30)->by($email ?? $request->ip());
         });
 

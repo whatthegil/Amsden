@@ -167,17 +167,16 @@ class StudentController extends Controller
         // rather than in the viewer - the viewer only asks for this route, and
         // anything it was told to hide would still be in what it was sent.
         $accessLevel = $bluebook['accessLevel'];
-        $partial     = null;
 
         if ($accessLevel === Bluebook::ACCESS_CONSULTATION) {
             abort(403, 'This bluebook is available only after consultation with the author.');
         }
 
+        // The cut itself happens where the document is prepared, so it is done
+        // once and kept rather than repeated on every read.
+        $partial = null;
         if ($accessLevel === Bluebook::ACCESS_PARTIAL) {
-            $pageList = Bluebook::visiblePageList($bluebook['accessParts']);
-            $partial  = $pageList !== null
-                ? PdfWatermarker::keepPagesToTemp($bluebook['filePath'], $pageList)
-                : null;
+            $partial = Bluebook::visiblePageList($bluebook['accessParts']);
 
             // Failing closed: the only other thing to send is every page.
             if ($partial === null) {

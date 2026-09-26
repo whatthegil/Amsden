@@ -13,7 +13,7 @@ class SubAdminTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function account(string $role, array $permissions = [], string $email = null): User
+    private function account(string $role, array $permissions = [], ?string $email = null): User
     {
         return User::create([
             'name' => $role . ' Person', 'email' => $email ?? strtolower(str_replace('-', '', $role)) . rand(1000, 9999) . '@cspc.edu.ph',

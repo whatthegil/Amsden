@@ -65,7 +65,43 @@ class AdminReadBluebookTest extends TestCase
         $res = $this->withSession(['user' => $this->admin()])->get("/admin/bluebooks/{$b->id}/file");
 
         $res->assertOk();
-        $this->assertStringContainsString('whole document', $res->streamedContent());
+        $this->assertStringContainsString('whole document', file_get_contents($res->baseResponse->getFile()->getPathname()));
+    }
+
+    public function test_a_prepared_copy_is_kept_and_served_in_ranges(): void
+    {
+        $b = $this->makeBluebook(['status' => 'Approved']);
+        $session = ['user' => $this->admin()];
+
+        $first = $this->withSession($session)->get("/admin/bluebooks/{$b->id}/file");
+        $first->assertOk();
+        $first->assertHeader('Accept-Ranges', 'bytes');
+        $kept = $first->baseResponse->getFile()->getPathname();
+        $this->assertStringContainsString('document-cache', $kept);
+
+        // The same copy the next time, not a second one prepared.
+        Storage::disk(Store::bluebookDisk())->put('bluebooks/p.pdf', '%PDF-1.4 changed underneath');
+        $again = $this->withSession($session)->get("/admin/bluebooks/{$b->id}/file");
+        $this->assertSame($kept, $again->baseResponse->getFile()->getPathname());
+
+        // And a byte range, which is how the viewer reads on.
+        $range = $this->withSession($session)->withHeaders(['Range' => 'bytes=0-7'])->get("/admin/bluebooks/{$b->id}/file");
+        $range->assertStatus(206);
+        $this->assertSame('bytes 0-7/' . filesize($kept), $range->headers->get('Content-Range'));
+
+        @unlink($kept);
+    }
+
+    public function test_range_requests_are_not_logged_as_downloads(): void
+    {
+        $b = $this->makeBluebook(['status' => 'Approved']);
+        $session = ['user' => $this->admin()];
+
+        $this->withSession($session)->get("/admin/bluebooks/{$b->id}/file");
+        $this->withSession($session)->withHeaders(['Range' => 'bytes=0-7'])->get("/admin/bluebooks/{$b->id}/file");
+        $this->withSession($session)->withHeaders(['Range' => 'bytes=8-15'])->get("/admin/bluebooks/{$b->id}/file");
+
+        $this->assertSame(1, \App\Models\Log::where('action', 'Downloaded Bluebook File')->count());
     }
 
     public function test_readers_cannot_use_the_admin_routes(): void

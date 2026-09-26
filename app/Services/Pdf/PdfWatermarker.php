@@ -469,7 +469,7 @@ class PdfWatermarker
     }
 
     /** A local copy of a document that may be sitting in object storage. */
-    private static function pullToTemp(string $path): ?string
+    public static function pullToTemp(string $path): ?string
     {
         $disk   = Storage::disk(Store::bluebookDisk());
         $stream = $disk->readStream($path);

@@ -160,8 +160,15 @@
       // not want them. The streaming route is same-origin and sits behind the
       // session, so it does.
       withCredentials: !direct,
+      // The server answers with the file's length and byte ranges, so the
+      // viewer asks for the parts it needs - the end of the file, where the
+      // index is, then the pages being read - and draws page one after a few
+      // hundred kilobytes instead of waiting for the whole document. Nothing is
+      // fetched in the background beyond what is on or near the screen.
       disableRange: false,
-      disableStream: false,
+      disableStream: true,
+      disableAutoFetch: true,
+      rangeChunkSize: 262144,
     });
     task.onProgress = onProgress;
     return task.promise;
