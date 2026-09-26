@@ -17,8 +17,8 @@ android {
         // The archive this build points at. Change here rather than in code, and
         // note that the Cloud domain is derived from the Laravel Cloud app and
         // environment names — renaming either changes this URL.
-        buildConfigField("String", "ARCHIVE_URL", "\"https://c-bams-production-ku6t8w.laravel.cloud\"")
-        buildConfigField("String", "ARCHIVE_HOST", "\"c-bams-production-ku6t8w.laravel.cloud\"")
+        buildConfigField("String", "ARCHIVE_URL", "\"https://cspcbams.laravel.cloud\"")
+        buildConfigField("String", "ARCHIVE_HOST", "\"cspcbams.laravel.cloud\"")
     }
 
     buildFeatures {

@@ -35,6 +35,15 @@ class AuthLoginTest extends TestCase
         return $user;
     }
 
+    public function test_google_is_sent_back_to_the_domain_the_user_is_on(): void
+    {
+        config(['services.google.client_id' => 'test-client', 'services.google.redirect' => 'https://old-name.laravel.cloud/auth/google/callback']);
+
+        $location = $this->get('https://cspcbams.laravel.cloud/auth/google')->headers->get('Location');
+
+        $this->assertStringContainsString('redirect_uri=' . urlencode('https://cspcbams.laravel.cloud/auth/google/callback'), $location);
+    }
+
     public function test_valid_credentials_log_the_user_in(): void
     {
         $this->makeUser(['policy_accepted_at' => now()]);

@@ -105,9 +105,20 @@ class AuthController extends Controller
 
     public function redirectToGoogle()
     {
-        return Socialite::driver('google')
+        return $this->google()
             ->scopes(['openid', 'profile', 'email'])
             ->redirect();
+    }
+
+    /**
+     * Google sends the user back to whichever domain they started from. A
+     * configured redirect URI outlives a domain rename - the old one kept
+     * being sent after the site moved to cspcbams.laravel.cloud, and Google
+     * refused it with redirect_uri_mismatch. Both legs must send the same one.
+     */
+    private function google()
+    {
+        return Socialite::driver('google')->redirectUrl(route('auth.google.callback'));
     }
 
     // Google sends these back on the callback URL when it refuses the sign-in
@@ -138,7 +149,7 @@ class AuthController extends Controller
         }
 
         try {
-            $googleUser = Socialite::driver('google')->stateless()->user();
+            $googleUser = $this->google()->stateless()->user();
         } catch (\Exception $e) {
             // Previously swallowed silently, which made every Google failure
             // undiagnosable. Record it so storage/logs/laravel.log says why.
