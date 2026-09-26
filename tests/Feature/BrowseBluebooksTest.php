@@ -158,6 +158,24 @@ class BrowseBluebooksTest extends TestCase
         $this->assertSame([], $res->json('results'));
     }
 
+    public function test_the_paper_page_has_reading_controls_details_and_a_citation(): void
+    {
+        $bluebook = $this->makeBluebook(['file_path' => 'bluebooks/p.pdf', 'pages' => 42, 'authors' => ['Dela Cruz, Maria']]);
+
+        $res = $this->withSession(['user' => $this->student()])->get("/student/bluebooks/{$bluebook->id}");
+
+        $res->assertOk();
+        foreach (['data-pdf="prev"', 'data-pdf="next"', 'id="pdf-page-input"', 'data-pdf="zoom-in"',
+                  'data-pdf="zoom-out"', 'data-pdf="fit"', 'data-pdf="fullscreen"', 'id="pdf-contents"'] as $control) {
+            $res->assertSee($control, false);
+        }
+        $res->assertSee('CCS — College of Computer Studies');
+        $res->assertSee('42 pages');
+        $res->assertSee('Full document');
+        $res->assertSee('(Dela Cruz, 2024)');
+        $res->assertSee("Dela Cruz, M. (2024).", false);
+    }
+
     public function test_the_paper_page_keeps_program_and_adviser_but_not_upload_details(): void
     {
         $bluebook = $this->makeBluebook([

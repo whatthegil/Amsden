@@ -197,34 +197,4 @@
   </main>
 </div>
 
-<script>
-// Copy buttons: a citation, the reference list, or the synthesis, straight to
-// the clipboard, since the text itself is not selectable on this page.
-document.addEventListener('click', function (e) {
-  const btn = e.target.closest('[data-copy]');
-  if (!btn) return;
-
-  const text = btn.getAttribute('data-copy');
-  const done = function () {
-    const label = btn.textContent;
-    btn.textContent = 'Copied';
-    setTimeout(function () { btn.textContent = label; }, 1500);
-  };
-
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text).then(done);
-  } else {
-    const area = document.createElement('textarea');
-    area.value = text;
-    area.style.position = 'fixed';
-    area.style.opacity = '0';
-    document.body.appendChild(area);
-    area.select();
-    document.execCommand('copy');
-    area.remove();
-    done();
-  }
-});
-</script>
-
 @include('partials.footer')

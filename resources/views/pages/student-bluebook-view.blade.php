@@ -83,7 +83,20 @@
           @endforeach
         </div>
 
+        @php
+          $deptName = config('departments.' . $bluebook['department'] . '.name');
+          $access   = match ($bluebook['accessLevel']) {
+            \App\Models\Bluebook::ACCESS_CONSULTATION => 'By consultation with the author',
+            \App\Models\Bluebook::ACCESS_PARTIAL      => 'Selected parts only',
+            default                                   => 'Full document',
+          };
+          $citation = \App\Services\LiteratureReviewService::citation($bluebook);
+        @endphp
         <div class="info-grid">
+          <div class="info-row">
+            <span class="key">Department</span>
+            <span class="val">{{ $bluebook['department'] }}{{ $deptName && $deptName !== $bluebook['department'] ? ' — ' . $deptName : '' }}</span>
+          </div>
           <div class="info-row">
             <span class="key">Program</span>
             <span class="val">{{ $bluebook['program'] }}</span>
@@ -92,6 +105,23 @@
             <span class="key">Adviser</span>
             <span class="val">{{ $bluebook['adviser'] }}</span>
           </div>
+          <div class="info-row">
+            <span class="key">Year &middot; Pages</span>
+            <span class="val">{{ $bluebook['year'] }} &middot; {{ $bluebook['pages'] }} pages</span>
+          </div>
+          <div class="info-row">
+            <span class="key">Readers can see</span>
+            <span class="val">{{ $access }}</span>
+          </div>
+        </div>
+
+        {{-- The citation a student needs to reference this paper. --}}
+        <div class="cite-box">
+          <div>
+            <span class="key">Cite this paper (APA 7) &middot; in text: {{ $citation['inText'] }}</span>
+            <div class="val">{!! $citation['html'] !!}</div>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" data-copy="{{ $citation['text'] }}">Copy</button>
         </div>
 
         <h4 style="font-size:0.82rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--gray-400);margin-bottom:0.6rem;">Document</h4>
@@ -140,6 +170,29 @@
                  data-fallback-url="{{ route('student.bluebook.file', $bluebook['id']) }}"
                @endif
                data-worker-url="/vendor/pdfjs/pdf.worker.min.js">
+            {{-- Reading controls; pdf-viewer.js enables them once the document is open. --}}
+            <div class="pdf-toolbar" id="pdf-toolbar" role="toolbar" aria-label="Document controls">
+              <div class="pdf-tool-group">
+                <button type="button" class="pdf-tool" data-pdf="prev" aria-label="Previous page" disabled>&lsaquo;</button>
+                <label class="pdf-page-jump">
+                  <span class="sr-only">Page number</span>
+                  Page <input type="number" min="1" value="1" id="pdf-page-input" inputmode="numeric" disabled>
+                  of <span id="pdf-page-count">–</span>
+                </label>
+                <button type="button" class="pdf-tool" data-pdf="next" aria-label="Next page" disabled>&rsaquo;</button>
+              </div>
+              <div class="pdf-tool-group">
+                <button type="button" class="pdf-tool" data-pdf="zoom-out" aria-label="Zoom out" disabled>&minus;</button>
+                <span class="pdf-zoom-level" id="pdf-zoom-level">100%</span>
+                <button type="button" class="pdf-tool" data-pdf="zoom-in" aria-label="Zoom in" disabled>+</button>
+                <button type="button" class="pdf-tool pdf-tool-text" data-pdf="fit" disabled>Fit width</button>
+              </div>
+              <div class="pdf-tool-group">
+                <label class="sr-only" for="pdf-contents">Jump to a section</label>
+                <select id="pdf-contents" class="pdf-contents" hidden><option value="">Contents</option></select>
+                <button type="button" class="pdf-tool pdf-tool-text" data-pdf="fullscreen" disabled>&#x26F6; Full screen</button>
+              </div>
+            </div>
             <div class="pdf-status" id="pdf-status">Loading document&hellip;</div>
             <div class="pdf-pages" id="pdf-pages"></div>
           </div>

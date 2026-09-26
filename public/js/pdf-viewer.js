@@ -29,6 +29,17 @@
   // set on a 200-page document is how a phone tab gets killed mid-read.
   const MAX_CANVASES  = 12;
 
+  // Zoom is relative to fitting the page to the width of the viewer (1).
+  const ZOOM_MIN = 0.5, ZOOM_MAX = 3, ZOOM_STEP = 0.25;
+  let zoom = 1;
+
+  // A page reserves its height with padding-top, which a browser measures
+  // against the width of the list, not of the page - so a zoomed page has to
+  // scale its reservation by the zoom as well, or pages overlap.
+  function reserve(holder, ratio) {
+    holder.style.paddingTop = 'calc(' + (ratio * 100) + '% * var(--pdf-zoom, 1))';
+  }
+
   function setStatus(text) {
     if (!statusEl) return;
     statusEl.textContent = text;
@@ -216,7 +227,7 @@
     function render(holder, num) {
       if (rendered.has(num) || tasks.has(num)) return;
 
-      const width = pageWidth();
+      const width = Math.floor(pageWidth() * zoom);
       // Nothing to draw into yet: the viewer is still being laid out, or is
       // hidden. The width observer below re-runs this once there is a box.
       if (width <= 0) return;
@@ -230,7 +241,7 @@
 
         // Pages within one document are not always the same size, so correct
         // the height reserved up front now this page's own is known.
-        holder.style.paddingTop = ((base.height / base.width) * 100) + '%';
+        reserve(holder, base.height / base.width);
 
         const canvas  = document.createElement('canvas');
         canvas.width  = Math.floor(viewport.width);
@@ -319,7 +330,7 @@
         const holder = document.createElement('div');
         holder.className = 'pdf-page';
         holder.dataset.page = String(n);
-        holder.style.paddingTop = (ratio * 100) + '%';   // reserve height before render
+        reserve(holder, ratio);   // reserve height before render
         pagesEl.appendChild(holder);
         holders.set(n, holder);
         // keep before render: a page that finishes drawing before the keep set
@@ -366,6 +377,143 @@
       window.addEventListener('resize', widthChanged);
       window.addEventListener('orientationchange', widthChanged);
     }
+
+    // ── Reading controls ────────────────────────────────────────────────────
+    const toolbar   = document.getElementById('pdf-toolbar');
+    if (!toolbar) return;
+
+    const pageInput = document.getElementById('pdf-page-input');
+    const countEl   = document.getElementById('pdf-page-count');
+    const zoomEl    = document.getElementById('pdf-zoom-level');
+    const contents  = document.getElementById('pdf-contents');
+
+    toolbar.querySelectorAll('button, input').forEach(function (el) { el.disabled = false; });
+    pageInput.max = String(pdf.numPages);
+    countEl.textContent = String(pdf.numPages);
+
+    // The page whose top has passed a third of the way down the viewer.
+    function currentPage() {
+      const line = pagesEl.scrollTop + pagesEl.clientHeight / 3;
+      let page = 1;
+      for (let n = 1; n <= pdf.numPages; n++) {
+        const holder = holders.get(n);
+        if (!holder || holder.offsetTop > line) break;
+        page = n;
+      }
+      return page;
+    }
+
+    function goTo(num) {
+      const n = Math.min(pdf.numPages, Math.max(1, Math.round(num) || 1));
+      const holder = holders.get(n);
+      if (holder) pagesEl.scrollTop = holder.offsetTop - 8;
+      pageInput.value = String(n);
+    }
+
+    let ticking = false;
+    pagesEl.addEventListener('scroll', function () {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(function () {
+        ticking = false;
+        if (document.activeElement !== pageInput) pageInput.value = String(currentPage());
+      });
+    }, { passive: true });
+
+    pageInput.addEventListener('change', function () { goTo(Number(pageInput.value)); });
+    pageInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); goTo(Number(pageInput.value)); pageInput.blur(); }
+    });
+
+    // Every page changes size with the zoom, so the drawn ones are redrawn at
+    // the new size and the reader is kept on the page they were reading.
+    function setZoom(next) {
+      const page = currentPage();
+      zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(next * 100) / 100));
+      pagesEl.style.setProperty('--pdf-zoom', String(zoom));
+      zoomEl.textContent = Math.round(zoom * 100) + '%';
+
+      Array.from(rendered.keys()).forEach(release);
+      requestAnimationFrame(function () {
+        goTo(page);
+        Array.from(keep).forEach(function (num) {
+          const holder = holders.get(num);
+          if (holder) render(holder, num);
+        });
+      });
+    }
+
+    // A reader who has scrolled into the document keeps their place when the
+    // viewer goes full screen or comes back, since the width changes both ways.
+    let pageBeforeResize = 1;
+    function fullscreenElement() { return document.fullscreenElement || document.webkitFullscreenElement; }
+    document.addEventListener('fullscreenchange', onFullscreen);
+    document.addEventListener('webkitfullscreenchange', onFullscreen);
+    function onFullscreen() {
+      const on = fullscreenElement() === view;
+      view.classList.toggle('is-fullscreen', on);
+      toolbar.querySelector('[data-pdf="fullscreen"]').textContent = on ? '✕ Exit full screen' : '⛶ Full screen';
+      requestAnimationFrame(function () { goTo(pageBeforeResize); });
+    }
+
+    toolbar.addEventListener('click', function (e) {
+      const btn = e.target.closest('[data-pdf]');
+      if (!btn) return;
+
+      switch (btn.dataset.pdf) {
+        case 'prev':     goTo(currentPage() - 1); break;
+        case 'next':     goTo(currentPage() + 1); break;
+        case 'zoom-in':  setZoom(zoom + ZOOM_STEP); break;
+        case 'zoom-out': setZoom(zoom - ZOOM_STEP); break;
+        case 'fit':      setZoom(1); break;
+        case 'fullscreen':
+          pageBeforeResize = currentPage();
+          if (fullscreenElement()) {
+            (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+          } else if (view.requestFullscreen) {
+            view.requestFullscreen();
+          } else if (view.webkitRequestFullscreen) {
+            view.webkitRequestFullscreen();
+          }
+          break;
+      }
+    });
+
+    // The document's own bookmarks, when it has them - most typed theses
+    // exported to PDF do; a scan usually has none, and the list stays hidden.
+    function pageOf(dest) {
+      const lookup = typeof dest === 'string' ? pdf.getDestination(dest) : Promise.resolve(dest);
+      return lookup.then(function (d) {
+        if (!Array.isArray(d) || d.length === 0) return null;
+        if (typeof d[0] === 'number') return d[0] + 1;
+        return pdf.getPageIndex(d[0]).then(function (i) { return i + 1; });
+      });
+    }
+
+    pdf.getOutline().then(function (outline) {
+      if (!outline || outline.length === 0) return;
+
+      const dests = [];
+      (function add(items, depth) {
+        items.forEach(function (item) {
+          if (depth > 1) return;               // chapters and their sections
+          const option = document.createElement('option');
+          option.value = String(dests.length);
+          option.textContent = (depth ? ' ' : '') + item.title;
+          dests.push(item.dest);
+          contents.appendChild(option);
+          if (item.items && item.items.length) add(item.items, depth + 1);
+        });
+      })(outline, 0);
+
+      contents.hidden = false;
+      contents.addEventListener('change', function () {
+        const dest = dests[Number(contents.value)];
+        contents.value = '';
+        if (dest === undefined) return;
+        pageOf(dest).then(function (num) { if (num) goTo(num); }).catch(function () {});
+      });
+    }).catch(function () { /* no outline: nothing to offer */ });
   }).catch(function (err) {
     fail('the document could not be opened', err);
   });

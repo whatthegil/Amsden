@@ -2000,3 +2000,64 @@ a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
   -webkit-mask-image: linear-gradient(to top, #000, transparent);
   mask-image: linear-gradient(to top, #000, transparent);
 }
+
+/* ─── Reading a bluebook ─────────────────────────────────────────────────────── */
+/* The paper page uses the width it has: a 900px column left the pages small on
+   a laptop, and the details and the document are read, not scanned. */
+.bluebook-detail { max-width: 1200px; }
+
+/* The page list is the offset parent of its pages, so a page's offsetTop is
+   measured from the top of the list - what scrollTop is measured from too. */
+.pdf-pages { position: relative; max-height: 85vh; overflow-x: auto; }
+.pdf-page { width: calc(100% * var(--pdf-zoom, 1)); }
+
+.pdf-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; flex-wrap: wrap;
+  padding: 0.5rem 0.75rem; background: var(--white);
+  border: 1px solid var(--gray-200); border-bottom: 0; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  font-size: 0.85rem; color: var(--gray-600);
+}
+.pdf-tool-group { display: flex; align-items: center; gap: 0.35rem; }
+.pdf-tool {
+  min-width: 32px; height: 32px; padding: 0 0.5rem;
+  border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--white);
+  color: var(--gray-800); font-size: 1rem; font-weight: 600; cursor: pointer; line-height: 1;
+}
+.pdf-tool:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+.pdf-tool:disabled { opacity: 0.45; cursor: default; }
+.pdf-tool-text { font-size: 0.82rem; }
+.pdf-page-jump { display: flex; align-items: center; gap: 0.35rem; white-space: nowrap; }
+.pdf-page-jump input {
+  width: 3.6rem; height: 32px; padding: 0 0.4rem; text-align: center;
+  border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font: inherit; color: var(--gray-800);
+}
+.pdf-zoom-level { min-width: 3.2rem; text-align: center; font-variant-numeric: tabular-nums; }
+.pdf-contents {
+  height: 32px; max-width: 220px; padding: 0 0.5rem;
+  border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--white); font: inherit;
+}
+
+/* Full screen: the document and its toolbar, nothing else. */
+.pdf-view.is-fullscreen { background: var(--gray-100); display: flex; flex-direction: column; }
+.pdf-view.is-fullscreen .pdf-toolbar { border-radius: 0; border-left: 0; border-right: 0; }
+.pdf-view.is-fullscreen .pdf-pages { flex: 1; max-height: none; height: auto; }
+.pdf-view:-webkit-full-screen { width: 100%; height: 100%; }
+
+/* The citation on the paper page. */
+.cite-box {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+  margin: 1.25rem 0 1.5rem; padding: 0.85rem 1rem;
+  background: var(--cream); border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+}
+.cite-box .key {
+  display: block; margin-bottom: 0.25rem;
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray-400);
+}
+.cite-box .val { font-size: 0.88rem; color: var(--gray-800); line-height: 1.5; }
+.cite-box .btn { flex-shrink: 0; }
+
+@media (max-width: 768px) {
+  .pdf-pages { max-height: 75vh; }
+  .pdf-toolbar { justify-content: center; }
+  .cite-box { flex-direction: column; }
+}

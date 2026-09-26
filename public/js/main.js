@@ -376,3 +376,32 @@ document.querySelectorAll('[data-href]').forEach(row => {
     });
   });
 })();
+
+// Copy buttons ([data-copy]): a citation, a reference list or a synthesis, put
+// straight on the clipboard - the text itself is not selectable on the pages
+// that protect their content, so a button is the way to take it.
+document.addEventListener('click', function (e) {
+  const btn = e.target.closest('[data-copy]');
+  if (!btn) return;
+
+  const text = btn.getAttribute('data-copy');
+  const done = function () {
+    const label = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(function () { btn.textContent = label; }, 1500);
+  };
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done);
+  } else {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+    done();
+  }
+});
