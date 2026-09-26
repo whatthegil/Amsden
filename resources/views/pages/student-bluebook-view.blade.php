@@ -1,8 +1,13 @@
-@php $title = $bluebook['title']; @endphp
+@php
+  $title = $bluebook['title'];
+  // The same page serves the admin, who reads any bluebook at any stage and all
+  // of it, from the admin side of the app.
+  $asAdmin = $asAdmin ?? false;
+@endphp
 @include('partials.head')
 
 <div class="app">
-  @include('partials.student-sidebar')
+  @include($asAdmin ? 'partials.admin-sidebar' : 'partials.student-sidebar')
   <main class="main" id="main-content">
     <header class="topbar">
       <h1 class="topbar-title">Bluebook Detail</h1>
@@ -12,14 +17,20 @@
     </header>
 
     <div class="content">
-      <div style="margin-bottom:1.25rem;">
-        <a href="{{ route('student.bluebooks') }}" class="btn btn-outline btn-sm">← Back to Browse</a>
+      <div style="margin-bottom:1.25rem;display:flex;gap:0.5rem;">
+        @if($asAdmin)
+          <a href="{{ route('admin.bluebooks') }}" class="btn btn-outline btn-sm">← Back to Bluebooks</a>
+          <a href="{{ route('admin.bluebooks.edit', $bluebook['id']) }}" class="btn btn-outline btn-sm">Edit</a>
+        @else
+          <a href="{{ route('student.bluebooks') }}" class="btn btn-outline btn-sm">← Back to Browse</a>
+        @endif
       </div>
 
       <div class="bluebook-detail" id="bluebook-detail" data-bluebook-id="{{ $bluebook['id'] }}"
            data-viewer="{{ $user['email'] ?? '' }}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
           <h1>{{ $bluebook['title'] }}</h1>
+          @unless($asAdmin)
           <div style="flex-shrink:0;">
             @if($isBookmarked)
               <form method="POST" action="{{ route('student.bookmarks.remove', $bluebook['id']) }}?from=view">
@@ -39,9 +50,17 @@
               </form>
             @endif
           </div>
+          @endunless
         </div>
 
         <div class="bluebook-meta">
+          @if($asAdmin)
+            @if($bluebook['status'] === 'Approved') <span class="meta-pill badge-green">Posted</span>
+            @elseif($bluebook['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER) <span class="meta-pill badge-blue">Awaiting Waiver</span>
+            @elseif($bluebook['status'] === 'Pending') <span class="meta-pill badge-yellow">Pending</span>
+            @else <span class="meta-pill badge-red">Rejected</span>
+            @endif
+          @endif
           <span class="meta-pill">{{ $bluebook['department'] }}</span>
           <span class="meta-pill">{{ $bluebook['year'] }}</span>
           <span class="meta-pill">{{ $bluebook['pages'] }} pages</span>
@@ -74,13 +93,21 @@
         </div>
 
         <h4 style="font-size:0.82rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--gray-400);margin-bottom:0.6rem;">Document</h4>
-        @if($bluebook['hasFile'] && $bluebook['accessLevel'] === 'consultation')
+        @if($bluebook['hasFile'] && $bluebook['accessLevel'] === 'consultation' && !$asAdmin)
           <div class="alert alert-info" style="margin-bottom:0.5rem;">
             The author has not permitted this bluebook for general use. It is accessible after consultation with the author.
           </div>
           <div style="font-size:0.78rem;color:var(--gray-400);">Access logged for: {{ $user['email'] }}</div>
         @elseif($bluebook['hasFile'])
-          @if($bluebook['accessLevel'] === 'partial')
+          @if($asAdmin)
+            <div class="alert alert-info" style="margin-bottom:0.75rem;">
+              You are seeing the whole document. Readers get:
+              <strong>{{ \App\Models\Bluebook::ACCESS_LEVELS[$bluebook['accessLevel']] ?? $bluebook['accessLevel'] }}</strong>@if($bluebook['accessLevel'] === 'partial' && $bluebook['accessParts']) &mdash;
+                @foreach($bluebook['accessParts'] as $key => $range){{ \App\Models\Bluebook::ACCESS_PARTS[$key] ?? $key }} (pp. {{ $range['from'] }}–{{ $range['to'] }}){{ $loop->last ? '' : ', ' }}@endforeach
+              @endif.
+              @unless($bluebook['waiverRecorded']) <em>(Not recorded yet.)</em> @endunless
+            </div>
+          @elseif($bluebook['accessLevel'] === 'partial')
             <div class="alert alert-info" style="margin-bottom:0.75rem;">
               The author has permitted only certain parts of this bluebook to be viewed:
               @foreach($bluebook['accessParts'] as $key => $range)
@@ -105,7 +132,7 @@
                that has outlived the reading session). --}}
           <div class="pdf-view watermark-overlay"
                id="pdf-view"
-               data-pdf-url="{{ $fileUrl ?? route('student.bluebook.file', $bluebook['id']) }}"
+               data-pdf-url="{{ $asAdmin ? route('admin.bluebooks.file', $bluebook['id']) : ($fileUrl ?? route('student.bluebook.file', $bluebook['id'])) }}"
                @if($fileUrl)
                  data-direct="1"
                  data-fallback-url="{{ route('student.bluebook.file', $bluebook['id']) }}"

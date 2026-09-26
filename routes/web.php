@@ -41,6 +41,8 @@ Route::prefix('admin')->middleware('role:Admin')->group(function () {
     Route::get('/bluebooks',                   [AdminController::class, 'bluebooks'])->name('admin.bluebooks');
     Route::get('/bluebooks/new',               [AdminController::class, 'bluebookNewForm'])->name('admin.bluebooks.new');
     Route::post('/bluebooks/new',              [AdminController::class, 'bluebookStore'])->name('admin.bluebooks.store');
+    Route::get('/bluebooks/{id}',              [AdminController::class, 'bluebookView'])->whereNumber('id')->name('admin.bluebooks.view');
+    Route::get('/bluebooks/{id}/file',         [AdminController::class, 'bluebookFile'])->whereNumber('id')->name('admin.bluebooks.file');
     Route::get('/bluebooks/{id}/edit',         [AdminController::class, 'bluebookEditForm'])->name('admin.bluebooks.edit');
     Route::post('/bluebooks/{id}/edit',        [AdminController::class, 'bluebookUpdate'])->name('admin.bluebooks.update');
     Route::post('/bluebooks/{id}/approve',     [AdminController::class, 'bluebookApprove'])->name('admin.bluebooks.approve');

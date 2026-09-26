@@ -86,7 +86,7 @@
                   <tr>
                     <td class="mono">{{ $i + 1 }}</td>
                     <td style="max-width:220px;">
-                      <div style="font-weight:600;color:var(--primary-dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $b['title'] }}</div>
+                      <a href="{{ route('admin.bluebooks.view', $b['id']) }}" title="Read {{ $b['title'] }}" style="display:block;font-weight:600;color:var(--primary-dark);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $b['title'] }}</a>
                       <div class="clip" style="max-width:220px;font-size:0.78rem;color:var(--gray-400);margin-top:0.2rem;" title="{{ $b['program'] }}">{{ $b['program'] }}</div>
                     </td>
                     <td style="font-size:0.83rem;"><div class="clip" style="max-width:140px;" title="{{ implode('; ', $b['authors']) }}">{{ implode(', ', array_slice($b['authors'], 0, 2)) }}{{ count($b['authors']) > 2 ? '…' : '' }}</div></td>

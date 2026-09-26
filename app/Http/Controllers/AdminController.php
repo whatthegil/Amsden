@@ -12,6 +12,7 @@ use Illuminate\Validation\ValidationException;
 class AdminController extends Controller
 {
     use Concerns\ReadsAccessWaiver;
+    use Concerns\StreamsBluebookDocument;
 
     private const ROLES = ['Student', 'Faculty', 'Admin'];
 
@@ -105,6 +106,46 @@ class AdminController extends Controller
         ], $fileData));
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Added Bluebook', 'document' => $request->input('title')]);
         return redirect()->route('admin.bluebooks')->with('success', 'Bluebook added successfully');
+    }
+
+    /**
+     * The admin reads a bluebook at any stage - a pending upload has to be read
+     * before it can be approved - and reads all of it: the waiver decides what
+     * readers are sent, not what the library can check. Not counted as a view.
+     */
+    public function bluebookView(int $id)
+    {
+        $user     = session('user');
+        $bluebook = Store::getBluebook($id);
+        if (!$bluebook) return redirect()->route('admin.bluebooks');
+
+        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Viewed Bluebook', 'document' => $bluebook['title']]);
+
+        return view('pages.student-bluebook-view', [
+            'user'         => $user,
+            'active'       => 'bluebooks',
+            'bluebook'     => $bluebook,
+            'isBookmarked' => false,
+            'fileUrl'      => null,
+            'asAdmin'      => true,
+            'pendingCount' => Store::getPendingCount(),
+        ]);
+    }
+
+    /** The whole document, at any status, stamped with the admin's email. */
+    public function bluebookFile(int $id)
+    {
+        $bluebook = Store::getBluebook($id);
+        if (!$bluebook || !$bluebook['hasFile']) {
+            abort(404);
+        }
+
+        $disk = Storage::disk(Store::bluebookDisk());
+        if (!$disk->exists($bluebook['filePath'])) {
+            abort(404);
+        }
+
+        return $this->streamBluebookDocument($bluebook, session('user'), $disk, null);
     }
 
     public function bluebookEditForm(int $id)
