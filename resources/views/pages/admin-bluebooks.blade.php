@@ -32,15 +32,10 @@
         <div class="alert alert-success">{{ session('success') }}</div>
       @endif
 
-      {{-- Submissions not yet in the archive live on their own pages. --}}
-      @if(($pendingCount ?? 0) > 0 || ($rejectedCount ?? 0) > 0)
+      {{-- Submissions waiting for review live on their own page. --}}
+      @if(($pendingCount ?? 0) > 0)
         <div class="queue-links">
-          @if(($pendingCount ?? 0) > 0)
-            <a href="{{ route('admin.pending') }}"><span class="badge badge-yellow">{{ $pendingCount }}</span> pending review &rarr;</a>
-          @endif
-          @if(($rejectedCount ?? 0) > 0)
-            <a href="{{ route('admin.rejected') }}"><span class="badge badge-red">{{ $rejectedCount }}</span> rejected &rarr;</a>
-          @endif
+          <a href="{{ route('admin.pending') }}"><span class="badge badge-yellow">{{ $pendingCount }}</span> pending review &rarr;</a>
         </div>
       @endif
 
@@ -112,9 +107,7 @@
                     <td>{{ $b['year'] }}</td>
                     <td>
                       @if($b['status'] === 'Approved') <span class="badge badge-green">Posted</span>
-                      @elseif($b['status'] === \App\Models\Bluebook::STATUS_AWAITING_WAIVER) <span class="badge badge-blue">Awaiting Waiver</span>
-                      @elseif($b['status'] === 'Pending') <span class="badge badge-yellow">Pending</span>
-                      @else <span class="badge badge-red">Rejected</span>
+                      @else <span class="badge badge-blue">Awaiting Waiver</span>
                       @endif
                     </td>
                     <td>{{ $b['views'] }}</td>

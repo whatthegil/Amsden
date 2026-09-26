@@ -125,7 +125,7 @@ class AdminReadBluebookTest extends TestCase
         $res->assertDontSee('Still Pending');
         $res->assertDontSee('Turned Down');
         $res->assertSee(route('admin.pending'), false);
-        $res->assertSee('1</span> rejected', false);
+        $res->assertDontSee('1</span> rejected', false);
     }
 
     public function test_the_admin_list_links_each_title_to_its_page(): void

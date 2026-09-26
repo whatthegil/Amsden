@@ -89,7 +89,6 @@ class AdminController extends Controller
             'user'          => session('user'),
             'active'        => 'bluebooks',
             'bluebooks'     => $books,
-            'rejectedCount' => count(Store::getBluebooks(null, null, null, 'Rejected')),
             'years'        => Store::getYears(),
             'query'        => $q,
             'pendingCount' => Store::getPendingCount(),
