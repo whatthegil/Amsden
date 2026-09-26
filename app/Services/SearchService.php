@@ -57,6 +57,18 @@ class SearchService
      */
     public static function rank(string $search, Builder $query): array
     {
+        return array_map(fn($m) => $m['rank'], self::match($search, $query));
+    }
+
+    /**
+     * Every bluebook the query finds, with how it was found.
+     *
+     * @return array<int, array{rank: float, found: int, terms: int, score: float}>
+     *         id => details, best first. found is how many of the query's
+     *         terms the paper contains; score how strongly (field weights).
+     */
+    public static function match(string $search, Builder $query): array
+    {
         $terms = self::terms($search);
         if ($terms === []) {
             return [];
@@ -120,10 +132,10 @@ class SearchService
                 $total += 50;
             }
 
-            $scores[$row->id] = $total;
+            $scores[$row->id] = ['rank' => $total, 'found' => $found, 'terms' => count($terms), 'score' => $score];
         }
 
-        arsort($scores);
+        uasort($scores, fn($a, $b) => $b['rank'] <=> $a['rank']);
         return $scores;
     }
 
@@ -140,6 +152,14 @@ class SearchService
         // A query of nothing but common words still means something to whoever
         // typed it: search for those rather than for nothing.
         return array_values(array_unique($kept !== [] ? $kept : $words));
+    }
+
+    /** How many of the terms a piece of text contains, matched as the search matches. */
+    public static function countFound(array $terms, ?string $text): int
+    {
+        $words = self::words($text);
+
+        return count(array_filter($terms, fn($t) => self::matchQuality($t, $words) > 0));
     }
 
     /** Lowercase, accents and punctuation gone, single-spaced. */

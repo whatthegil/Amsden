@@ -430,7 +430,7 @@ class Store
         ];
     }
 
-    private static function bookToArray(Bluebook $b): array
+    public static function bookToArray(Bluebook $b): array
     {
         return [
             'id'             => $b->id,

@@ -650,14 +650,22 @@ class StudentController extends Controller
     {
         $user = session('user');
 
-        $results = null;
-        $topic   = null;
+        $results  = null;
+        $overview = null;
+        $topic    = null;
+        $within   = in_array((int) $request->input('within'), [5, 10], true) ? (int) $request->input('within') : null;
+        $sort     = $request->input('sort') === 'newest' ? 'newest' : 'relevance';
 
         if ($request->isMethod('post')) {
-            $topic   = trim($request->input('topic', ''));
-            $results = $topic !== ''
-                ? LiteratureReviewService::search($topic, Store::getApprovedBluebooks())
-                : [];
+            $topic = mb_substr(trim((string) $request->input('topic', '')), 0, 300);
+
+            if ($topic !== '') {
+                $found    = LiteratureReviewService::search($topic, $within, $sort);
+                $results  = $found['results'];
+                $overview = $found['overview'];
+            } else {
+                $results = [];
+            }
 
             if ($topic !== '') {
                 Store::addLog([
@@ -671,9 +679,12 @@ class StudentController extends Controller
 
         return view('pages.student-literature-review', [
             'user'    => $user,
-            'active'  => 'literature-review',
-            'results' => $results,
-            'topic'   => $topic,
+            'active'   => 'literature-review',
+            'results'  => $results,
+            'overview' => $overview,
+            'topic'    => $topic,
+            'within'   => $within,
+            'sort'     => $sort,
         ]);
     }
 

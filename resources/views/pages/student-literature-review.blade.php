@@ -39,11 +39,29 @@
                 placeholder="e.g. Web-based attendance monitoring using QR codes"
                 value="{{ old('topic', $topic ?? '') }}"
               >
-              <small style="color:var(--gray-400);font-size:0.8rem;">Describe the subject you're reviewing literature for. Results are matched against titles, abstracts, and keywords in the approved archive.</small>
+              <small style="color:var(--gray-400);font-size:0.8rem;">Describe the subject you're reviewing literature for, in a phrase or a sentence. Words can be in any order, and small misspellings are forgiven.</small>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="litrev-within">Published</label>
+                <select id="litrev-within" name="within">
+                  <option value="" @selected(!($within ?? null))>Any year</option>
+                  <option value="5" @selected(($within ?? null) === 5)>Within the last 5 years</option>
+                  <option value="10" @selected(($within ?? null) === 10)>Within the last 10 years</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="litrev-sort">Sort by</label>
+                <select id="litrev-sort" name="sort">
+                  <option value="relevance" @selected(($sort ?? 'relevance') === 'relevance')>Most relevant first</option>
+                  <option value="newest" @selected(($sort ?? '') === 'newest')>Newest first</option>
+                </select>
+              </div>
             </div>
 
             <div style="background:var(--primary-light);border:1px solid var(--primary-pale);border-radius:var(--radius-sm);padding:0.875rem 1rem;margin-bottom:1.25rem;font-size:0.85rem;color:var(--primary-dark);">
-              <strong>How this works:</strong> Bluebooks are ranked by term overlap with your topic. The top matches get an AI-written summary drawn from the paper's title, abstract, and uploaded document text — the rest use an automatically extracted summary of the abstract.
+              <strong>What you get:</strong> the related bluebooks in the archive, each with a summary of how it bears on your topic and an APA 7th edition citation to copy into your references, plus a draft synthesis paragraph you can adapt for your Review of Related Literature. Summaries and the synthesis are written by AI from each paper's own text; check them against the papers before using them.
             </div>
 
             <div class="form-actions">
@@ -71,8 +89,32 @@
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" style="flex-shrink:0;"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" fill="currentColor" fill-opacity="0.18"/><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <div>
               <strong>{{ $total }} related bluebook{{ $total !== 1 ? 's' : '' }} found for: <em>"{{ $topic }}"</em></strong><br>
-              <span style="font-size:0.88rem;">Sorted by relevance to your topic.</span>
+              <span style="font-size:0.88rem;">
+                {{ ($sort ?? 'relevance') === 'newest' ? 'Newest first' : 'Most relevant first' }}{{ ($within ?? null) ? ', published within the last ' . $within . ' years' : '' }}.
+              </span>
             </div>
+          </div>
+
+          @php
+            // The reference list: every result's citation, alphabetical, as APA wants.
+            $references = collect($results)->pluck('citation.text')->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->all();
+          @endphp
+
+          @if(!empty($overview))
+            <div class="card" style="margin-top:1.25rem;">
+              <div class="card-header">
+                <div class="card-title">Draft synthesis for your Review of Related Literature</div>
+                <button type="button" class="btn btn-outline btn-sm" data-copy="{{ $overview }}">Copy</button>
+              </div>
+              <div class="card-body" style="font-size:0.92rem;line-height:1.65;color:var(--gray-800);">
+                <p>{{ $overview }}</p>
+                <p style="font-size:0.78rem;color:var(--gray-400);margin-top:0.75rem;">Written by AI from the papers below. Rewrite it in your own words and check every claim against the papers before you use it.</p>
+              </div>
+            </div>
+          @endif
+
+          <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
+            <button type="button" class="btn btn-outline btn-sm" data-copy="{{ implode("\n\n", $references) }}">Copy all {{ $total }} citations (APA 7)</button>
           </div>
 
           <div style="display:flex;flex-direction:column;gap:1rem;margin-top:1.25rem;">
@@ -131,6 +173,16 @@
                       {{ $result['summary'] }}
                     </div>
                   </div>
+
+                  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.75rem;margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--gray-100);">
+                    <div style="font-size:0.84rem;color:var(--gray-600);line-height:1.5;">
+                      <span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--gray-400);display:block;margin-bottom:0.15rem;">
+                        APA 7 citation &middot; in text: {{ $result['citation']['inText'] }}
+                      </span>
+                      {!! $result['citation']['html'] !!}
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" style="flex-shrink:0;" data-copy="{{ $result['citation']['text'] }}">Copy</button>
+                  </div>
                 </div>
               </div>
             @endforeach
@@ -144,5 +196,35 @@
     </footer>
   </main>
 </div>
+
+<script>
+// Copy buttons: a citation, the reference list, or the synthesis, straight to
+// the clipboard, since the text itself is not selectable on this page.
+document.addEventListener('click', function (e) {
+  const btn = e.target.closest('[data-copy]');
+  if (!btn) return;
+
+  const text = btn.getAttribute('data-copy');
+  const done = function () {
+    const label = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(function () { btn.textContent = label; }, 1500);
+  };
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done);
+  } else {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+    done();
+  }
+});
+</script>
 
 @include('partials.footer')
