@@ -167,7 +167,7 @@
                       </td>
                     @else
                       <td style="font-size:0.83rem;white-space:nowrap;" title="On {{ $b['updatedAt'] }}">
-                        {{ $days($b['waitingDays']) }} ago
+                        {{ $b['waitingDays'] === 0 ? 'Today' : $days($b['waitingDays']) . ' ago' }}
                         @if($b['waitingDays'] > $noReplyDays) <span class="badge badge-yellow">No re-upload</span> @endif
                       </td>
                       <td style="font-size:0.83rem;max-width:300px;">
