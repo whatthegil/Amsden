@@ -69,6 +69,8 @@ Route::prefix('student')->middleware('role:Student,Faculty')->group(function () 
     Route::get('/dashboard',                   [StudentController::class, 'dashboard'])->name('student.dashboard');
 
     Route::get('/bluebooks',                   [StudentController::class, 'bluebooks'])->name('student.bluebooks');
+    // The dashboard's search-as-you-type box: the same search as Browse, as JSON.
+    Route::get('/bluebooks/search',            [StudentController::class, 'searchBluebooks'])->middleware('throttle:bluebook-search')->name('student.bluebooks.search');
     // Throttled as well as the file route: this page is where a signed link is
     // minted, so a loop over the id range collects one link per document
     // without ever asking for a file.

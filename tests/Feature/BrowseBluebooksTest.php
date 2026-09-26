@@ -123,6 +123,41 @@ class BrowseBluebooksTest extends TestCase
         $bare->assertDontSee('Clear all filters', false);
     }
 
+    public function test_search_finds_words_in_any_order(): void
+    {
+        $this->makeBluebook(['title' => 'AI-Powered Crop Disease Detection Using Neural Networks']);
+        $this->makeBluebook(['title' => 'A Library Inventory System', 'keywords' => ['inventory']]);
+
+        $res = $this->withSession(['user' => $this->student()])
+            ->getJson('/student/bluebooks/search?q=' . urlencode('detection crop disease'));
+
+        $res->assertOk();
+        $this->assertSame(['AI-Powered Crop Disease Detection Using Neural Networks'], array_column($res->json('results'), 'title'));
+    }
+
+    public function test_search_matches_words_that_are_not_next_to_each_other(): void
+    {
+        $this->makeBluebook([
+            'title'    => 'Attendance Monitoring',
+            'abstract' => 'Students tap an RFID card; the system records attendance for each class.',
+        ]);
+
+        $res = $this->withSession(['user' => $this->student()])
+            ->getJson('/student/bluebooks/search?q=' . urlencode('class rfid monitoring'));
+
+        $this->assertSame(['Attendance Monitoring'], array_column($res->json('results'), 'title'));
+    }
+
+    public function test_search_leaves_out_papers_that_are_not_posted(): void
+    {
+        $this->makeBluebook(['title' => 'Crop Disease Detection', 'status' => 'Pending']);
+
+        $res = $this->withSession(['user' => $this->student()])
+            ->getJson('/student/bluebooks/search?q=' . urlencode('disease crop'));
+
+        $this->assertSame([], $res->json('results'));
+    }
+
     public function test_the_paper_page_keeps_program_and_adviser_but_not_upload_details(): void
     {
         $bluebook = $this->makeBluebook([

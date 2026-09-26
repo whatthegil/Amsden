@@ -82,6 +82,12 @@ class RouteServiceProvider extends ServiceProvider
         // over the id range, which until now could pull the whole archive as
         // fast as storage would serve it. A reader opens a handful of documents
         // in an hour; a scraper wants hundreds.
+        // A request per pause in typing, so it allows more than reading does.
+        RateLimiter::for('bluebook-search', function (Request $request) {
+            $email = $request->session()->get('user')['email'] ?? null;
+            return Limit::perMinute(90)->by($email ?? $request->ip());
+        });
+
         RateLimiter::for('bluebook-read', function (Request $request) {
             $email = $request->session()->get('user')['email'] ?? null;
             return Limit::perMinute(30)->by($email ?? $request->ip());

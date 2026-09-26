@@ -77,6 +77,33 @@ class StudentController extends Controller
         ]);
     }
 
+    /**
+     * Search for the dashboard's search box: the Browse search - every word
+     * matched on its own, in any order, across the title, authors, keywords,
+     * abstract and the text inside the document, ranked by relevance - returned
+     * as JSON so the box can list results as the reader types.
+     */
+    public function searchBluebooks(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+        if (mb_strlen($q) < 2) {
+            return response()->json(['results' => []]);
+        }
+
+        $results = array_slice(Store::getApprovedBluebooks(mb_substr($q, 0, 200)), 0, 20);
+
+        return response()->json([
+            'results' => array_map(fn($b) => [
+                'id'         => $b['id'],
+                'title'      => $b['title'],
+                'authors'    => $b['authors'],
+                'year'       => $b['year'],
+                'department' => $b['department'],
+                'abstract'   => \Illuminate\Support\Str::limit((string) $b['abstract'], 220),
+            ], $results),
+        ]);
+    }
+
     public function bluebooks(Request $request)
     {
         $user = session('user');

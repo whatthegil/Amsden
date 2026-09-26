@@ -168,42 +168,63 @@
 </div>
 
 <script>
-const allApproved = {!! json_encode(array_merge($recentBluebooks, $popularBluebooks)) !!};
+// Asks the server, which runs the same search as Browse: every word is matched
+// on its own, in any order, across titles, authors, keywords, abstracts and the
+// text inside the documents, and results come back ranked by relevance.
+const searchUrl = @json(route('student.bluebooks.search'));
+let searchTimer = null;
+let searchSeq = 0;
 
-function highlight(text, query) {
-  if (!query) return text;
-  const re = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-  return text.replace(re, '<mark style="background:#fef08a;border-radius:2px;">$1</mark>');
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
+
+// Marks each word of the query wherever it appears, whatever the order.
+function highlight(text, words) {
+  let html = escapeHtml(text);
+  if (!words.length) return html;
+  const pattern = words.map(w => escapeHtml(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  return html.replace(new RegExp('(' + pattern + ')', 'gi'), '<mark style="background:#fef08a;border-radius:2px;">$1</mark>');
 }
 
 function searchLiterature() {
-  const q = document.getElementById('litSearch').value.trim().toLowerCase();
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(runSearch, 250);
+}
+
+function runSearch() {
+  const q = document.getElementById('litSearch').value.trim();
   const container = document.getElementById('litResults');
   const list = document.getElementById('litList');
   const countEl = document.getElementById('litCount');
 
-  if (!q) { container.style.display = 'none'; return; }
+  if (q.length < 2) { container.style.display = 'none'; return; }
   container.style.display = 'block';
 
-  const results = allApproved.filter((b, i, arr) =>
-    arr.findIndex(x => x.id === b.id) === i && (
-      b.title.toLowerCase().includes(q) ||
-      b.authors.some(a => a.toLowerCase().includes(q)) ||
-      b.keywords.some(k => k.toLowerCase().includes(q)) ||
-      b.abstract.toLowerCase().includes(q)
-    )
-  );
+  const seq = ++searchSeq;
+  fetch(searchUrl + '?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : { results: [] })
+    .then(data => {
+      if (seq !== searchSeq) return;       // a later keystroke has already asked again
+      const results = data.results || [];
+      const words = q.split(/\s+/).filter(w => w.length > 1);
 
-  countEl.textContent = results.length + ' result' + (results.length === 1 ? '' : 's');
-  list.innerHTML = results.length === 0
-    ? '<p style="color:var(--gray-400);font-size:0.88rem;text-align:center;padding:1rem;">No results found for "' + q + '"</p>'
-    : results.map(b => `
-      <a href="/student/bluebooks/${b.id}" style="display:block;padding:0.85rem 1rem;border:1px solid var(--gray-200);border-radius:var(--radius-sm);background:var(--cream);text-decoration:none;transition:all 0.15s;">
-        <div style="font-weight:600;color:var(--primary-dark);margin-bottom:0.3rem;">${highlight(b.title, q)}</div>
-        <div style="font-size:0.8rem;color:var(--gray-600);">${b.authors.join(', ')} &bull; ${b.year} &bull; ${b.department}</div>
-        <div style="font-size:0.8rem;color:var(--gray-400);margin-top:0.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${highlight(b.abstract, q)}</div>
-      </a>
-    `).join('');
+      countEl.textContent = results.length + ' result' + (results.length === 1 ? '' : 's');
+      list.innerHTML = results.length === 0
+        ? '<p style="color:var(--gray-400);font-size:0.88rem;text-align:center;padding:1rem;">No results found for "' + escapeHtml(q) + '"</p>'
+        : results.map(b => `
+          <a href="/student/bluebooks/${b.id}" style="display:block;padding:0.85rem 1rem;border:1px solid var(--gray-200);border-radius:var(--radius-sm);background:var(--cream);text-decoration:none;transition:all 0.15s;">
+            <div style="font-weight:600;color:var(--primary-dark);margin-bottom:0.3rem;">${highlight(b.title, words)}</div>
+            <div style="font-size:0.8rem;color:var(--gray-600);">${escapeHtml(b.authors.join(', '))} &bull; ${escapeHtml(b.year)} &bull; ${escapeHtml(b.department)}</div>
+            <div style="font-size:0.8rem;color:var(--gray-400);margin-top:0.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${highlight(b.abstract, words)}</div>
+          </a>
+        `).join('');
+    })
+    .catch(() => {
+      if (seq !== searchSeq) return;
+      countEl.textContent = '';
+      list.innerHTML = '<p style="color:var(--gray-400);font-size:0.88rem;text-align:center;padding:1rem;">Search is unavailable right now. Please try again.</p>';
+    });
 }
 </script>
 @include('partials.footer')
