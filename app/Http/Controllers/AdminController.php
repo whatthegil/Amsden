@@ -5,7 +5,10 @@ namespace App\Http\Controllers;
 use App\Jobs\ProcessBluebookOcr;
 use App\Models\Bluebook;
 use App\Models\User;
+use App\Services\SearchService;
+use App\Services\SimilarityService;
 use App\Services\Store;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -242,18 +245,156 @@ class AdminController extends Controller
         return redirect()->route('admin.bluebooks')->with('success', 'Bluebook updated successfully');
     }
 
-    public function bluebookApprove(int $id)
+    public function bluebookApprove(Request $request, int $id)
     {
         $user     = session('user');
         $bluebook = Store::getBluebook($id);
         if (!$bluebook || $bluebook['status'] !== 'Pending') {
-            return redirect()->route('admin.bluebooks');
+            return redirect($this->reviewedFrom($request));
         }
         // Approval is not posting: the author must first hand in the printed,
         // signed waiver, which the admin records with waiverReceived().
         Store::setBluebookStatus($id, Bluebook::STATUS_AWAITING_WAIVER);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Approved Bluebook', 'document' => $bluebook['title']]);
-        return redirect()->route('admin.bluebooks')->with('success', 'Bluebook approved. It will be posted once the author hands in the signed waiver.');
+        return redirect($this->reviewedFrom($request))->with('success', 'Bluebook approved. It will be posted once the author hands in the signed waiver.');
+    }
+
+    /** Back to the page the action was taken from: Pending, Rejected, or the list. */
+    private function reviewedFrom(Request $request): string
+    {
+        return match ($request->input('from')) {
+            'pending'  => route('admin.pending'),
+            'rejected' => route('admin.rejected'),
+            default    => route('admin.bluebooks'),
+        };
+    }
+
+    /** A submission waiting longer than this is flagged as overdue. */
+    private const OVERDUE_DAYS = 7;
+
+    /** A rejected author silent longer than this is flagged for a follow-up. */
+    private const NO_REPLY_DAYS = 14;
+
+    /**
+     * Submissions waiting for review. Each is checked against the posted
+     * archive for a likely duplicate, and the queue can be searched, narrowed
+     * to a department and put longest- or shortest-waiting first.
+     */
+    public function pendingQueue(Request $request)
+    {
+        $q     = $request->only(['search', 'department', 'sort']);
+        $all   = Store::getBluebooks(null, null, null, 'Pending');
+        $books = $this->queueFilter($all, $q);
+
+        $newest = ($q['sort'] ?? '') === 'newest';
+        usort($books, fn($a, $b) => $newest
+            ? strcmp((string) $b['updatedAt'], (string) $a['updatedAt'])
+            : strcmp((string) $a['updatedAt'], (string) $b['updatedAt']));
+
+        // A capstone that repeats one already in the archive is the thing a
+        // reviewer most needs to catch, and the hardest to spot by eye.
+        $approved = Store::getApprovedBluebooks();
+        foreach ($books as &$book) {
+            $book['waitingDays'] = $this->daysSince($book['updatedAt']);
+            $book['duplicate']   = null;
+            foreach ($approved as $posted) {
+                $score = SimilarityService::computeSimilarity($book['title'], $book['keywords'], (string) $book['abstract'], $posted);
+                if ($score >= 0.45 && ($book['duplicate'] === null || $score > $book['duplicate']['score'])) {
+                    $book['duplicate'] = ['id' => $posted['id'], 'title' => $posted['title'], 'score' => $score];
+                }
+            }
+        }
+        unset($book);
+
+        $ages = array_map(fn($b) => $this->daysSince($b['updatedAt']), $all);
+
+        return view('pages.admin-bluebook-queue', [
+            'user'         => session('user'),
+            'active'       => 'pending',
+            'mode'         => 'pending',
+            'bluebooks'    => $books,
+            'query'        => $q,
+            'summary'      => [
+                'total'   => count($all),
+                'oldest'  => $ages ? max($ages) : 0,
+                'overdue' => count(array_filter($ages, fn($d) => $d > self::OVERDUE_DAYS)),
+            ],
+            'overdueDays'  => self::OVERDUE_DAYS,
+            'pendingCount' => count($all),
+        ]);
+    }
+
+    /** Rejected submissions and why, the most recent first, flagging authors who have not re-uploaded. */
+    public function rejectedList(Request $request)
+    {
+        $q     = $request->only(['search', 'department']);
+        $all   = Store::getBluebooks(null, null, null, 'Rejected');
+        $books = $this->queueFilter($all, $q);
+        usort($books, fn($a, $b) => strcmp((string) $b['updatedAt'], (string) $a['updatedAt']));
+
+        foreach ($books as &$book) {
+            $book['waitingDays'] = $this->daysSince($book['updatedAt']);
+        }
+        unset($book);
+
+        $ages = array_map(fn($b) => $this->daysSince($b['updatedAt']), $all);
+
+        return view('pages.admin-bluebook-queue', [
+            'user'         => session('user'),
+            'active'       => 'rejected',
+            'mode'         => 'rejected',
+            'bluebooks'    => $books,
+            'query'        => $q,
+            'summary'      => [
+                'total'   => count($all),
+                'noReply' => count(array_filter($ages, fn($d) => $d > self::NO_REPLY_DAYS)),
+            ],
+            'noReplyDays'  => self::NO_REPLY_DAYS,
+            'pendingCount' => Store::getPendingCount(),
+        ]);
+    }
+
+    /** Narrow a queue by a search over title, authors and uploader, and by department. */
+    private function queueFilter(array $books, array $q): array
+    {
+        $needle = SearchService::normalize($q['search'] ?? '');
+        $dept   = $q['department'] ?? '';
+
+        return array_values(array_filter($books, function ($b) use ($needle, $dept) {
+            if ($dept !== '' && $b['department'] !== $dept) return false;
+            if ($needle === '') return true;
+
+            $hay = SearchService::normalize($b['title'] . ' ' . implode(' ', $b['authors']) . ' ' . $b['uploadedByName'] . ' ' . $b['uploadedBy']);
+            foreach (explode(' ', $needle) as $word) {
+                if (!str_contains($hay, $word)) return false;
+            }
+            return true;
+        }));
+    }
+
+    private function daysSince(?string $at): int
+    {
+        return $at ? max(0, (int) floor((time() - strtotime($at)) / 86400)) : 0;
+    }
+
+    /** Approve several pending submissions at once, from the queue. */
+    public function bluebookApproveSelected(Request $request)
+    {
+        $user     = session('user');
+        $approved = 0;
+
+        foreach (array_unique(array_map('intval', (array) $request->input('ids', []))) as $id) {
+            $bluebook = Store::getBluebook($id);
+            if (!$bluebook || $bluebook['status'] !== 'Pending') continue;
+
+            Store::setBluebookStatus($id, Bluebook::STATUS_AWAITING_WAIVER);
+            Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Approved Bluebook', 'document' => $bluebook['title']]);
+            $approved++;
+        }
+
+        return redirect()->route('admin.pending')->with('success', $approved === 0
+            ? 'Tick at least one pending submission to approve.'
+            : $approved . ' ' . Str::plural('submission', $approved) . ' approved. Each will be posted once its author hands in the signed waiver.');
     }
 
     public function bluebookWaiverReceived(int $id)
@@ -286,22 +427,22 @@ class AdminController extends Controller
         // before re-uploading, so a rejection without one is not accepted.
         $reason = trim((string) $request->input('reason'));
         if ($reason === '') {
-            return redirect()->route('admin.bluebooks')->with('success', 'Please give a reason for rejecting "' . $bluebook['title'] . '".');
+            return redirect($this->reviewedFrom($request))->with('success', 'Please give a reason for rejecting "' . $bluebook['title'] . '".');
         }
         $reason = mb_substr($reason, 0, 1000);
 
         Store::updateBluebook($id, ['status' => 'Rejected', 'rejectionReason' => $reason]);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Rejected Bluebook', 'document' => $bluebook['title']]);
-        return redirect()->route('admin.bluebooks')->with('success', 'Bluebook rejected. The author can see your reason and re-upload.');
+        return redirect($this->reviewedFrom($request))->with('success', 'Bluebook rejected. The author can see your reason and re-upload.');
     }
 
-    public function bluebookDelete(int $id)
+    public function bluebookDelete(Request $request, int $id)
     {
         $user     = session('user');
         $bluebook = Store::deleteBluebook($id);
 
         if (!$bluebook) {
-            return redirect()->route('admin.bluebooks')->with('error', 'That bluebook no longer exists.');
+            return redirect($this->reviewedFrom($request))->with('error', 'That bluebook no longer exists.');
         }
 
         Store::addLog([
@@ -311,7 +452,7 @@ class AdminController extends Controller
             'document' => $bluebook['title'],
         ]);
 
-        return redirect()->route('admin.bluebooks')->with('success', 'Bluebook deleted: ' . $bluebook['title']);
+        return redirect($this->reviewedFrom($request))->with('success', 'Bluebook deleted: ' . $bluebook['title']);
     }
 
     public function bluebookReprocessOcr(int $id)

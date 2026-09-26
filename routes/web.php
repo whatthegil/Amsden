@@ -42,6 +42,8 @@ Route::prefix('admin')->middleware('role:Admin,Sub-Admin')->group(function () {
     Route::get('/dashboard',                   [AdminController::class, 'dashboard'])->name('admin.dashboard');
 
     Route::get('/bluebooks',                   [AdminController::class, 'bluebooks'])->name('admin.bluebooks');
+    Route::get('/pending',                     [AdminController::class, 'pendingQueue'])->name('admin.pending');
+    Route::get('/rejected',                    [AdminController::class, 'rejectedList'])->name('admin.rejected');
     Route::get('/bluebooks/{id}',              [AdminController::class, 'bluebookView'])->whereNumber('id')->name('admin.bluebooks.view');
     Route::get('/bluebooks/{id}/file',         [AdminController::class, 'bluebookFile'])->whereNumber('id')->name('admin.bluebooks.file');
 
@@ -61,6 +63,7 @@ Route::prefix('admin')->middleware('role:Admin,Sub-Admin')->group(function () {
 
     Route::middleware('permission:review_bluebooks')->group(function () {
         Route::post('/bluebooks/{id}/approve',     [AdminController::class, 'bluebookApprove'])->name('admin.bluebooks.approve');
+        Route::post('/bluebooks/approve-selected', [AdminController::class, 'bluebookApproveSelected'])->name('admin.bluebooks.approveSelected');
         Route::post('/bluebooks/{id}/waiver-received', [AdminController::class, 'bluebookWaiverReceived'])->name('admin.bluebooks.waiverReceived');
         Route::post('/bluebooks/{id}/reject',      [AdminController::class, 'bluebookReject'])->name('admin.bluebooks.reject');
     });

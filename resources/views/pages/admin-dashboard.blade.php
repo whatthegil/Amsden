@@ -46,7 +46,7 @@
             <strong>{{ $stats['pending'] }} {{ Str::plural('bluebook', $stats['pending']) }} awaiting review</strong>
             <span>Submitted by students and not yet approved or rejected.</span>
           </div>
-          <a href="{{ route('admin.bluebooks') }}?status=Pending" class="btn btn-primary btn-sm">Review now</a>
+          <a href="{{ route('admin.pending') }}" class="btn btn-primary btn-sm">Review now</a>
         </div>
       @endif
       @if($stats['awaitingWaiver'] > 0)

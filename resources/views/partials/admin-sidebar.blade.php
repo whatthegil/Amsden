@@ -30,9 +30,17 @@
     <a href="{{ route('admin.bluebooks') }}" class="nav-item {{ $active === 'bluebooks' ? 'active' : '' }}">
       <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
       Bluebooks
+    </a>
+    <a href="{{ route('admin.pending') }}" class="nav-item {{ $active === 'pending' ? 'active' : '' }}">
+      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      Pending
       @if(($pendingCount ?? 0) > 0)
-        <span class="badge badge-yellow" style="margin-left:auto;">{{ $pendingCount }}<span class="sr-only"> pending</span></span>
+        <span class="badge badge-yellow" style="margin-left:auto;">{{ $pendingCount }}<span class="sr-only"> waiting for review</span></span>
       @endif
+    </a>
+    <a href="{{ route('admin.rejected') }}" class="nav-item {{ $active === 'rejected' ? 'active' : '' }}">
+      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+      Rejected
     </a>
   </nav>
 

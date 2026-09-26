@@ -451,6 +451,9 @@ class Store
             'pages'          => $b->pages,
             'views'          => $b->views,
             'dateAdded'      => $b->date_added,
+            // When the record last changed: for a pending paper, when it was
+            // (re)submitted; for a rejected one, when it was turned down.
+            'updatedAt'      => $b->updated_at ? $b->updated_at->format('Y-m-d H:i') : null,
             'filePath'         => $b->file_path,
             'fileOriginalName' => $b->file_original_name,
             'fileSize'         => $b->file_size,
