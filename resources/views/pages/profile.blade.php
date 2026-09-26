@@ -2,7 +2,7 @@
 @include('partials.head')
 
 <div class="app">
-  @include($user['role'] === 'Admin' ? 'partials.admin-sidebar' : 'partials.student-sidebar')
+  @include(\App\Models\User::isStaff($user['role']) ? 'partials.admin-sidebar' : 'partials.student-sidebar')
   <main class="main" id="main-content">
     <header class="topbar">
       <h1 class="topbar-title">My Profile</h1>
@@ -38,7 +38,7 @@
             <div class="profile-hero-email">{{ $profile['email'] }}</div>
             <div class="profile-hero-badges">
               <span class="badge badge-blue">{{ $profile['role'] }}</span>
-              @if($profile['role'] !== 'Admin')
+              @if(!\App\Models\User::isStaff($profile['role']))
                 <span class="badge {{ $profile['canUpload'] ? 'badge-green' : 'badge-gray' }}">
                   {{ $profile['canUpload'] ? 'Upload Enabled' : 'Upload Disabled' }}
                 </span>

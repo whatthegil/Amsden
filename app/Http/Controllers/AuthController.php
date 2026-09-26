@@ -24,6 +24,7 @@ class AuthController extends Controller
             'email'     => $user->email,
             'role'      => $user->role,
             'canUpload' => (bool) $user->can_upload,
+            'permissions' => $user->permissions ?? [],
             'avatar'    => $user->avatar,
             'createdAt' => $user->created_at ? $user->created_at->format('Y-m-d') : now()->format('Y-m-d'),
         ]]);
@@ -31,7 +32,7 @@ class AuthController extends Controller
 
     private function redirectToDashboard(User $user)
     {
-        if ($user->role === 'Admin') {
+        if (User::isStaff($user->role)) {
             return redirect()->route('admin.dashboard');
         }
         // First-ever login for this account -> show the Acceptable Use Policy
@@ -47,7 +48,7 @@ class AuthController extends Controller
     {
         if (session('user')) {
             $u = session('user');
-            return $u['role'] === 'Admin'
+            return User::isStaff($u['role'])
                 ? redirect()->route('admin.dashboard')
                 : redirect()->route('student.dashboard');
         }

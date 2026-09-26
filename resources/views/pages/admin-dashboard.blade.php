@@ -7,11 +7,14 @@
     <header class="topbar">
       <h1 class="topbar-title">Dashboard</h1>
       <div class="topbar-right">
-        <span class="topbar-badge">Administrator</span>
+        <span class="topbar-badge">{{ ($user['role'] ?? '') === 'Sub-Admin' ? 'Sub-Admin' : 'Administrator' }}</span>
       </div>
     </header>
 
     <div class="content">
+      @if(session('error'))
+        <div class="alert alert-error" style="margin-bottom:1.25rem;">{{ session('error') }}</div>
+      @endif
       <div class="dash-hero">
         <div class="dash-hero-top" style="margin-bottom:0;">
           <div>
@@ -22,10 +25,12 @@
               {{ $stats['totalUsers'] }} registered {{ Str::plural('user', $stats['totalUsers']) }}
             </p>
           </div>
+          @if(\App\Models\User::allows($user, 'manage_bluebooks'))
           <a href="{{ route('admin.bluebooks.new') }}" class="btn btn-sm btn-on-hero">
             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
             Add Bluebook
           </a>
+          @endif
         </div>
       </div>
 
@@ -89,6 +94,8 @@
           @endif
         </div>
 
+        {{-- The activity feed is the access log, so only for those who may read it. --}}
+        @if(\App\Models\User::allows($user, 'view_logs'))
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">Recent Activity</h3>
@@ -114,6 +121,7 @@
             @endif
           </div>
         </div>
+        @endif
       </div>
     </div>
 

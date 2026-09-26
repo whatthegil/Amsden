@@ -7,7 +7,7 @@
     <header class="topbar">
       <h1 class="topbar-title">User Management</h1>
       <div class="topbar-right">
-        <span class="topbar-badge">Administrator</span>
+        <span class="topbar-badge">{{ ($user['role'] ?? '') === 'Sub-Admin' ? 'Sub-Admin' : 'Administrator' }}</span>
       </div>
     </header>
 
@@ -36,6 +36,7 @@
           <select id="users-filter-role" name="role">
             <option value="">All Roles</option>
             <option value="Admin" {{ ($query['role'] ?? '') === 'Admin' ? 'selected' : '' }}>Admin</option>
+            <option value="Sub-Admin" {{ ($query['role'] ?? '') === 'Sub-Admin' ? 'selected' : '' }}>Sub-Admin</option>
             <option value="Student" {{ ($query['role'] ?? '') === 'Student' ? 'selected' : '' }}>Student</option>
             <option value="Faculty" {{ ($query['role'] ?? '') === 'Faculty' ? 'selected' : '' }}>Faculty</option>
           </select>
@@ -70,6 +71,8 @@
                     <td>
                       @if($u['role'] === 'Admin')
                         <span class="badge badge-blue">Admin</span>
+                      @elseif($u['role'] === 'Sub-Admin')
+                        <span class="badge badge-blue" title="{{ count($u['permissions'] ?? []) }} of {{ count(\App\Models\User::PERMISSIONS) }} privileges">Sub-Admin &middot; {{ count($u['permissions'] ?? []) }}/{{ count(\App\Models\User::PERMISSIONS) }}</span>
                       @elseif($u['role'] === 'Faculty')
                         <span class="badge badge-green">Faculty</span>
                       @else
@@ -86,7 +89,10 @@
                     <td style="font-size:0.83rem;">{{ $u['createdAt'] }}</td>
                     <td>
                       <div class="td-actions">
-                        <a href="{{ route('admin.users.edit', $u['id']) }}" class="btn btn-outline btn-sm">Edit</a>
+                        {{-- A Sub-Admin looks after student and faculty accounts only. --}}
+                        @if(($user['role'] ?? '') === 'Admin' || !\App\Models\User::isStaff($u['role']))
+                          <a href="{{ route('admin.users.edit', $u['id']) }}" class="btn btn-outline btn-sm">Edit</a>
+                        @endif
                         @if(in_array($u['role'], ['Student', 'Faculty']))
                           @if($u['canUpload'] ?? false)
                             <form method="POST" action="{{ route('admin.users.disableUpload', $u['id']) }}" style="display:inline;">

@@ -7,7 +7,7 @@
     <header class="topbar">
       <h1 class="topbar-title">Access Logs</h1>
       <div class="topbar-right">
-        <span class="topbar-badge">Administrator</span>
+        <span class="topbar-badge">{{ ($user['role'] ?? '') === 'Sub-Admin' ? 'Sub-Admin' : 'Administrator' }}</span>
       </div>
     </header>
 

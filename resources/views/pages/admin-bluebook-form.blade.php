@@ -1,4 +1,9 @@
-@php $title = $bluebook ? 'Edit Bluebook' : 'Add Bluebook'; $isEdit = !!$bluebook; @endphp
+@php
+  $title = $bluebook ? 'Edit Bluebook' : 'Add Bluebook'; $isEdit = !!$bluebook;
+  // A reviewer without manage_bluebooks is here to record the waiver: the rest
+  // of the record is shown but locked, and the server ignores it anyway.
+  $canManage = \App\Models\User::allows($user, 'manage_bluebooks');
+@endphp
 @include('partials.head')
 
 <div class="app">
@@ -7,7 +12,7 @@
     <header class="topbar">
       <h1 class="topbar-title">{{ $isEdit ? 'Edit' : 'Add' }} Bluebook</h1>
       <div class="topbar-right">
-        <span class="topbar-badge">Administrator</span>
+        <span class="topbar-badge">{{ ($user['role'] ?? '') === 'Sub-Admin' ? 'Sub-Admin' : 'Administrator' }}</span>
       </div>
     </header>
 
@@ -30,6 +35,10 @@
           @endif
           <form method="POST" action="{{ $isEdit ? route('admin.bluebooks.update', $bluebook['id']) : route('admin.bluebooks.store') }}" enctype="multipart/form-data">
             @csrf
+            @unless($canManage)
+              <div class="alert alert-info" style="margin-bottom:1rem;">Your account can record the access permission waiver below. The other details are shown for reference only.</div>
+            @endunless
+            <fieldset @disabled(!$canManage) style="border:0;padding:0;margin:0;min-width:0;">
 
             <div class="form-group">
               <label for="bb-form-file">PDF File <span style="font-weight:400;color:var(--gray-400);">(optional{{ $isEdit ? ' — leave blank to keep the current file' : '' }})</span></label>
@@ -100,6 +109,8 @@
               <textarea id="bb-form-abstract" name="abstract" rows="5" placeholder="Brief description of the research paper…" required>{{ $bluebook['abstract'] ?? '' }}</textarea>
             </div>
 
+            </fieldset>
+
             @if ($isEdit)
               @php
                 // Pre-fill a choice somebody made: the recorded waiver, or what the
@@ -135,7 +146,7 @@
               <button type="submit" class="btn btn-primary">{{ $isEdit ? 'Update Bluebook' : 'Add Bluebook' }}</button>
             </div>
           </form>
-          @if ($isEdit)
+          @if ($isEdit && $canManage)
             {{-- Deleting lives on the edit page rather than the list so it is not one
                  stray click from the table. Removes the stored PDF and any bookmarks
                  too, and is written to the access log. --}}

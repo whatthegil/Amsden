@@ -46,6 +46,8 @@ class EnsureRole
             'email'     => $account->email,
             'role'      => $account->role,
             'canUpload' => (bool) $account->can_upload,
+            // Likewise a Sub-Admin's privileges, which an Admin can change at any time.
+            'permissions' => $account->permissions ?? [],
         ]);
         session(['user' => $user]);
 
@@ -57,7 +59,7 @@ class EnsureRole
                 'document' => '/' . $request->path(),
                 'status'   => 'Denied',
             ]);
-            return redirect()->route($user['role'] === 'Admin' ? 'admin.dashboard' : 'student.dashboard');
+            return redirect()->route(User::isStaff($user['role']) ? 'admin.dashboard' : 'student.dashboard');
         }
 
         return $next($request);

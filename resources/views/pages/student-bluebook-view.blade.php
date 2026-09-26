@@ -20,7 +20,9 @@
       <div style="margin-bottom:1.25rem;display:flex;gap:0.5rem;">
         @if($asAdmin)
           <a href="{{ route('admin.bluebooks') }}" class="btn btn-outline btn-sm">← Back to Bluebooks</a>
-          <a href="{{ route('admin.bluebooks.edit', $bluebook['id']) }}" class="btn btn-outline btn-sm">Edit</a>
+          @if(\App\Models\User::allows($user, 'manage_bluebooks') || \App\Models\User::allows($user, 'review_bluebooks'))
+            <a href="{{ route('admin.bluebooks.edit', $bluebook['id']) }}" class="btn btn-outline btn-sm">{{ \App\Models\User::allows($user, 'manage_bluebooks') ? 'Edit' : 'Record waiver' }}</a>
+          @endif
         @else
           <a href="{{ route('student.bluebooks') }}" class="btn btn-outline btn-sm">← Back to Browse</a>
         @endif

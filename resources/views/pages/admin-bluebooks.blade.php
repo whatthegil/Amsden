@@ -7,19 +7,25 @@
     <header class="topbar">
       <h1 class="topbar-title">Bluebook Management</h1>
       <div class="topbar-right">
-        <span class="topbar-badge">Administrator</span>
+        <span class="topbar-badge">{{ ($user['role'] ?? '') === 'Sub-Admin' ? 'Sub-Admin' : 'Administrator' }}</span>
       </div>
     </header>
 
     <div class="content">
+      @php
+        $canReview = \App\Models\User::allows($user, 'review_bluebooks');
+        $canManage = \App\Models\User::allows($user, 'manage_bluebooks');
+      @endphp
       <x-page-hero heading="Bluebooks"
                    sub="{{ count($bluebooks) }} {{ Str::plural('record', count($bluebooks)) }} in the archive.">
+        @if($canManage)
         <x-slot name="action">
           <a href="{{ route('admin.bluebooks.new') }}" class="btn btn-sm btn-primary">
             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
             Add Bluebook
           </a>
         </x-slot>
+        @endif
       </x-page-hero>
 
       @if(session('success'))
@@ -109,8 +115,14 @@
                     </td>
                     <td>
                       <div class="td-actions">
-                        <a href="{{ route('admin.bluebooks.edit', $b['id']) }}" class="btn btn-outline btn-sm">Edit</a>
-                        @if($b['status'] === 'Pending')
+                        @if($canReview || $canManage)
+                          <a href="{{ route('admin.bluebooks.edit', $b['id']) }}" class="btn btn-outline btn-sm">{{ $canManage ? 'Edit' : 'Waiver' }}</a>
+                        @else
+                          <a href="{{ route('admin.bluebooks.view', $b['id']) }}" class="btn btn-outline btn-sm">View</a>
+                        @endif
+                        @if(!$canReview)
+                          {{-- Reviewing is not this account's to do. --}}
+                        @elseif($b['status'] === 'Pending')
                           <form method="POST" action="{{ route('admin.bluebooks.approve', $b['id']) }}" style="display:inline;">
                             @csrf <button type="submit" class="btn btn-success btn-sm">Approve</button>
                           </form>
@@ -133,7 +145,7 @@
                             @csrf <button type="submit" class="btn btn-success btn-sm" title="The signed waiver was handed in; post this bluebook in Browse">Waiver Received</button>
                           </form>
                         @endif
-                        @if($b['status'] === 'Approved' && $b['hasFile'] && $b['ocrStatus'] !== 'processing')
+                        @if($canManage && $b['status'] === 'Approved' && $b['hasFile'] && $b['ocrStatus'] !== 'processing')
                           <form method="POST" action="{{ route('admin.bluebooks.reprocessOcr', $b['id']) }}" style="display:inline;">
                             @csrf <button type="submit" class="btn btn-outline btn-sm">Reprocess OCR</button>
                           </form>

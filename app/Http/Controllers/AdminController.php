@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\ProcessBluebookOcr;
 use App\Models\Bluebook;
+use App\Models\User;
 use App\Services\Store;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -14,7 +15,32 @@ class AdminController extends Controller
     use Concerns\ReadsAccessWaiver;
     use Concerns\StreamsBluebookDocument;
 
-    private const ROLES = ['Student', 'Faculty', 'Admin'];
+    private const ROLES = ['Student', 'Faculty', User::ROLE_SUB_ADMIN, User::ROLE_ADMIN];
+
+    /**
+     * The roles the signed-in user may hand out. Only an Admin creates staff; a
+     * Sub-Admin with manage_users looks after student and faculty accounts.
+     */
+    private function assignableRoles(): array
+    {
+        return (session('user')['role'] ?? null) === User::ROLE_ADMIN ? self::ROLES : ['Student', 'Faculty'];
+    }
+
+    /** Whether the signed-in user may change this account at all. */
+    private function mayManage(array $target): bool
+    {
+        return (session('user')['role'] ?? null) === User::ROLE_ADMIN || !User::isStaff($target['role']);
+    }
+
+    /** The privileges ticked on the form, kept only for a Sub-Admin and only from an Admin. */
+    private function permissionsFrom(Request $request, string $role): ?array
+    {
+        if ($role !== User::ROLE_SUB_ADMIN || (session('user')['role'] ?? null) !== User::ROLE_ADMIN) {
+            return null;
+        }
+
+        return array_values(array_intersect(array_keys(User::PERMISSIONS), (array) $request->input('permissions', [])));
+    }
 
     public function dashboard()
     {
@@ -157,6 +183,16 @@ class AdminController extends Controller
 
     public function bluebookUpdate(Request $request, int $id)
     {
+        // A reviewer without manage_bluebooks comes here to record the signed
+        // waiver, and may change that and nothing else - the page ranges are
+        // checked against the stored page count, not one sent with the form.
+        $canManage = User::allows(session('user'), 'manage_bluebooks');
+        if (!$canManage) {
+            $existing = Store::getBluebook($id);
+            if (!$existing) return redirect()->route('admin.bluebooks');
+            $request->merge(['pages' => $existing['pages']]);
+        }
+
         $request->validate([
             'file' => ['nullable', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile], // 35MB, PDF only
         ] + $this->accessWaiverRules(), $this->accessWaiverMessages());
@@ -177,7 +213,11 @@ class AdminController extends Controller
             'pages'      => (int)$request->input('pages'),
         ];
 
-        if ($request->hasFile('file')) {
+        if (!$canManage) {
+            $fields = array_intersect_key($fields, ['accessLevel' => 1, 'accessParts' => 1]);
+        }
+
+        if ($canManage && $request->hasFile('file')) {
             $existing = Store::getBluebook($id);
             if ($existing && $existing['filePath']) {
                 Storage::disk(Store::bluebookDisk())->delete($existing['filePath']);
@@ -198,7 +238,7 @@ class AdminController extends Controller
         }
 
         Store::updateBluebook($id, $fields);
-        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Edited Bluebook', 'document' => $request->input('title')]);
+        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => $canManage ? 'Edited Bluebook' : 'Recorded Waiver', 'document' => Store::getBluebook($id)['title'] ?? $request->input('title')]);
         return redirect()->route('admin.bluebooks')->with('success', 'Bluebook updated successfully');
     }
 
@@ -312,7 +352,7 @@ class AdminController extends Controller
 
     public function userNewForm()
     {
-        return view('pages.admin-user-form', ['user' => session('user'), 'active' => 'users', 'editUser' => null, 'pendingCount' => Store::getPendingCount()]);
+        return view('pages.admin-user-form', ['user' => session('user'), 'active' => 'users', 'editUser' => null, 'roles' => $this->assignableRoles(), 'pendingCount' => Store::getPendingCount()]);
     }
 
     public function userStore(Request $request)
@@ -321,10 +361,10 @@ class AdminController extends Controller
         if (Store::findUserByEmail($request->input('email'))) {
             return redirect()->route('admin.users')->with('success', 'Email already exists');
         }
-        if (!in_array($request->input('role'), self::ROLES, true)) {
+        if (!in_array($request->input('role'), $this->assignableRoles(), true)) {
             return redirect()->route('admin.users')->with('success', 'Invalid role');
         }
-        Store::addUser(['name' => $request->input('name'), 'email' => $request->input('email'), 'password' => $request->input('password'), 'role' => $request->input('role')]);
+        Store::addUser(['name' => $request->input('name'), 'email' => $request->input('email'), 'password' => $request->input('password'), 'role' => $request->input('role'), 'permissions' => $this->permissionsFrom($request, $request->input('role'))]);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Added User', 'document' => $request->input('email')]);
         return redirect()->route('admin.users')->with('success', 'User added successfully');
     }
@@ -336,7 +376,10 @@ class AdminController extends Controller
             if ($u['id'] === $id) { $editUser = $u; break; }
         }
         if (!$editUser) return redirect()->route('admin.users');
-        return view('pages.admin-user-form', ['user' => session('user'), 'active' => 'users', 'editUser' => $editUser, 'pendingCount' => Store::getPendingCount()]);
+        if (!$this->mayManage($editUser)) {
+            return redirect()->route('admin.users')->with('success', 'Only an Admin can change an Admin or Sub-Admin account');
+        }
+        return view('pages.admin-user-form', ['user' => session('user'), 'active' => 'users', 'editUser' => $editUser, 'roles' => $this->assignableRoles(), 'pendingCount' => Store::getPendingCount()]);
     }
 
     public function userUpdate(Request $request, int $id)
@@ -344,9 +387,12 @@ class AdminController extends Controller
         $user   = session('user');
         $target = $this->findUser($id);
         if (!$target) return redirect()->route('admin.users');
+        if (!$this->mayManage($target)) {
+            return redirect()->route('admin.users')->with('success', 'Only an Admin can change an Admin or Sub-Admin account');
+        }
 
         $role = $request->input('role');
-        if (!in_array($role, self::ROLES, true)) {
+        if (!in_array($role, $this->assignableRoles(), true)) {
             return redirect()->route('admin.users')->with('success', 'Invalid role');
         }
         // An admin taking away their own Admin role would lock themselves out
@@ -355,7 +401,7 @@ class AdminController extends Controller
             return redirect()->route('admin.users')->with('success', 'You cannot remove your own Admin role');
         }
 
-        $fields = ['name' => $request->input('name'), 'email' => $request->input('email'), 'role' => $role];
+        $fields = ['name' => $request->input('name'), 'email' => $request->input('email'), 'role' => $role, 'permissions' => $this->permissionsFrom($request, $role)];
         if ($request->input('password')) $fields['password'] = $request->input('password');
         Store::updateUser($id, $fields);
         if ($target['role'] !== $role) {
@@ -377,6 +423,9 @@ class AdminController extends Controller
         $user = session('user');
         $target = null;
         foreach (Store::getUsers() as $u) { if ($u['id'] === $id) { $target = $u; break; } }
+        if (!$target || !$this->mayManage($target)) {
+            return redirect()->route('admin.users')->with('success', 'Only an Admin can change an Admin or Sub-Admin account');
+        }
         Store::setUploadPermission($id, true);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Enabled Upload Permission', 'document' => $target ? $target['name'] : '—']);
         return redirect()->route('admin.users')->with('success', 'Upload permission enabled');
@@ -387,6 +436,9 @@ class AdminController extends Controller
         $user = session('user');
         $target = null;
         foreach (Store::getUsers() as $u) { if ($u['id'] === $id) { $target = $u; break; } }
+        if (!$target || !$this->mayManage($target)) {
+            return redirect()->route('admin.users')->with('success', 'Only an Admin can change an Admin or Sub-Admin account');
+        }
         Store::setUploadPermission($id, false);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Disabled Upload Permission', 'document' => $target ? $target['name'] : '—']);
         return redirect()->route('admin.users')->with('success', 'Upload permission disabled');

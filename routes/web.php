@@ -28,38 +28,54 @@ Route::get('/auth/google',          [AuthController::class, 'redirectToGoogle'])
 Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
 
 // ─── Profile (any logged-in role) ──────────────────────────────────────────────
-Route::middleware('role:Admin,Student,Faculty')->group(function () {
+Route::middleware('role:Admin,Sub-Admin,Student,Faculty')->group(function () {
     Route::get('/profile',           [ProfileController::class, 'show'])->name('profile');
     Route::post('/profile',          [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/password', [ProfileController::class, 'password'])->name('profile.password');
 });
 
 // ─── Admin ─────────────────────────────────────────────────────────────────────
-Route::prefix('admin')->middleware('role:Admin')->group(function () {
+// Admins and Sub-Admins. An Admin can do everything; a Sub-Admin can read (the
+// dashboard, the bluebook list, a bluebook) and do only what an Admin ticked on
+// their account - see User::PERMISSIONS and the permission middleware.
+Route::prefix('admin')->middleware('role:Admin,Sub-Admin')->group(function () {
     Route::get('/dashboard',                   [AdminController::class, 'dashboard'])->name('admin.dashboard');
 
     Route::get('/bluebooks',                   [AdminController::class, 'bluebooks'])->name('admin.bluebooks');
-    Route::get('/bluebooks/new',               [AdminController::class, 'bluebookNewForm'])->name('admin.bluebooks.new');
-    Route::post('/bluebooks/new',              [AdminController::class, 'bluebookStore'])->name('admin.bluebooks.store');
     Route::get('/bluebooks/{id}',              [AdminController::class, 'bluebookView'])->whereNumber('id')->name('admin.bluebooks.view');
     Route::get('/bluebooks/{id}/file',         [AdminController::class, 'bluebookFile'])->whereNumber('id')->name('admin.bluebooks.file');
-    Route::get('/bluebooks/{id}/edit',         [AdminController::class, 'bluebookEditForm'])->name('admin.bluebooks.edit');
-    Route::post('/bluebooks/{id}/edit',        [AdminController::class, 'bluebookUpdate'])->name('admin.bluebooks.update');
-    Route::post('/bluebooks/{id}/approve',     [AdminController::class, 'bluebookApprove'])->name('admin.bluebooks.approve');
-    Route::post('/bluebooks/{id}/waiver-received', [AdminController::class, 'bluebookWaiverReceived'])->name('admin.bluebooks.waiverReceived');
-    Route::post('/bluebooks/{id}/reject',      [AdminController::class, 'bluebookReject'])->name('admin.bluebooks.reject');
-    Route::post('/bluebooks/{id}/reprocess-ocr', [AdminController::class, 'bluebookReprocessOcr'])->name('admin.bluebooks.reprocessOcr');
-    Route::post('/bluebooks/{id}/delete',       [AdminController::class, 'bluebookDelete'])->name('admin.bluebooks.delete');
 
-    Route::get('/users',                       [AdminController::class, 'users'])->name('admin.users');
-    Route::get('/users/new',                   [AdminController::class, 'userNewForm'])->name('admin.users.new');
-    Route::post('/users/new',                  [AdminController::class, 'userStore'])->name('admin.users.store');
-    Route::get('/users/{id}/edit',             [AdminController::class, 'userEditForm'])->name('admin.users.edit');
-    Route::post('/users/{id}/edit',            [AdminController::class, 'userUpdate'])->name('admin.users.update');
-    Route::post('/users/{id}/enable-upload',   [AdminController::class, 'enableUpload'])->name('admin.users.enableUpload');
-    Route::post('/users/{id}/disable-upload',  [AdminController::class, 'disableUpload'])->name('admin.users.disableUpload');
+    Route::middleware('permission:manage_bluebooks')->group(function () {
+        Route::get('/bluebooks/new',               [AdminController::class, 'bluebookNewForm'])->name('admin.bluebooks.new');
+        Route::post('/bluebooks/new',              [AdminController::class, 'bluebookStore'])->name('admin.bluebooks.store');
+        Route::post('/bluebooks/{id}/reprocess-ocr', [AdminController::class, 'bluebookReprocessOcr'])->name('admin.bluebooks.reprocessOcr');
+        Route::post('/bluebooks/{id}/delete',       [AdminController::class, 'bluebookDelete'])->name('admin.bluebooks.delete');
+    });
 
-    Route::get('/logs',                        [AdminController::class, 'logs'])->name('admin.logs');
+    // The edit form is also where a reviewer records the signed waiver; one
+    // without manage_bluebooks can change only that (see bluebookUpdate).
+    Route::middleware('permission:review_bluebooks,manage_bluebooks')->group(function () {
+        Route::get('/bluebooks/{id}/edit',         [AdminController::class, 'bluebookEditForm'])->name('admin.bluebooks.edit');
+        Route::post('/bluebooks/{id}/edit',        [AdminController::class, 'bluebookUpdate'])->name('admin.bluebooks.update');
+    });
+
+    Route::middleware('permission:review_bluebooks')->group(function () {
+        Route::post('/bluebooks/{id}/approve',     [AdminController::class, 'bluebookApprove'])->name('admin.bluebooks.approve');
+        Route::post('/bluebooks/{id}/waiver-received', [AdminController::class, 'bluebookWaiverReceived'])->name('admin.bluebooks.waiverReceived');
+        Route::post('/bluebooks/{id}/reject',      [AdminController::class, 'bluebookReject'])->name('admin.bluebooks.reject');
+    });
+
+    Route::middleware('permission:manage_users')->group(function () {
+        Route::get('/users',                       [AdminController::class, 'users'])->name('admin.users');
+        Route::get('/users/new',                   [AdminController::class, 'userNewForm'])->name('admin.users.new');
+        Route::post('/users/new',                  [AdminController::class, 'userStore'])->name('admin.users.store');
+        Route::get('/users/{id}/edit',             [AdminController::class, 'userEditForm'])->name('admin.users.edit');
+        Route::post('/users/{id}/edit',            [AdminController::class, 'userUpdate'])->name('admin.users.update');
+        Route::post('/users/{id}/enable-upload',   [AdminController::class, 'enableUpload'])->name('admin.users.enableUpload');
+        Route::post('/users/{id}/disable-upload',  [AdminController::class, 'disableUpload'])->name('admin.users.disableUpload');
+    });
+
+    Route::get('/logs',                        [AdminController::class, 'logs'])->middleware('permission:view_logs')->name('admin.logs');
 });
 
 // ─── Student ───────────────────────────────────────────────────────────────────

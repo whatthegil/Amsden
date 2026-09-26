@@ -36,24 +36,35 @@
     </a>
   </nav>
 
+  @php
+    // A Sub-Admin sees only the sections their account has been given.
+    $canUsers = \App\Models\User::allows($user, 'manage_users');
+    $canLogs  = \App\Models\User::allows($user, 'view_logs');
+  @endphp
+  @if($canUsers || $canLogs)
   <nav class="sidebar-section" aria-label="Management">
     <span class="sidebar-label">Management</span>
+    @if($canUsers)
     <a href="{{ route('admin.users') }}" class="nav-item {{ $active === 'users' ? 'active' : '' }}">
       <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
       Users
     </a>
+    @endif
+    @if($canLogs)
     <a href="{{ route('admin.logs') }}" class="nav-item {{ $active === 'logs' ? 'active' : '' }}">
       <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
       Access Logs
     </a>
+    @endif
   </nav>
+  @endif
 
   <div class="sidebar-footer">
     <a href="{{ route('profile') }}" class="user-chip {{ ($active ?? '') === 'profile' ? 'active' : '' }}" title="View my profile">
       <div class="user-chip-avatar" aria-hidden="true">{{ strtoupper(substr($user['name'] ?? 'A', 0, 1)) }}</div>
       <div class="user-chip-info">
         <span class="name">{{ $user['name'] ?? '' }}</span>
-        <span class="role">Administrator &middot; View profile</span>
+        <span class="role">{{ ($user['role'] ?? '') === \App\Models\User::ROLE_SUB_ADMIN ? 'Sub-Admin' : 'Administrator' }} &middot; View profile</span>
       </div>
     </a>
     <a href="{{ route('logout') }}" class="nav-item" style="margin-top:0.5rem;color:var(--red);">
