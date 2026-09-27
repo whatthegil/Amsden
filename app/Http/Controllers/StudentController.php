@@ -278,8 +278,8 @@ class StudentController extends Controller
                 'file'       => ['required', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile], // 35MB, PDF only
                 'title'      => ['required', 'string'],
                 'authors'    => ['required', 'string'],
-                'department' => ['required', 'string'],
-                'program'    => ['required', 'string'],
+                'department' => ['required', 'string', \Illuminate\Validation\Rule::in(array_keys(config('departments')))],
+                'program'    => ['required', 'string', new \App\Rules\ProgramInDepartment($request->input('department'))],
                 'year'       => ['required', 'integer'],
                 'adviser'    => ['required', 'string'],
                 'pages'      => ['required', 'integer', 'min:1'],

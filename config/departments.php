@@ -55,10 +55,9 @@ return [
     'CTDE' => [
         'name' => 'College of Teacher Development and Education',
         'programs' => [
-            'Bachelor of Technical-Vocational Teacher Education, Major in:',
-            'Food Service Management',
-            'Electronics Technology',
-            'Fish Processing',
+            'Bachelor of Technical-Vocational Teacher Education, Major in Food Service Management',
+            'Bachelor of Technical-Vocational Teacher Education, Major in Electronics Technology',
+            'Bachelor of Technical-Vocational Teacher Education, Major in Fish Processing',
             'Bachelor of Special Needs Education',
             'Bachelor of Physical Education',
             'Bachelor of Culture and Arts Education',

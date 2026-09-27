@@ -35,7 +35,7 @@ class UploadAndSearchTest extends TestCase
             'title'      => 'A Web-Based Inventory System for Campus Laboratories',
             'authors'    => 'Dela Cruz, Juan; Santos, Maria',
             'department' => 'CCS',
-            'program'   => 'BSIT',
+            'program'   => 'Bachelor of Science in Information Technology',
             'year'       => 2025,
             'adviser'    => 'Prof. Reyes',
             'pages'      => 80,

@@ -11,6 +11,7 @@ use App\Services\Store;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class AdminController extends Controller
@@ -94,7 +95,9 @@ class AdminController extends Controller
     public function bluebookStore(Request $request)
     {
         $request->validate([
-            'file' => ['nullable', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile], // 35MB, PDF only
+            'file'       => ['nullable', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile], // 35MB, PDF only
+            'department' => ['required', 'string', Rule::in(array_keys(config('departments')))],
+            'program'    => ['required', 'string', new \App\Rules\ProgramInDepartment($request->input('department'))],
         ]);
         $user = session('user');
 
@@ -195,8 +198,13 @@ class AdminController extends Controller
             $request->merge(['pages' => $existing['pages']]);
         }
 
+        // A record filed under a department or program the lists no longer
+        // carry can still be saved without changing it.
+        $existing = Store::getBluebook($id);
         $request->validate([
-            'file' => ['nullable', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile], // 35MB, PDF only
+            'file'       => ['nullable', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile], // 35MB, PDF only
+            'department' => ['required', 'string', Rule::in(array_merge(array_keys(config('departments')), [$existing['department'] ?? '']))],
+            'program'    => ['required', 'string', new \App\Rules\ProgramInDepartment($request->input('department'), $existing['program'] ?? null)],
         ] + $this->accessWaiverRules(), $this->accessWaiverMessages());
         $accessParts = $this->accessPartsFrom($request);
         $user = session('user');

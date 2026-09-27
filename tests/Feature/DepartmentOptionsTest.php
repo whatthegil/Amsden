@@ -108,4 +108,91 @@ class DepartmentOptionsTest extends TestCase
             'program' => 'Bachelor of Science in Office Administration',
         ]);
     }
+
+    private function uploadPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'title' => 'A Mismatched Paper', 'authors' => 'Cruz, J',
+            'department' => 'CCS', 'program' => 'Bachelor of Science in Information Technology',
+            'year' => 2025, 'adviser' => 'Prof X', 'pages' => 50,
+            'keywords' => 'k', 'abstract' => 'A.',
+            'file' => UploadedFile::fake()->createWithContent('b.pdf', "%PDF-1.4\n%%EOF"),
+        ], $overrides);
+    }
+
+    public function test_upload_rejects_a_program_from_another_department(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+
+        $this->withSession(['user' => $this->uploader()])
+            ->post('/student/upload', $this->uploadPayload(['program' => 'Bachelor of Science in Nursing']))
+            ->assertOk()
+            ->assertSee('Please choose a program offered by the selected department.');
+
+        $this->assertDatabaseMissing('bluebooks', ['title' => 'A Mismatched Paper']);
+    }
+
+    public function test_upload_rejects_an_unknown_department(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+
+        $this->withSession(['user' => $this->uploader()])
+            ->post('/student/upload', $this->uploadPayload(['department' => 'XYZ']))
+            ->assertOk();
+
+        $this->assertDatabaseMissing('bluebooks', ['title' => 'A Mismatched Paper']);
+    }
+
+    public function test_programs_are_tagged_with_their_department_for_the_picker(): void
+    {
+        $res = $this->withSession(['user' => $this->uploader()])->get('/student/upload');
+
+        $res->assertSee('data-department-picker="upload-program"', false);
+        $res->assertSee('data-department="CHS"', false);
+    }
+
+    public function test_ctde_majors_are_named_in_full(): void
+    {
+        $programs = config('departments')['CTDE']['programs'];
+
+        $this->assertContains('Bachelor of Technical-Vocational Teacher Education, Major in Fish Processing', $programs);
+        $this->assertNotContains('Fish Processing', $programs);
+        $this->assertNotContains('Bachelor of Technical-Vocational Teacher Education, Major in:', $programs);
+    }
+
+    public function test_admin_edit_keeps_a_program_no_longer_listed(): void
+    {
+        User::create(['name' => 'Adm', 'email' => 'adm@cspc.edu.ph', 'password' => Hash::make('x'), 'role' => 'Admin']);
+        $b = \App\Models\Bluebook::create([
+            'title' => 'Old Program Paper', 'authors' => ['Cruz, J'], 'year' => 2019, 'department' => 'CAS',
+            'program' => 'Bachelor of Arts in Communication', 'keywords' => ['k'], 'abstract' => 'A.', 'adviser' => 'Dr. A',
+            'status' => 'Pending', 'pages' => 10, 'uploaded_by' => 'a@cspc.edu.ph', 'uploaded_by_name' => 'A', 'date_added' => '2019-01-01',
+        ]);
+
+        $this->withSession(['user' => $this->admin()])->get("/admin/bluebooks/{$b->id}/edit")
+            ->assertOk()
+            ->assertSee('Current (no longer listed)')
+            ->assertSee('<option value="Bachelor of Arts in Communication" selected>', false);
+
+        $this->withSession(['user' => $this->admin()])->post("/admin/bluebooks/{$b->id}/edit", [
+            'title' => 'Old Program Paper, Retitled', 'authors' => 'Cruz, J', 'year' => 2019, 'department' => 'CAS',
+            'program' => 'Bachelor of Arts in Communication', 'keywords' => 'k', 'abstract' => 'A.', 'adviser' => 'Dr. A',
+            'pages' => 10, 'access_level' => 'public',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('Old Program Paper, Retitled', $b->fresh()->title);
+    }
+
+    public function test_admin_add_rejects_a_program_from_another_department(): void
+    {
+        User::create(['name' => 'Adm', 'email' => 'adm@cspc.edu.ph', 'password' => Hash::make('x'), 'role' => 'Admin']);
+
+        $this->withSession(['user' => $this->admin()])
+            ->post('/admin/bluebooks/new', $this->uploadPayload(['program' => 'Bachelor of Science in Nursing']))
+            ->assertSessionHasErrors('program');
+
+        $this->assertDatabaseMissing('bluebooks', ['title' => 'A Mismatched Paper']);
+    }
 }

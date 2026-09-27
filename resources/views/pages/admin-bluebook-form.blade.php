@@ -58,40 +58,19 @@
               <input id="bb-form-authors" type="text" name="authors" value="{{ $bluebook ? implode('; ', $bluebook['authors']) : '' }}" placeholder="Last, First; Last, First" required>
             </div>
 
+            <x-department-program prefix="bb-form"
+                                  :department="old('department', $bluebook['department'] ?? '')"
+                                  :program="old('program', $bluebook['program'] ?? '')" />
+
+            <div class="form-group">
+              <label for="bb-form-adviser">Adviser</label>
+              <input id="bb-form-adviser" type="text" name="adviser" value="{{ $bluebook['adviser'] ?? '' }}" placeholder="Prof. Name" required>
+            </div>
+
             <div class="form-row">
-              <div class="form-group">
-                <label for="bb-form-department">Department</label>
-                <select id="bb-form-department" name="department" required>
-                  <option value="">Select Department</option>
-                  @foreach(config('departments') as $code => $dept)
-                    <option value="{{ $code }}" {{ ($bluebook['department'] ?? '') === $code ? 'selected' : '' }}>{{ $code === $dept['name'] ? $code : "$code — {$dept['name']}" }}</option>
-                  @endforeach
-                </select>
-              </div>
               <div class="form-group">
                 <label for="bb-form-year">Year</label>
                 <input id="bb-form-year" type="number" name="year" value="{{ $bluebook['year'] ?? date('Y') }}" min="2000" max="{{ date('Y') + 1 }}" required>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="bb-form-program">Program</label>
-              <select id="bb-form-program" name="program" required>
-                <option value="">Select Program</option>
-                @foreach(config('departments') as $code => $dept)
-                  <optgroup label="{{ $code === $dept['name'] ? $code : "$code — {$dept['name']}" }}">
-                    @foreach($dept['programs'] as $program)
-                      <option value="{{ $program }}" {{ ($bluebook['program'] ?? '') === $program ? 'selected' : '' }}>{{ $program }}</option>
-                    @endforeach
-                  </optgroup>
-                @endforeach
-              </select>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="bb-form-adviser">Adviser</label>
-                <input id="bb-form-adviser" type="text" name="adviser" value="{{ $bluebook['adviser'] ?? '' }}" placeholder="Prof. Name" required>
               </div>
               <div class="form-group">
                 <label for="bb-form-pages">Pages</label>

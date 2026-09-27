@@ -68,40 +68,17 @@
               <input id="upload-authors" type="text" name="authors" required placeholder="e.g. Dela Cruz, Juan; Santos, Maria" value="{{ $old['authors'] ?? '' }}">
             </div>
 
+            <x-department-program prefix="upload" :department="$old['department'] ?? ''" :program="$old['program'] ?? ''" />
+
+            <div class="form-group">
+              <label for="upload-adviser">Adviser</label>
+              <input id="upload-adviser" type="text" name="adviser" required placeholder="Prof. Name" value="{{ $old['adviser'] ?? '' }}">
+            </div>
+
             <div class="form-row">
-              <div class="form-group">
-                <label for="upload-department">College / Department</label>
-                <select id="upload-department" name="department" required>
-                  <option value="">Select Department</option>
-                  @foreach(config('departments') as $code => $dept)
-                    <option value="{{ $code }}" @selected(($old['department'] ?? '') === $code)>{{ $code === $dept['name'] ? $code : "$code — {$dept['name']}" }}</option>
-                  @endforeach
-                </select>
-              </div>
               <div class="form-group">
                 <label for="upload-year">Academic Year</label>
                 <input id="upload-year" type="number" name="year" required min="2000" max="{{ date('Y') + 1 }}" value="{{ $old['year'] ?? date('Y') }}">
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="upload-program">Program</label>
-              <select id="upload-program" name="program" required>
-                <option value="">Select Program</option>
-                @foreach(config('departments') as $code => $dept)
-                  <optgroup label="{{ $code === $dept['name'] ? $code : "$code — {$dept['name']}" }}">
-                    @foreach($dept['programs'] as $program)
-                      <option value="{{ $program }}" @selected(($old['program'] ?? '') === $program)>{{ $program }}</option>
-                    @endforeach
-                  </optgroup>
-                @endforeach
-              </select>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="upload-adviser">Adviser</label>
-                <input id="upload-adviser" type="text" name="adviser" required placeholder="Prof. Name" value="{{ $old['adviser'] ?? '' }}">
               </div>
               <div class="form-group">
                 <label for="upload-pages">Number of Pages</label>
