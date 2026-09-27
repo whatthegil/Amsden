@@ -22,7 +22,7 @@ class AdminController extends Controller
 
     /**
      * The roles the signed-in user may hand out. Only an Admin creates staff; a
-     * Sub-Admin with manage_users looks after student and faculty accounts.
+     * Sub-Admin looks after student and faculty accounts.
      */
     private function assignableRoles(): array
     {
@@ -33,16 +33,6 @@ class AdminController extends Controller
     private function mayManage(array $target): bool
     {
         return (session('user')['role'] ?? null) === User::ROLE_ADMIN || !User::isStaff($target['role']);
-    }
-
-    /** The privileges ticked on the form, kept only for a Sub-Admin and only from an Admin. */
-    private function permissionsFrom(Request $request, string $role): ?array
-    {
-        if ($role !== User::ROLE_SUB_ADMIN || (session('user')['role'] ?? null) !== User::ROLE_ADMIN) {
-            return null;
-        }
-
-        return array_values(array_intersect(array_keys(User::PERMISSIONS), (array) $request->input('permissions', [])));
     }
 
     public function dashboard()
@@ -514,7 +504,7 @@ class AdminController extends Controller
         if (!in_array($request->input('role'), $this->assignableRoles(), true)) {
             return redirect()->route('admin.users')->with('success', 'Invalid role');
         }
-        Store::addUser(['name' => $request->input('name'), 'email' => $request->input('email'), 'password' => $request->input('password'), 'role' => $request->input('role'), 'permissions' => $this->permissionsFrom($request, $request->input('role'))]);
+        Store::addUser(['name' => $request->input('name'), 'email' => $request->input('email'), 'password' => $request->input('password'), 'role' => $request->input('role')]);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Added User', 'document' => $request->input('email')]);
         return redirect()->route('admin.users')->with('success', 'User added successfully');
     }
@@ -551,7 +541,7 @@ class AdminController extends Controller
             return redirect()->route('admin.users')->with('success', 'You cannot remove your own Admin role');
         }
 
-        $fields = ['name' => $request->input('name'), 'email' => $request->input('email'), 'role' => $role, 'permissions' => $this->permissionsFrom($request, $role)];
+        $fields = ['name' => $request->input('name'), 'email' => $request->input('email'), 'role' => $role];
         if ($request->input('password')) $fields['password'] = $request->input('password');
         Store::updateUser($id, $fields);
         if ($target['role'] !== $role) {
@@ -575,6 +565,9 @@ class AdminController extends Controller
         foreach (Store::getUsers() as $u) { if ($u['id'] === $id) { $target = $u; break; } }
         if (!$target || !$this->mayManage($target)) {
             return redirect()->route('admin.users')->with('success', 'Only an Admin can change an Admin or Sub-Admin account');
+        }
+        if ($target['role'] !== 'Student') {
+            return redirect()->route('admin.users')->with('success', 'Only student accounts can upload');
         }
         Store::setUploadPermission($id, true);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Enabled Upload Permission', 'document' => $target ? $target['name'] : '—']);

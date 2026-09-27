@@ -45,7 +45,7 @@
   </nav>
 
   @php
-    // A Sub-Admin sees only the sections their account has been given.
+    // Admins and Sub-Admins both hold these; see User::allows.
     $canUsers = \App\Models\User::allows($user, 'manage_users');
     $canLogs  = \App\Models\User::allows($user, 'view_logs');
   @endphp

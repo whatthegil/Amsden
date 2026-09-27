@@ -45,9 +45,7 @@ class EnsureRole
             'name'      => $account->name,
             'email'     => $account->email,
             'role'      => $account->role,
-            'canUpload' => (bool) $account->can_upload,
-            // Likewise a Sub-Admin's privileges, which an Admin can change at any time.
-            'permissions' => $account->permissions ?? [],
+            'canUpload' => User::mayUpload($account->role, (bool) $account->can_upload),
         ]);
         session(['user' => $user]);
 

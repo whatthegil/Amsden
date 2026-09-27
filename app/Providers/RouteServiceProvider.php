@@ -69,7 +69,7 @@ class RouteServiceProvider extends ServiceProvider
         // Cost protection for the AI-powered Literature Review search — each
         // POST can trigger a paid Claude API call (see LiteratureReviewService).
         // Keyed by the session user's email when logged in (the normal case,
-        // since the route already requires role:Student,Faculty), falling
+        // since the route already requires role:Student), falling
         // back to IP so an unauthenticated hit still gets throttled.
         RateLimiter::for('literature-review-ai', function (Request $request) {
             $email = $request->session()->get('user')['email'] ?? null;

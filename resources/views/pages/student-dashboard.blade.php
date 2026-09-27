@@ -90,7 +90,7 @@
         @endif
       </div>
 
-      <div class="grid-2">
+      <div class="{{ $user['role'] === 'Student' ? 'grid-2' : '' }}">
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">Most Read</h3>
@@ -116,6 +116,8 @@
           @endif
         </div>
 
+        {{-- Faculty browse and read; only Students submit papers. --}}
+        @if($user['role'] === 'Student')
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">My Uploads</h3>
@@ -158,6 +160,7 @@
             </div>
           @endif
         </div>
+        @endif
       </div>
     </div>
 

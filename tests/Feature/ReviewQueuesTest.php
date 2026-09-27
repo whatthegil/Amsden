@@ -29,11 +29,11 @@ class ReviewQueuesTest extends TestCase
     }
 
     /** A staff session backed by a real account, since EnsureRole re-reads it. */
-    private function staffSession(string $role = 'Admin', array $permissions = []): array
+    private function staffSession(string $role = 'Admin'): array
     {
         if ($this->staff === null) {
-            $u = User::create(['name' => 'Adm', 'email' => 'adm@cspc.edu.ph', 'password' => bcrypt('x'), 'role' => $role, 'permissions' => $permissions ?: null]);
-            $this->staff = ['user' => ['id' => $u->id, 'name' => 'Adm', 'email' => 'adm@cspc.edu.ph', 'role' => $role, 'canUpload' => true, 'permissions' => $permissions]];
+            $u = User::create(['name' => 'Adm', 'email' => 'adm@cspc.edu.ph', 'password' => bcrypt('x'), 'role' => $role]);
+            $this->staff = ['user' => ['id' => $u->id, 'name' => 'Adm', 'email' => 'adm@cspc.edu.ph', 'role' => $role, 'canUpload' => false]];
         }
 
         return $this->staff;
@@ -109,15 +109,14 @@ class ReviewQueuesTest extends TestCase
         $this->assertSame('Pending', $c->fresh()->status);
     }
 
-    public function test_bulk_approve_needs_the_review_privilege(): void
+    public function test_a_sub_admin_can_bulk_approve(): void
     {
         $a = $this->paper('One', 'Pending', now()->subDay());
 
-        $this->withSession($this->staffSession('Sub-Admin', ['view_logs']))
-            ->post('/admin/bluebooks/approve-selected', ['ids' => [$a->id]])
-            ->assertRedirect(route('admin.dashboard'));
+        $this->withSession($this->staffSession('Sub-Admin'))
+            ->post('/admin/bluebooks/approve-selected', ['ids' => [$a->id]]);
 
-        $this->assertSame('Pending', $a->fresh()->status);
+        $this->assertNotSame('Pending', $a->fresh()->status);
     }
 
     public function test_reviewing_from_the_queue_returns_to_it(): void
@@ -158,16 +157,16 @@ class ReviewQueuesTest extends TestCase
         $this->assertNull(Bluebook::find($b->id));
     }
 
-    public function test_a_sub_admin_without_review_sees_the_queue_but_no_buttons(): void
+    public function test_a_sub_admin_sees_the_queue_with_its_buttons(): void
     {
         $this->paper('Waiting Paper', 'Pending', now()->subDay());
 
-        $res = $this->withSession($this->staffSession('Sub-Admin', ['view_logs']))->get('/admin/pending');
+        $res = $this->withSession($this->staffSession('Sub-Admin'))->get('/admin/pending');
 
         $res->assertOk();
         $res->assertSee('Waiting Paper');
-        $res->assertDontSee('Confirm Reject');
-        $res->assertDontSee('id="approve-selected-btn"', false);
+        $res->assertSee('Confirm Reject');
+        $res->assertSee('id="approve-selected-btn"', false);
     }
 
     public function test_the_sidebar_links_both_pages_with_the_count_on_pending(): void

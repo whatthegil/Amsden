@@ -35,9 +35,9 @@ Route::middleware('role:Admin,Sub-Admin,Student,Faculty')->group(function () {
 });
 
 // ─── Admin ─────────────────────────────────────────────────────────────────────
-// Admins and Sub-Admins. An Admin can do everything; a Sub-Admin can read (the
-// dashboard, the bluebook list, a bluebook) and do only what an Admin ticked on
-// their account - see User::PERMISSIONS and the permission middleware.
+// Admins and Sub-Admins, who both hold every privilege (see User::allows). The
+// permission groups below name what each route needs; only an Admin can manage
+// Admin and Sub-Admin accounts (see AdminController::mayManage).
 Route::prefix('admin')->middleware('role:Admin,Sub-Admin')->group(function () {
     Route::get('/dashboard',                   [AdminController::class, 'dashboard'])->name('admin.dashboard');
 
@@ -81,7 +81,7 @@ Route::prefix('admin')->middleware('role:Admin,Sub-Admin')->group(function () {
     Route::get('/logs',                        [AdminController::class, 'logs'])->middleware('permission:view_logs')->name('admin.logs');
 });
 
-// ─── Student ───────────────────────────────────────────────────────────────────
+// ─── Student & Faculty ───────────────────────────────────────────────────────────
 Route::prefix('student')->middleware('role:Student,Faculty')->group(function () {
     Route::get('/policy',                      [StudentController::class, 'policy'])->name('student.policy');
     Route::post('/policy/accept',              [StudentController::class, 'acceptPolicy'])->name('student.policy.accept');
@@ -96,9 +96,20 @@ Route::prefix('student')->middleware('role:Student,Faculty')->group(function () 
     Route::get('/bluebooks/{id}',              [StudentController::class, 'bluebookView'])->middleware('throttle:bluebook-read')->name('student.bluebook');
     Route::get('/bluebooks/{id}/file',         [StudentController::class, 'bluebookFile'])->middleware('throttle:bluebook-read')->name('student.bluebook.file');
     Route::post('/bluebooks/{id}/flag-capture', [StudentController::class, 'flagCaptureAttempt'])->middleware('throttle:capture-flag')->name('student.bluebook.flag-capture');
+
+    Route::get('/history',                     [StudentController::class, 'history'])->name('student.history');
+    Route::get('/bookmarks',                   [StudentController::class, 'bookmarks'])->name('student.bookmarks');
+
+    Route::post('/bookmarks/add/{id}',         [StudentController::class, 'addBookmark'])->name('student.bookmarks.add');
+    Route::post('/bookmarks/remove/{id}',      [StudentController::class, 'removeBookmark'])->name('student.bookmarks.remove');
+});
+
+// Students only. Faculty browse and read the archive; they do not submit
+// papers or use the research tools.
+Route::prefix('student')->middleware('role:Student')->group(function () {
     Route::post('/bluebooks/{id}/reprocess-ocr', [StudentController::class, 'reprocessOcr'])->name('student.bluebook.reprocess-ocr');
 
-    Route::get('/upload',                      [StudentController::class, 'uploadForm'])->name('student.upload');
+    Route::get('/upload',                     [StudentController::class, 'uploadForm'])->name('student.upload');
     Route::post('/upload',                     [StudentController::class, 'uploadStore'])->name('student.upload.store');
 
     Route::get('/similarity-check',             [StudentController::class, 'similarityCheck'])->name('student.similarity-check');
@@ -110,9 +121,4 @@ Route::prefix('student')->middleware('role:Student,Faculty')->group(function () 
     Route::get('/my-uploads',                  [StudentController::class, 'myUploads'])->name('student.my-uploads');
     Route::get('/my-uploads/{id}/waiver',      [StudentController::class, 'downloadWaiver'])->name('student.my-uploads.waiver');
     Route::post('/my-uploads/{id}/reupload',   [StudentController::class, 'reupload'])->name('student.my-uploads.reupload');
-    Route::get('/history',                     [StudentController::class, 'history'])->name('student.history');
-    Route::get('/bookmarks',                   [StudentController::class, 'bookmarks'])->name('student.bookmarks');
-
-    Route::post('/bookmarks/add/{id}',         [StudentController::class, 'addBookmark'])->name('student.bookmarks.add');
-    Route::post('/bookmarks/remove/{id}',      [StudentController::class, 'removeBookmark'])->name('student.bookmarks.remove');
 });

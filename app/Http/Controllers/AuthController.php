@@ -23,8 +23,7 @@ class AuthController extends Controller
             'name'      => $user->name,
             'email'     => $user->email,
             'role'      => $user->role,
-            'canUpload' => (bool) $user->can_upload,
-            'permissions' => $user->permissions ?? [],
+            'canUpload' => User::mayUpload($user->role, (bool) $user->can_upload),
             'avatar'    => $user->avatar,
             'createdAt' => $user->created_at ? $user->created_at->format('Y-m-d') : now()->format('Y-m-d'),
         ]]);

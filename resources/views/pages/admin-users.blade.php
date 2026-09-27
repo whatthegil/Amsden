@@ -72,7 +72,7 @@
                       @if($u['role'] === 'Admin')
                         <span class="badge badge-blue">Admin</span>
                       @elseif($u['role'] === 'Sub-Admin')
-                        <span class="badge badge-blue" title="{{ count($u['permissions'] ?? []) }} of {{ count(\App\Models\User::PERMISSIONS) }} privileges">Sub-Admin &middot; {{ count($u['permissions'] ?? []) }}/{{ count(\App\Models\User::PERMISSIONS) }}</span>
+                        <span class="badge badge-blue">Sub-Admin</span>
                       @elseif($u['role'] === 'Faculty')
                         <span class="badge badge-green">Faculty</span>
                       @else
@@ -93,7 +93,8 @@
                         @if(($user['role'] ?? '') === 'Admin' || !\App\Models\User::isStaff($u['role']))
                           <a href="{{ route('admin.users.edit', $u['id']) }}" class="btn btn-outline btn-sm">Edit</a>
                         @endif
-                        @if(in_array($u['role'], ['Student', 'Faculty']))
+                        {{-- Only Students submit papers; Faculty browse and read. --}}
+                        @if($u['role'] === 'Student')
                           @if($u['canUpload'] ?? false)
                             <form method="POST" action="{{ route('admin.users.disableUpload', $u['id']) }}" style="display:inline;">
                               @csrf <button type="submit" class="btn btn-warning btn-sm">Disable Upload</button>

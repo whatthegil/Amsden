@@ -38,7 +38,7 @@
             <div class="profile-hero-email">{{ $profile['email'] }}</div>
             <div class="profile-hero-badges">
               <span class="badge badge-blue">{{ $profile['role'] }}</span>
-              @if(!\App\Models\User::isStaff($profile['role']))
+              @if($profile['role'] === 'Student')
                 <span class="badge {{ $profile['canUpload'] ? 'badge-green' : 'badge-gray' }}">
                   {{ $profile['canUpload'] ? 'Upload Enabled' : 'Upload Disabled' }}
                 </span>

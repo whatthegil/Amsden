@@ -8,16 +8,19 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
-/** Sub-Admins: admin-side accounts that hold only the privileges an Admin gives them. */
+/**
+ * Sub-Admins: admin-side accounts with every privilege an Admin has. The one
+ * thing kept for an Admin is managing Admin and Sub-Admin accounts.
+ */
 class SubAdminTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function account(string $role, array $permissions = [], ?string $email = null): User
+    private function account(string $role, ?string $email = null): User
     {
         return User::create([
             'name' => $role . ' Person', 'email' => $email ?? strtolower(str_replace('-', '', $role)) . rand(1000, 9999) . '@cspc.edu.ph',
-            'password' => Hash::make('secret'), 'role' => $role, 'permissions' => $permissions ?: null,
+            'password' => Hash::make('secret'), 'role' => $role,
         ]);
     }
 
@@ -35,59 +38,43 @@ class SubAdminTest extends TestCase
         ]);
     }
 
-    public function test_every_sub_admin_can_read_the_admin_side(): void
+    public function test_a_sub_admin_opens_every_admin_page(): void
     {
         $sub = $this->account('Sub-Admin');
         $b   = $this->pendingBluebook();
 
-        $this->withSession($this->as($sub))->get('/admin/dashboard')->assertOk();
-        $this->withSession($this->as($sub))->get('/admin/bluebooks')->assertOk();
-        $this->withSession($this->as($sub))->get("/admin/bluebooks/{$b->id}")->assertOk();
+        foreach (['/admin/dashboard', '/admin/bluebooks', "/admin/bluebooks/{$b->id}", '/admin/pending', '/admin/rejected',
+                  '/admin/bluebooks/new', "/admin/bluebooks/{$b->id}/edit", '/admin/users', '/admin/users/new', '/admin/logs'] as $url) {
+            $this->withSession($this->as($sub))->get($url)->assertOk();
+        }
     }
 
-    public function test_a_sub_admin_without_a_privilege_is_turned_away(): void
+    public function test_a_sub_admin_can_approve(): void
     {
-        $sub = $this->account('Sub-Admin', ['view_logs']);
-        $b   = $this->pendingBluebook();
-
-        $this->withSession($this->as($sub))->post("/admin/bluebooks/{$b->id}/approve")->assertRedirect(route('admin.dashboard'));
-        $this->assertSame('Pending', $b->fresh()->status);
-
-        $this->withSession($this->as($sub))->get('/admin/users')->assertRedirect(route('admin.dashboard'));
-        $this->withSession($this->as($sub))->get('/admin/bluebooks/new')->assertRedirect(route('admin.dashboard'));
-        $this->withSession($this->as($sub))->get('/admin/logs')->assertOk();
-    }
-
-    public function test_a_reviewer_can_approve_and_reject(): void
-    {
-        $sub = $this->account('Sub-Admin', ['review_bluebooks']);
+        $sub = $this->account('Sub-Admin');
         $b   = $this->pendingBluebook();
 
         $this->withSession($this->as($sub))->post("/admin/bluebooks/{$b->id}/approve");
         $this->assertSame(Bluebook::STATUS_AWAITING_WAIVER, $b->fresh()->status);
     }
 
-    public function test_a_reviewer_can_record_the_waiver_but_nothing_else(): void
+    public function test_a_sub_admin_can_edit_a_bluebook_in_full(): void
     {
-        $sub = $this->account('Sub-Admin', ['review_bluebooks']);
+        $sub = $this->account('Sub-Admin');
         $b   = $this->pendingBluebook();
 
         $this->withSession($this->as($sub))->post("/admin/bluebooks/{$b->id}/edit", [
-            'title' => 'Renamed By A Reviewer', 'authors' => 'X', 'year' => 1999, 'department' => 'CCS',
-            'program' => 'BSIT', 'keywords' => 'k', 'abstract' => 'Changed.', 'adviser' => 'Dr. B', 'pages' => 999,
+            'title' => 'Renamed By A Sub-Admin', 'authors' => 'X', 'year' => 2024, 'department' => 'CCS',
+            'program' => 'BSIT', 'keywords' => 'k', 'abstract' => 'Changed.', 'adviser' => 'Dr. B', 'pages' => 12,
             'access_level' => Bluebook::ACCESS_CONSULTATION,
         ])->assertRedirect(route('admin.bluebooks'));
 
-        $b->refresh();
-        $this->assertSame(Bluebook::ACCESS_CONSULTATION, $b->access_level);
-        $this->assertNotNull($b->waiver_recorded_at);
-        $this->assertSame('A Pending Paper', $b->title);
-        $this->assertSame(10, (int) $b->pages);
+        $this->assertSame('Renamed By A Sub-Admin', $b->fresh()->title);
     }
 
     public function test_a_sub_admin_manages_students_but_never_staff(): void
     {
-        $sub     = $this->account('Sub-Admin', ['manage_users']);
+        $sub     = $this->account('Sub-Admin');
         $admin   = $this->account('Admin');
         $student = $this->account('Student');
 
@@ -111,58 +98,42 @@ class SubAdminTest extends TestCase
         $this->assertFalse((bool) $admin->fresh()->can_upload);
     }
 
-    public function test_an_admin_creates_a_sub_admin_with_chosen_privileges(): void
+    public function test_an_admin_creates_a_sub_admin(): void
     {
         $admin = $this->account('Admin');
 
         $this->withSession($this->as($admin))->post('/admin/users/new', [
-            'name' => 'Reviewer', 'email' => 'reviewer@cspc.edu.ph', 'password' => 'secret123',
-            'role' => 'Sub-Admin', 'permissions' => ['review_bluebooks', 'view_logs', 'not_a_privilege'],
+            'name' => 'Reviewer', 'email' => 'reviewer@cspc.edu.ph', 'password' => 'secret123', 'role' => 'Sub-Admin',
         ]);
 
-        $made = User::where('email', 'reviewer@cspc.edu.ph')->firstOrFail();
-        $this->assertSame('Sub-Admin', $made->role);
-        $this->assertSame(['review_bluebooks', 'view_logs'], $made->permissions);
+        $this->assertSame('Sub-Admin', User::where('email', 'reviewer@cspc.edu.ph')->firstOrFail()->role);
     }
 
-    public function test_privileges_are_dropped_when_the_role_is_not_sub_admin(): void
+    public function test_the_user_form_has_no_privilege_checkboxes(): void
     {
         $admin = $this->account('Admin');
-        $sub   = $this->account('Sub-Admin', ['view_logs']);
 
-        $this->withSession($this->as($admin))->post("/admin/users/{$sub->id}/edit", [
-            'name' => $sub->name, 'email' => $sub->email, 'role' => 'Faculty', 'permissions' => ['view_logs'],
-        ]);
-
-        $this->assertSame('Faculty', $sub->fresh()->role);
-        $this->assertNull($sub->fresh()->permissions);
+        $this->withSession($this->as($admin))->get('/admin/users/new')
+            ->assertOk()
+            ->assertDontSee('name="permissions[]"', false);
     }
 
-    public function test_the_sidebar_shows_only_what_the_account_can_use(): void
+    public function test_the_sidebar_shows_everything(): void
     {
-        $sub = $this->account('Sub-Admin', ['review_bluebooks']);
+        $sub = $this->account('Sub-Admin');
 
         $res = $this->withSession($this->as($sub))->get('/admin/bluebooks');
-        $res->assertDontSee(route('admin.users'), false);
-        $res->assertDontSee(route('admin.logs'), false);
-        $res->assertDontSee('Add Bluebook');
+        $res->assertSee(route('admin.users'), false);
+        $res->assertSee(route('admin.logs'), false);
+        $res->assertSee('Add Bluebook');
         $res->assertSee('Sub-Admin');
     }
 
     public function test_a_sub_admin_logs_in_to_the_admin_side(): void
     {
-        $this->account('Sub-Admin', ['view_logs'], 'staff@cspc.edu.ph');
+        $this->account('Sub-Admin', 'staff@cspc.edu.ph');
 
         $this->post('/login', ['email' => 'staff@cspc.edu.ph', 'password' => 'secret'])
             ->assertRedirect(route('admin.dashboard'));
-    }
-
-    public function test_a_privilege_taken_away_applies_at_once(): void
-    {
-        $sub = $this->account('Sub-Admin', ['view_logs']);
-        $this->withSession($this->as($sub))->get('/admin/logs')->assertOk();
-
-        $sub->update(['permissions' => []]);
-        $this->withSession($this->as($sub))->get('/admin/logs')->assertRedirect(route('admin.dashboard'));
     }
 }
