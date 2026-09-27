@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * The access permission waiver: the author chooses it on the upload form, and
- * the admin records it on the edit form once it matches the signed waiver.
+ * The access permission waiver: the author hands in the signed form, and the
+ * admin records it on the edit form. The upload form does not ask for it.
  */
 class AccessWaiverTest extends TestCase
 {
@@ -70,69 +70,33 @@ class AccessWaiverTest extends TestCase
         ] + $overrides);
     }
 
-    public function test_upload_form_asks_for_the_waiver(): void
+    public function test_upload_form_does_not_ask_for_the_waiver(): void
     {
         $res = $this->withSession(['user' => $this->uploader()])->get('/student/upload');
 
         $res->assertOk();
-        $res->assertSee('Access Permission Waiver');
-        foreach (Bluebook::ACCESS_LEVELS as $label) {
-            $res->assertSee($label);
-        }
-        foreach (Bluebook::ACCESS_PARTS as $label) {
-            $res->assertSee($label);
-        }
+        $res->assertDontSee('name="access_level"', false);
+        $res->assertDontSee('name="access_parts[]"', false);
     }
 
-    public function test_upload_saves_the_authors_choice_without_recording_it(): void
+    public function test_upload_leaves_the_waiver_to_the_admin(): void
     {
         Storage::fake('local');
         Queue::fake();
 
+        // Even a hand-crafted choice from the author is ignored.
         $this->withSession(['user' => $this->uploader()])
             ->post('/student/upload', $this->uploadPayload([
-                'access_level' => Bluebook::ACCESS_PARTIAL,
-                'access_parts' => ['preliminary', 'abstract'],
-                'part_from'    => ['preliminary' => 1, 'abstract' => 6],
-                'part_to'      => ['preliminary' => 5, 'abstract' => 6],
+                'access_level' => Bluebook::ACCESS_CONSULTATION,
             ]))
             ->assertOk()
             ->assertSee('pending admin approval');
 
         $bluebook = Bluebook::where('title', 'Uploaded Waiver Paper')->firstOrFail();
-        $this->assertSame(Bluebook::ACCESS_PARTIAL, $bluebook->access_level);
-        $this->assertSame(['preliminary' => ['from' => 1, 'to' => 5], 'abstract' => ['from' => 6, 'to' => 6]], $bluebook->access_parts);
-        // Still the admin's to confirm against the signed form before posting.
+        $this->assertSame(Bluebook::ACCESS_PUBLIC, $bluebook->access_level);
+        $this->assertNull($bluebook->access_parts);
+        $this->assertNull($bluebook->waiver_requested_at);
         $this->assertNull($bluebook->waiver_recorded_at);
-    }
-
-    public function test_upload_without_a_waiver_choice_is_rejected(): void
-    {
-        Storage::fake('local');
-        Queue::fake();
-
-        $this->withSession(['user' => $this->uploader()])
-            ->post('/student/upload', $this->uploadPayload())
-            ->assertOk()
-            ->assertSee('Please choose an access permission waiver.');
-
-        $this->assertDatabaseMissing('bluebooks', ['title' => 'Uploaded Waiver Paper']);
-    }
-
-    public function test_upload_with_a_part_but_no_page_range_is_rejected(): void
-    {
-        Storage::fake('local');
-        Queue::fake();
-
-        $this->withSession(['user' => $this->uploader()])
-            ->post('/student/upload', $this->uploadPayload([
-                'access_level' => Bluebook::ACCESS_PARTIAL,
-                'access_parts' => ['chapter1'],
-            ]))
-            ->assertOk()
-            ->assertSee('Please enter the page range for Chapter 1.');
-
-        $this->assertDatabaseMissing('bluebooks', ['title' => 'Uploaded Waiver Paper']);
     }
 
     public function test_admin_edit_form_prefills_the_authors_unrecorded_choice(): void

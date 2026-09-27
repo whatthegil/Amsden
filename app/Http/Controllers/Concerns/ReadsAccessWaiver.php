@@ -7,8 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The access permission waiver, as submitted by the author on upload and
- * confirmed by the admin on the edit form. Both read it the same way.
+ * The access permission waiver, as the admin records it on the edit form from
+ * the signed copy the author hands in to the library.
  */
 trait ReadsAccessWaiver
 {
