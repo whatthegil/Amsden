@@ -114,7 +114,13 @@
                     </a>
                   </div>
                 @elseif($b['status'] === 'Pending')
-                  Waiting for an administrator to review it. Nothing is needed from you.
+                  Waiting for an administrator to review it. You can print and fill in the access permission waiver now, ready to hand in to the CSPC Library.
+                  <div style="margin-top:0.6rem;">
+                    <a href="{{ route('student.my-uploads.waiver', $b['id']) }}" class="btn btn-outline btn-sm">
+                      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+                      Download Waiver
+                    </a>
+                  </div>
                 @else
                   Not published to the archive. Fix what is noted below and upload the corrected PDF &mdash; your other details are kept.
                   @if(!empty($b['rejectionReason']))

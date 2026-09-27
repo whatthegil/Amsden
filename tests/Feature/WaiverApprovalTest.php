@@ -192,17 +192,59 @@ class WaiverApprovalTest extends TestCase
             ->assertSee('Waiver Received');
     }
 
-    public function test_my_uploads_shows_download_button_only_while_awaiting_waiver(): void
+    public function test_my_uploads_offers_the_waiver_while_pending_or_awaiting_it(): void
     {
-        $waiting = $this->makeBluebook(Bluebook::STATUS_AWAITING_WAIVER);
-        $this->makeBluebook('Pending');
+        $waiting  = $this->makeBluebook(Bluebook::STATUS_AWAITING_WAIVER);
+        $pending  = $this->makeBluebook('Pending');
+        $posted   = $this->makeBluebook('Approved');
+        $rejected = $this->makeBluebook('Rejected');
 
         $res = $this->withSession(['user' => $this->author()])->get('/student/my-uploads');
 
         $res->assertOk();
-        $res->assertSee('Download Waiver');
         $res->assertSee(route('student.my-uploads.waiver', $waiting->id), false);
-        $this->assertSame(1, substr_count($res->getContent(), 'Download Waiver'));
+        $res->assertSee(route('student.my-uploads.waiver', $pending->id), false);
+        $res->assertDontSee(route('student.my-uploads.waiver', $posted->id), false);
+        $res->assertDontSee(route('student.my-uploads.waiver', $rejected->id), false);
+    }
+
+    public function test_author_downloads_the_waiver_while_pending(): void
+    {
+        $this->installForm();
+        $bluebook = $this->makeBluebook('Pending');
+
+        $this->withSession(['user' => $this->author()])
+            ->get("/student/my-uploads/{$bluebook->id}/waiver")
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_the_upload_page_links_the_blank_waiver(): void
+    {
+        $this->withSession(['user' => $this->author()])->get('/student/upload')
+            ->assertOk()
+            ->assertSee(route('student.waiver'), false)
+            ->assertSee('Download Waiver Form');
+    }
+
+    public function test_a_student_downloads_the_blank_waiver(): void
+    {
+        $this->installForm();
+
+        $res = $this->withSession(['user' => $this->author()])->get('/student/waiver');
+
+        $res->assertOk();
+        $res->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringContainsString('Access Permission Waiver.pdf', $res->headers->get('Content-Disposition'));
+    }
+
+    public function test_the_blank_waiver_explains_when_the_form_is_missing(): void
+    {
+        $this->removeForm();
+
+        $this->withSession(['user' => $this->author()])->get('/student/waiver')
+            ->assertRedirect(route('student.my-uploads'))
+            ->assertSessionHas('error');
     }
 
     public function test_author_downloads_the_waiver_form(): void

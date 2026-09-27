@@ -69,7 +69,7 @@ class MyUploadsTest extends TestCase
 
         Bluebook::query()->delete();
         $this->upload(['status' => 'Pending']);
-        $this->visit()->assertSee('Nothing is needed from you', false);
+        $this->visit()->assertSee('Waiting for an administrator to review it', false);
 
         Bluebook::query()->delete();
         $this->upload(['status' => 'Rejected']);

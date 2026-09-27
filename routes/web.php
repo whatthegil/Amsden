@@ -119,6 +119,8 @@ Route::prefix('student')->middleware('role:Student')->group(function () {
     Route::post('/literature-review',           [StudentController::class, 'literatureReview'])->middleware('throttle:literature-review-ai')->name('student.literature-review.post');
 
     Route::get('/my-uploads',                  [StudentController::class, 'myUploads'])->name('student.my-uploads');
-    Route::get('/my-uploads/{id}/waiver',      [StudentController::class, 'downloadWaiver'])->name('student.my-uploads.waiver');
+    // The blank waiver, to print and fill in at any time - before uploading too.
+    Route::get('/waiver',                      [StudentController::class, 'waiverForm'])->name('student.waiver');
+    Route::get('/my-uploads/{id}/waiver',     [StudentController::class, 'downloadWaiver'])->name('student.my-uploads.waiver');
     Route::post('/my-uploads/{id}/reupload',   [StudentController::class, 'reupload'])->name('student.my-uploads.reupload');
 });

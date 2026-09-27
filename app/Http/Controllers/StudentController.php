@@ -351,18 +351,34 @@ class StudentController extends Controller
     }
 
     /**
-     * The library's waiver form, for an author whose bluebook has been
-     * approved and is waiting on the signed copy before it is posted.
+     * The library's blank waiver form, for a student to print and fill in
+     * whenever they like - before uploading as well as after.
+     */
+    public function waiverForm()
+    {
+        return $this->sendWaiverForm('—', 'Access Permission Waiver.pdf');
+    }
+
+    /**
+     * The same form, named after one of the author's own submissions, while
+     * it is under review or approved and waiting on the signed copy.
      */
     public function downloadWaiver(int $id)
     {
         $user     = session('user');
         $bluebook = Store::getBluebook($id);
         if (!$bluebook || $bluebook['uploadedBy'] !== $user['email']
-            || $bluebook['status'] !== Bluebook::STATUS_AWAITING_WAIVER) {
+            || !in_array($bluebook['status'], ['Pending', Bluebook::STATUS_AWAITING_WAIVER], true)) {
             return redirect()->route('student.my-uploads');
         }
 
+        $name = 'Access Permission Waiver - ' . \Illuminate\Support\Str::limit(preg_replace('/[^\w\s-]/u', '', $bluebook['title']), 60, '') . '.pdf';
+        return $this->sendWaiverForm($bluebook['title'], $name);
+    }
+
+    private function sendWaiverForm(string $document, string $name)
+    {
+        $user = session('user');
         $form = Bluebook::waiverFormPath();
         if (!is_file($form)) {
             report(new \RuntimeException("Waiver form missing at {$form}"));
@@ -370,8 +386,7 @@ class StudentController extends Controller
                 ->with('error', 'The waiver form is not available yet. Please get a copy from the CSPC Library.');
         }
 
-        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Downloaded Waiver', 'document' => $bluebook['title']]);
-        $name = 'Access Permission Waiver - ' . \Illuminate\Support\Str::limit(preg_replace('/[^\w\s-]/u', '', $bluebook['title']), 60, '') . '.pdf';
+        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Downloaded Waiver', 'document' => $document]);
         return response()->download($form, $name, ['Content-Type' => 'application/pdf']);
     }
 

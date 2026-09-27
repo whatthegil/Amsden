@@ -26,6 +26,20 @@
         <div class="alert alert-success">{{ $success }}</div>
       @endif
 
+      {{-- The waiver is set by the admin from the signed paper copy, so the
+           form is offered here for the author to print and fill in. --}}
+      <div class="alert alert-info">
+        <strong>Access permission waiver.</strong>
+        Print the library's waiver, fill it in and sign it, then hand it in to the CSPC Library.
+        Your bluebook is posted once the library receives it.
+        <div style="margin-top:0.6rem;">
+          <a href="{{ route('student.waiver') }}" class="btn btn-primary btn-sm">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+            Download Waiver Form
+          </a>
+        </div>
+      </div>
+
       <div class="form-card">
         <div class="form-card-header">
           <span class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" fill="currentColor" fill-opacity="0.18"/><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
