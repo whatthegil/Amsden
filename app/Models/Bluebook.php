@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Bluebook extends Model
 {
@@ -65,6 +67,17 @@ class Bluebook extends Model
         'waiver_requested_at' => 'datetime',
         'waiver_recorded_at' => 'datetime',
     ];
+
+    /** The account that submitted this paper (uploaded_by → users.email). */
+    public function uploader(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'uploaded_by', 'email');
+    }
+
+    public function bookmarks(): HasMany
+    {
+        return $this->hasMany(Bookmark::class);
+    }
 
     /**
      * The pages a reader may see under a partial waiver, as a page list both

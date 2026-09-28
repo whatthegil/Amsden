@@ -4,12 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory, Notifiable;
 
     public const ROLE_ADMIN     = 'Admin';
     public const ROLE_SUB_ADMIN = 'Sub-Admin';
@@ -43,5 +43,23 @@ class User extends Authenticatable
     public static function mayUpload(?string $role, bool $canUpload): bool
     {
         return $role === 'Student' && $canUpload;
+    }
+
+    /** Papers this account submitted (bluebooks.uploaded_by). */
+    public function bluebooks(): HasMany
+    {
+        return $this->hasMany(Bluebook::class, 'uploaded_by', 'email');
+    }
+
+    /** Papers this account saved (bookmarks.user_email). */
+    public function bookmarks(): HasMany
+    {
+        return $this->hasMany(Bookmark::class, 'user_email', 'email');
+    }
+
+    /** What this account did, from the access log. */
+    public function logs(): HasMany
+    {
+        return $this->hasMany(Log::class);
     }
 }

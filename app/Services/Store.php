@@ -351,6 +351,8 @@ class Store
     public static function addLog(array $logData): void
     {
         Log::create([
+            // Empty for a visitor with no account ("Unknown", "—").
+            'user_id'   => User::where('email', $logData['email'])->value('id'),
             'user_name' => $logData['userName'],
             'email'     => $logData['email'],
             'action'    => $logData['action'],
