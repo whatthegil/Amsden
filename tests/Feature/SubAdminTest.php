@@ -81,6 +81,28 @@ class SubAdminTest extends TestCase
         $this->assertSame('Rejected', $b->fresh()->status);
     }
 
+    public function test_only_the_admin_is_shown_the_waiting_count(): void
+    {
+        $sub   = $this->account('Sub-Admin');
+        $admin = $this->account('Admin');
+        $this->pendingBluebook();
+
+        foreach (['/admin/dashboard', '/admin/bluebooks'] as $url) {
+            $this->withSession($this->as($admin))->get($url)
+                ->assertSee('waiting for review')      // the sidebar badge
+                ->assertSee(route('admin.pending'), false);
+
+            $this->withSession($this->as($sub))->get($url)
+                ->assertDontSee('waiting for review')
+                ->assertDontSee('pending review')
+                ->assertDontSee('Review now')
+                ->assertSee(route('admin.pending'), false); // the Pending link itself stays
+        }
+
+        $this->withSession($this->as($admin))->get('/admin/dashboard')->assertSee('Review now');
+        $this->withSession($this->as($admin))->get('/admin/bluebooks')->assertSee('pending review');
+    }
+
     public function test_a_bluebook_a_sub_admin_adds_waits_for_the_admin_then_posts(): void
     {
         $sub   = $this->account('Sub-Admin');

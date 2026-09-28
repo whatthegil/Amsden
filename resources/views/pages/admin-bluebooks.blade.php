@@ -33,7 +33,7 @@
       @endif
 
       {{-- Submissions waiting for review live on their own page. --}}
-      @if(($pendingCount ?? 0) > 0)
+      @if(($pendingCount ?? 0) > 0 && \App\Models\User::allows($user, 'approve_bluebooks'))
         <div class="queue-links">
           <a href="{{ route('admin.pending') }}"><span class="badge badge-yellow">{{ $pendingCount }}</span> pending review &rarr;</a>
         </div>

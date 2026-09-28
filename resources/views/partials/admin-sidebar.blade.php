@@ -34,7 +34,8 @@
     <a href="{{ route('admin.pending') }}" class="nav-item {{ $active === 'pending' ? 'active' : '' }}">
       <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       Pending
-      @if(($pendingCount ?? 0) > 0)
+      {{-- The waiting count asks for approval, which only the Admin gives. --}}
+      @if(($pendingCount ?? 0) > 0 && \App\Models\User::allows($user, 'approve_bluebooks'))
         <span class="badge badge-yellow" style="margin-left:auto;">{{ $pendingCount }}<span class="sr-only"> waiting for review</span></span>
       @endif
     </a>
