@@ -75,4 +75,11 @@ class DatabaseRelationsTest extends TestCase
         $this->assertFalse(Schema::hasTable('password_resets'));
         $this->assertFalse(Schema::hasTable('personal_access_tokens'));
     }
+
+    public function test_the_unused_permissions_column_is_gone(): void
+    {
+        // What an account may do follows users.role alone.
+        $this->assertFalse(Schema::hasColumn('users', 'permissions'));
+        $this->assertTrue(Schema::hasColumn('users', 'role'));
+    }
 }

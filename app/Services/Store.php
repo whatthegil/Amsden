@@ -147,7 +147,6 @@ class Store
             'password'   => Hash::make($userData['password']),
             'role'       => $userData['role'] ?? 'Student',
             'can_upload' => $userData['canUpload'] ?? false,
-            'permissions' => $userData['permissions'] ?? null,
         ]);
         // The administrator chose it, so it is one someone knows: it keeps
         // working if the owner later links Google too.
@@ -164,7 +163,6 @@ class Store
         if (isset($fields['password']))  $user->setKnownPassword($fields['password']);
         if (isset($fields['role']))      $user->role       = $fields['role'];
         if (isset($fields['canUpload'])) $user->can_upload = $fields['canUpload'];
-        if (array_key_exists('permissions', $fields)) $user->permissions = $fields['permissions'];
         $user->save();
     }
 
@@ -433,7 +431,6 @@ class Store
             'email'     => $u->email,
             'role'      => $u->role,
             'canUpload' => (bool) $u->can_upload,
-            'permissions' => $u->permissions ?? [],
             'createdAt' => $u->created_at ? $u->created_at->format('Y-m-d') : now()->format('Y-m-d'),
         ];
     }

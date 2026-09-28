@@ -14,11 +14,11 @@ class User extends Authenticatable
     public const ROLE_ADMIN     = 'Admin';
     public const ROLE_SUB_ADMIN = 'Sub-Admin';
 
-    protected $fillable = ['name', 'email', 'password', 'role', 'can_upload', 'permissions', 'google_id', 'avatar'];
+    protected $fillable = ['name', 'email', 'password', 'role', 'can_upload', 'google_id', 'avatar'];
 
     protected $hidden = ['password', 'remember_token'];
 
-    protected $casts = ['can_upload' => 'boolean', 'permissions' => 'array', 'policy_accepted_at' => 'datetime', 'password_set_at' => 'datetime'];
+    protected $casts = ['can_upload' => 'boolean', 'policy_accepted_at' => 'datetime', 'password_set_at' => 'datetime'];
 
     /**
      * Whether the owner knows this account's password, and so can sign in
