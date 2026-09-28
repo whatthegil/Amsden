@@ -16,6 +16,7 @@ Route::post('/login',    [AuthController::class, 'login'])->middleware('throttle
 Route::get('/login', fn () => redirect()->route('login'));
 Route::get('/forgot-password', [AuthController::class, 'forgotPassword'])->name('password.help');
 Route::get('/logout',    [AuthController::class, 'logout'])->name('logout');
+Route::post('/session/keep-alive', [AuthController::class, 'keepAlive'])->name('session.keepAlive');
 
 // ─── Public legal pages ────────────────────────────────────────────────────────
 // Reachable without signing in: they are linked from the login screen, and a

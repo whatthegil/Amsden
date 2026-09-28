@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\ExpireIdleSession;
 use App\Models\User;
 use App\Services\Store;
 use Illuminate\Http\Request;
@@ -26,7 +27,7 @@ class AuthController extends Controller
             'canUpload' => User::mayUpload($user->role, (bool) $user->can_upload),
             'avatar'    => $user->avatar,
             'createdAt' => $user->created_at ? $user->created_at->format('Y-m-d') : now()->format('Y-m-d'),
-        ]]);
+        ], 'last_activity' => time()]);
     }
 
     private function redirectToDashboard(User $user)
@@ -90,14 +91,28 @@ class AuthController extends Controller
         return view('pages.forgot-password');
     }
 
-    public function logout()
+    /** ?idle=1 is the page signing itself out when no one answered the idle prompt. */
+    public function logout(Request $request)
     {
+        $idle = $request->boolean('idle');
         $user = session('user');
         if ($user) {
-            Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Logout', 'document' => '—']);
+            Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => $idle ? 'Logout (Idle)' : 'Logout', 'document' => '—']);
         }
-        session()->forget('user');
-        return redirect()->route('login');
+        session()->forget(['user', 'last_activity']);
+        $redirect = redirect()->route('login');
+        return $idle ? $redirect->with('error', ExpireIdleSession::message()) : $redirect;
+    }
+
+    /**
+     * Called by the page while its user is active and when they choose to stay
+     * signed in; ExpireIdleSession has already recorded the activity by now.
+     */
+    public function keepAlive()
+    {
+        return session('user')
+            ? response()->noContent()
+            : response()->json(['message' => 'Not signed in.'], 401);
     }
 
     // ─── Google OAuth ──────────────────────────────────────────────────────────

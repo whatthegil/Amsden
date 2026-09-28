@@ -405,3 +405,104 @@ document.addEventListener('click', function (e) {
     done();
   }
 });
+
+// ─── Idle sign-out ────────────────────────────────────────────────────────────
+// After IDLE_WARN seconds without a click, key, scroll or touch, ask whether to
+// stay signed in, and sign out if no one answers within IDLE_GRACE seconds.
+// Tabs share the last-activity time, so work in one keeps the others alive.
+// The server keeps its own count (ExpireIdleSession) and is told of activity
+// at most once a minute.
+(function () {
+  const modal = document.getElementById('idle-modal');
+  if (!modal) return;
+
+  const WARN_MS  = Number(modal.dataset.warn) * 1000;
+  const GRACE_MS = Number(modal.dataset.grace) * 1000;
+  const PING_MS  = 60 * 1000;
+  const KEY      = 'cbams-last-activity';
+  const countdown = document.getElementById('idle-countdown');
+  const extendBtn = document.getElementById('idle-extend');
+  const csrf = document.querySelector('meta[name="csrf-token"]');
+
+  let lastActivity = Date.now();
+  let lastPing = Date.now();
+  let warning = false;
+  let leaving = false;
+
+  function shared() {
+    try { return Number(localStorage.getItem(KEY)) || 0; } catch (e) { return 0; }
+  }
+  function share(t) {
+    try { localStorage.setItem(KEY, String(t)); } catch (e) {}
+  }
+  function signOut() {
+    if (leaving) return;
+    leaving = true;
+    window.location.href = modal.dataset.logout;
+  }
+  function ping() {
+    lastPing = Date.now();
+    return fetch(modal.dataset.keepAlive, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf ? csrf.content : '' },
+    }).then(function (res) {
+      if (res.status === 401 || res.status === 419) signOut();
+    }).catch(function () {});
+  }
+  function markActive() {
+    const now = Date.now();
+    if (now - lastActivity < 1000) return; // mousemove fires constantly
+    lastActivity = now;
+    share(lastActivity);
+    if (lastActivity - lastPing >= PING_MS) ping();
+  }
+
+  // Once the prompt is up only its buttons count as an answer: moving the
+  // mouse past it does not keep a walked-away session open.
+  ['mousedown', 'keydown', 'wheel', 'touchstart', 'scroll', 'mousemove'].forEach(function (type) {
+    document.addEventListener(type, function () {
+      if (!warning) markActive();
+    }, { capture: true, passive: true });
+  });
+
+  extendBtn.addEventListener('click', function () {
+    lastActivity = Date.now();
+    share(lastActivity);
+    ping();
+    hide();
+  });
+
+  function show() {
+    warning = true;
+    modal.classList.add('open');
+    extendBtn.focus();
+  }
+  function hide() {
+    warning = false;
+    modal.classList.remove('open');
+  }
+
+  function tick() {
+    lastActivity = Math.max(lastActivity, shared());
+    const idle = Date.now() - lastActivity;
+
+    if (idle >= WARN_MS + GRACE_MS) return signOut();
+
+    if (idle >= WARN_MS) {
+      if (!warning) show();
+      const left = Math.ceil((WARN_MS + GRACE_MS - idle) / 1000);
+      countdown.textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+    } else if (warning) {
+      hide(); // answered in another tab
+    }
+  }
+
+  share(lastActivity); // loading this page was activity too
+  setInterval(tick, 1000);
+  // Timers are slowed in background tabs and stopped while the computer
+  // sleeps, so check again the moment the tab is looked at.
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) tick();
+  });
+})();
