@@ -672,6 +672,7 @@ a.user-chip.active { background: var(--primary-light); }
   color: var(--white);
   flex-shrink: 0;
 }
+.user-chip-photo { object-fit: cover; background: var(--gray-100); }
 .user-chip-info .name { font-size: 0.82rem; color: var(--gray-800); font-weight: 600; display: block; }
 .user-chip-info .role { font-size: 0.72rem; color: var(--gray-400); display: block; }
 

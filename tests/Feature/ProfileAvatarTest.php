@@ -51,6 +51,26 @@ class ProfileAvatarTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/profile-avatar-initial"[^>]*\shidden[\s>]/', $page->getContent());
     }
 
+    public function test_the_sidebar_shows_the_google_picture_on_every_page(): void
+    {
+        $user = $this->user(self::PICTURE);
+
+        $this->withSession(['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'role' => 'Student']])
+            ->get('/student/dashboard')
+            ->assertSee('src="' . self::PICTURE . '" alt="" class="user-chip-avatar user-chip-photo"', false);
+    }
+
+    public function test_the_sidebar_shows_the_initial_without_a_picture(): void
+    {
+        $user = $this->user(null);
+
+        $html = $this->withSession(['user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'role' => 'Student']])
+            ->get('/student/dashboard')->getContent();
+
+        $this->assertStringNotContainsString('user-chip-photo', $html);
+        $this->assertMatchesRegularExpression('/class="user-chip-avatar" aria-hidden="true"\s*>G<\/div>/', $html);
+    }
+
     public function test_the_browser_is_allowed_to_load_the_picture(): void
     {
         $csp = $this->profile($this->user(self::PICTURE))->headers->get('Content-Security-Policy');

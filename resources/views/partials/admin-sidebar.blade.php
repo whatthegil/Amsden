@@ -69,7 +69,7 @@
 
   <div class="sidebar-footer">
     <a href="{{ route('profile') }}" class="user-chip {{ ($active ?? '') === 'profile' ? 'active' : '' }}" title="View my profile">
-      <div class="user-chip-avatar" aria-hidden="true">{{ strtoupper(substr($user['name'] ?? 'A', 0, 1)) }}</div>
+      @include('partials.user-avatar')
       <div class="user-chip-info">
         <span class="name">{{ $user['name'] ?? '' }}</span>
         <span class="role">{{ ($user['role'] ?? '') === \App\Models\User::ROLE_SUB_ADMIN ? 'Sub-Admin' : 'Administrator' }} &middot; View profile</span>

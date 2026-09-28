@@ -45,6 +45,7 @@ class EnsureRole
             'name'      => $account->name,
             'email'     => $account->email,
             'role'      => $account->role,
+            'avatar'    => $account->avatar,
             'canUpload' => User::mayUpload($account->role, (bool) $account->can_upload),
         ]);
         session(['user' => $user]);
