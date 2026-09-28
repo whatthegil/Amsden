@@ -106,7 +106,7 @@
                     <td style="font-size:0.83rem;"><div class="clip" style="max-width:140px;" title="{{ implode('; ', $b['authors']) }}">{{ implode(', ', array_slice($b['authors'], 0, 2)) }}{{ count($b['authors']) > 2 ? '…' : '' }}</div></td>
                     <td><span class="badge badge-blue">{{ $b['department'] }}</span></td>
                     <td>{{ $b['year'] }}</td>
-                    <td style="font-size:0.8rem;white-space:nowrap;">{{ $b['uploadedAt'] ?? '—' }}</td>
+                    <td style="font-size:0.8rem;min-width:6.5rem;">{{ $b['uploadedAt'] ?? '—' }}</td>
                     <td>
                       @if($b['status'] === 'Approved') <span class="badge badge-green">Posted</span>
                       @else <span class="badge badge-blue">Awaiting Waiver</span>

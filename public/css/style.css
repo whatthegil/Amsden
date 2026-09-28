@@ -847,6 +847,47 @@ tbody tr { transition: background var(--transition); }
 tbody tr:hover td { background: var(--primary-light); }
 tbody tr:last-child td { border-bottom: none; }
 .td-actions { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+.usage-left { margin: 0 auto 0 0; align-self: center; }
+
+
+/* On a phone a table's columns cannot all fit, and the ones pushed off the
+   right edge (status, actions, Approve) are the ones people need. Each row
+   becomes a card instead, every cell labelled with its column's heading,
+   which main.js copies into data-label. */
+@media (max-width: 760px) {
+  table.stack-table thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  table.stack-table, table.stack-table tbody, table.stack-table tr { display: block; width: 100%; }
+  table.stack-table tbody tr { padding: 0.85rem 1rem; border-bottom: 1px solid var(--gray-200); }
+  table.stack-table tbody tr:last-child { border-bottom: none; }
+  table.stack-table tbody td {
+    display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 0.75rem; align-items: baseline;
+    padding: 0.3rem 0; border: none; background: none !important;
+    max-width: none !important; width: auto !important; white-space: normal !important; text-align: left !important;
+  }
+  table.stack-table tbody td::before {
+    content: attr(data-label);
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--gray-400);
+  }
+  /* Everything in a cell (a second line, a badge) stays in the value column. */
+  table.stack-table tbody td > * { grid-column: 2; justify-self: start; max-width: 100%; }
+  table.stack-table tbody td:first-child { padding-left: 0; }
+  table.stack-table tbody td:not([data-label]) > *, table.stack-table tbody td[data-label=""] > * { grid-column: 1; }
+  /* A cell without a heading (a lone checkbox, a message spanning the row) takes the full width. */
+  table.stack-table tbody td:not([data-label]), table.stack-table tbody td[data-label=""] { grid-template-columns: minmax(0, 1fr); }
+  table.stack-table tbody td:not([data-label])::before, table.stack-table tbody td[data-label=""]::before { display: none; }
+  /* A row number says nothing a card does not. */
+  table.stack-table tbody td[data-label="#"] { display: none; }
+  /* Titles and names wrap in full rather than being cut short. */
+  table.stack-table .clip, table.stack-table td [style*="max-width"] { max-width: none !important; white-space: normal !important; }
+  table.stack-table .td-actions { flex-direction: row; flex-wrap: wrap; }
+  table.stack-table .td-actions .btn, table.stack-table .td-actions form { flex: 1 1 auto; }
+  table.stack-table .td-actions form .btn { width: 100%; }
+  .table-wrap, .card > div[style*="overflow-x"] { overflow-x: visible; }
+}
 
 /* Reject opens a reason form in place (admin bluebook list). */
 .reject-box > summary { list-style: none; cursor: pointer; }
@@ -1247,6 +1288,8 @@ a:focus-visible {
   .form-card-body { padding: 1.5rem 1.25rem; }
   .form-actions { flex-wrap: wrap; }
   .form-actions .btn { flex: 1; justify-content: center; }
+  /* "4 of 5 left today" gets its own line, so the buttons share the next one evenly. */
+  .form-actions .usage-left { flex-basis: 100%; margin: 0; text-align: center; }
 
   .bluebook-detail { padding: 1.5rem 1.25rem; }
   .bluebook-detail h1 { font-size: 1.3rem; }
@@ -2089,3 +2132,12 @@ a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
 /* Links from the archive list to the submissions not yet in it. */
 .queue-links { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-bottom: 1rem; font-size: 0.88rem; }
 .queue-links a { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--primary); font-weight: 600; }
+
+/* Laptops: the admin tables carry eight or nine columns beside a 260px
+   sidebar, and with every heading and the action buttons held to one line
+   the last column (the actions) ran off the edge. Up to a wide desktop,
+   headings may wrap and a cell's buttons may take two lines. */
+@media (min-width: 761px) and (max-width: 1440px) {
+  .app thead th { white-space: normal; }
+  .app .td-actions { flex-wrap: wrap; }
+}

@@ -506,3 +506,20 @@ document.addEventListener('click', function (e) {
     if (!document.hidden) tick();
   });
 })();
+
+// ─── Tables that stack on phones ──────────────────────────────────────────────
+// Below 760px style.css lays each row out as a card; this gives every cell its
+// column's heading to show as a label. Cells that span columns keep none.
+document.querySelectorAll('table').forEach(function (table) {
+  const heads = Array.from(table.querySelectorAll('thead th')).map(function (th) {
+    return th.textContent.replace(/\s+/g, ' ').trim();
+  });
+  if (!heads.length) return;
+
+  table.classList.add('stack-table');
+  table.querySelectorAll('tbody tr').forEach(function (row) {
+    Array.from(row.cells).forEach(function (cell, i) {
+      if (cell.colSpan === 1 && heads[i] !== undefined) cell.setAttribute('data-label', heads[i]);
+    });
+  });
+});
