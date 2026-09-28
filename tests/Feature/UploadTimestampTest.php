@@ -9,7 +9,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
-/** Admins see when each paper was uploaded, in Philippine time. */
+/** The Pending queue shows when each waiting upload came in, in Philippine time; nowhere else does. */
 class UploadTimestampTest extends TestCase
 {
     use RefreshDatabase;
@@ -50,20 +50,27 @@ class UploadTimestampTest extends TestCase
         $this->withSession(['user' => $this->admin])->get('/admin/pending')->assertSee('Sep 28, 2026 · 5:46 PM');
     }
 
-    public function test_the_archive_list_has_an_uploaded_column(): void
+    public function test_the_archive_list_does_not_show_it(): void
     {
         $this->paper('Approved');
 
         $this->withSession(['user' => $this->admin])->get('/admin/bluebooks')
-            ->assertSee('<th>Uploaded</th>', false)
-            ->assertSee('Sep 28, 2026 · 5:46 PM');
+            ->assertDontSee('<th>Uploaded</th>', false)
+            ->assertDontSee('Sep 28, 2026 · 5:46 PM');
     }
 
-    public function test_the_admin_paper_view_says_when_and_by_whom(): void
+    public function test_the_rejected_list_does_not_show_it(): void
+    {
+        $this->paper('Rejected');
+
+        $this->withSession(['user' => $this->admin])->get('/admin/rejected')->assertDontSee('Sep 28, 2026 · 5:46 PM');
+    }
+
+    public function test_the_admin_paper_view_does_not_show_it(): void
     {
         $book = $this->paper('Pending');
 
         $this->withSession(['user' => $this->admin])->get('/admin/bluebooks/' . $book->id)
-            ->assertSee('Sep 28, 2026 · 5:46 PM by Gil Realubit');
+            ->assertDontSee('Sep 28, 2026 · 5:46 PM');
     }
 }

@@ -148,7 +148,7 @@
                     </td>
                     <td style="font-size:0.83rem;">
                       <div class="clip" style="max-width:150px;" title="{{ $b['uploadedBy'] }}">{{ $b['uploadedByName'] }}</div>
-                      @if($b['uploadedAt'])
+                      @if($isPending && $b['uploadedAt'])
                         <div style="font-size:0.76rem;color:var(--gray-400);margin-top:0.2rem;white-space:nowrap;">{{ $b['uploadedAt'] }}</div>
                       @endif
                     </td>
