@@ -6,7 +6,7 @@
 
 **C-BAMS** — a bluebook (undergraduate thesis / capstone document) repository for **CSPC** (Camarines Sur Polytechnic Colleges). Students and faculty browse, upload, bookmark, and search approved bluebooks; admins curate the archive, manage users, and audit activity. Includes OCR full-text extraction of uploaded PDFs, a similarity checker for proposed titles, and a literature-review search tool.
 
-- **Stack:** Laravel 9 (PHP `^8.5`), MySQL (`laravel` db via XAMPP), Blade views + vanilla JS/CSS (no build pipeline in active use; `webpack.mix.js` is stock).
+- **Stack:** Laravel 12 (PHP `^8.5`), MySQL (`laravel` db via XAMPP), Blade views + vanilla JS/CSS (no build pipeline in active use; `webpack.mix.js` is stock).
 - **Git:** `main` tracking `origin` -> https://github.com/whatthegil/Amsden-Capstone-Project.git
 - **Key packages:** `laravel/socialite` (Google OAuth), `laravel/sanctum` (installed, only used by the stock `/api/user` route), `guzzlehttp/guzzle`.
 - **Tests:** only the stock Laravel example tests — no real coverage.

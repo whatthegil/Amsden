@@ -17,6 +17,9 @@ class WaiverApprovalTest extends TestCase
 
     private ?string $savedForm = null;
 
+    /** Whether setUp got as far as recording the real form. */
+    private bool $formRecorded = false;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -25,10 +28,18 @@ class WaiverApprovalTest extends TestCase
         if (is_file($form)) {
             $this->savedForm = File::get($form);
         }
+        $this->formRecorded = true;
     }
 
     protected function tearDown(): void
     {
+        // A setUp that failed early never read the form, so an empty
+        // savedForm would wrongly say there was none and delete the real one.
+        if (!$this->formRecorded) {
+            parent::tearDown();
+            return;
+        }
+
         $form = Bluebook::waiverFormPath();
         if ($this->savedForm !== null) {
             File::put($form, $this->savedForm);

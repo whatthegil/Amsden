@@ -7,6 +7,7 @@ use App\Services\Ocr\Rasterizers\MuPdfRasterizer;
 use App\Services\Ocr\Rasterizers\PdfRasterizer;
 use App\Services\Ocr\Rasterizers\PopplerRasterizer;
 use App\Services\OcrService;
+use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionClass;
 use ReflectionMethod;
 use Tests\TestCase;
@@ -30,7 +31,7 @@ class OcrPageCapTest extends TestCase
         );
     }
 
-    /** @dataProvider rasterizers */
+    #[DataProvider('rasterizers')]
     public function test_every_rasterizer_implements_the_capped_signature(string $class): void
     {
         $method = new ReflectionMethod($class, 'rasterize');

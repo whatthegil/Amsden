@@ -2,12 +2,35 @@
 
 namespace Tests;
 
+use App\Models\Bluebook;
+use App\Models\Bookmark;
 use App\Models\User;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
     use CreatesApplication;
+
+    /**
+     * Bluebooks and bookmarks reference users.email, and SQLite enforces
+     * that key as MySQL does. Fixtures name an uploader or reader by email
+     * alone, so give that email an account before the row is written, as a
+     * real upload or bookmark always has one.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Bluebook::creating(fn (Bluebook $b) => $this->ensureAccount($b->uploaded_by, $b->uploaded_by_name));
+        Bookmark::creating(fn (Bookmark $b) => $this->ensureAccount($b->user_email, $b->user_name));
+    }
+
+    private function ensureAccount(?string $email, ?string $name): void
+    {
+        if ($email && !User::where('email', $email)->exists()) {
+            User::create(['name' => $name ?: $email, 'email' => $email, 'password' => bcrypt('secret'), 'role' => 'Student']);
+        }
+    }
 
     /**
      * EnsureRole re-reads the logged-in account from the database on every
