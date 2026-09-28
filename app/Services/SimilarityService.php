@@ -15,29 +15,49 @@ class SimilarityService
         'over','under','about','up','use','using','used','based','based',
     ];
 
+    /**
+     * The words of a text as a bag, so their order never matters: normalised
+     * as the archive search does (case, accents, punctuation), common words
+     * dropped, and each reduced to its stem so the forms of a word meet
+     * (systems/system, monitoring/monitor). Two-letter terms such as "AI" or
+     * "QR" are kept; they are often what a capstone is about.
+     */
     public static function tokenize(string $text): array
     {
-        $text  = strtolower($text);
-        $text  = preg_replace('/[^a-z0-9\s]/', ' ', $text);
-        $words = preg_split('/\s+/', trim($text), -1, PREG_SPLIT_NO_EMPTY);
-        return array_values(array_filter($words, fn($w) => strlen($w) > 2 && !in_array($w, self::STOPWORDS)));
+        $words = explode(' ', SearchService::normalize($text));
+        $words = array_filter($words, fn($w) => strlen($w) >= 2 && !in_array($w, self::STOPWORDS, true));
+
+        return array_values(array_map([SearchService::class, 'stem'], $words));
     }
 
-    public static function jaccard(array $a, array $b): float
+    /**
+     * Keywords as words rather than phrases, so "Attendance System" meets
+     * "System Attendance" and a keyword shares credit with its parts.
+     */
+    public static function keywordTokens(array $keywords): array
+    {
+        return self::tokenize(implode(' ', $keywords));
+    }
+
+    /**
+     * Shared words over the average size of the two sets (Sørensen-Dice). Unlike
+     * shared over all words (Jaccard) it does not sink a short query of a few
+     * words against a long title: "RFID attendance" against a seven-word title
+     * scores 44%, not 29%.
+     */
+    public static function dice(array $a, array $b): float
     {
         $setA = array_unique($a);
         $setB = array_unique($b);
         if (empty($setA) || empty($setB)) return 0.0;
-        $intersection = array_intersect($setA, $setB);
-        $union = array_unique(array_merge($setA, $setB));
-        return count($intersection) / count($union);
+        return 2 * count(array_intersect($setA, $setB)) / (count($setA) + count($setB));
     }
 
     /**
-     * Fraction of the smaller set's tokens found in the larger set — unlike
-     * jaccard(), this doesn't collapse toward 0 when comparing a short query
-     * against a much longer bag of words (e.g. a full OCR'd document), since
-     * the denominator is min(|A|,|B|) rather than |A ∪ B|.
+     * Fraction of the smaller set's tokens found in the larger set. It doesn't
+     * collapse toward 0 when comparing a short query against a much longer bag
+     * of words (e.g. a full OCR'd document), since the denominator is
+     * min(|A|,|B|) rather than the size of both.
      */
     public static function overlapCoefficient(array $a, array $b): float
     {
@@ -55,29 +75,23 @@ class SimilarityService
         array  $bluebook
     ): float {
         // Title similarity — primary signal (50% weight)
-        $titleSim = self::jaccard(
+        $titleSim = self::dice(
             self::tokenize($proposedTitle),
             self::tokenize($bluebook['title'] ?? '')
         );
 
         // Keyword overlap (20% weight) — skipped if either side has no keywords
         $kwSim = 0.0;
-        $propKw = array_values(array_filter(array_map(
-            fn($k) => strtolower(trim($k)),
-            $proposedKeywords
-        )));
-        $bookKw = array_values(array_filter(array_map(
-            fn($k) => strtolower(trim($k)),
-            $bluebook['keywords'] ?? []
-        )));
+        $propKw = self::keywordTokens($proposedKeywords);
+        $bookKw = self::keywordTokens($bluebook['keywords'] ?? []);
         if (!empty($propKw) && !empty($bookKw)) {
-            $kwSim = self::jaccard($propKw, $bookKw);
+            $kwSim = self::dice($propKw, $bookKw);
         }
 
         // Abstract similarity (10% weight) — skipped if either side is blank
         $abstractSim = 0.0;
         if (!empty(trim($proposedAbstract)) && !empty(trim($bluebook['abstract'] ?? ''))) {
-            $abstractSim = self::jaccard(
+            $abstractSim = self::dice(
                 self::tokenize($proposedAbstract),
                 self::tokenize($bluebook['abstract'])
             );
@@ -91,7 +105,7 @@ class SimilarityService
         if ($ocrText !== '') {
             $proposedTokens = array_merge(
                 self::tokenize($proposedTitle),
-                array_map('strtolower', $propKw),
+                $propKw,
                 self::tokenize($proposedAbstract)
             );
             if (!empty($proposedTokens)) {
@@ -123,7 +137,7 @@ class SimilarityService
         $fields = [
             // [field tokens, weight]
             [self::tokenize($bluebook['title'] ?? ''), 0.45],
-            [array_map(fn($k) => strtolower(trim($k)), $bluebook['keywords'] ?? []), 0.15],
+            [self::keywordTokens($bluebook['keywords'] ?? []), 0.15],
             [self::tokenize($bluebook['abstract'] ?? ''), 0.15],
             [self::tokenize($bluebook['ocrText'] ?? ''), 0.25],
         ];
@@ -131,7 +145,6 @@ class SimilarityService
         $score     = 0.0;
         $weightSum = 0.0;
         foreach ($fields as [$tokens, $weight]) {
-            $tokens = array_values(array_filter($tokens, fn($t) => strlen($t) > 2));
             if (empty($tokens)) continue;
             $score     += self::overlapCoefficient($tokens, $proposalTokens) * $weight;
             $weightSum += $weight;

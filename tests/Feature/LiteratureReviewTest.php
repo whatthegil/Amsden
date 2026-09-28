@@ -44,6 +44,14 @@ class LiteratureReviewTest extends TestCase
         $this->assertSame(['Social Media Use and Academic Performance of Students'], $this->titles($found));
     }
 
+    public function test_words_in_any_order_find_the_paper(): void
+    {
+        $this->paper(['title' => 'Automated Student Attendance System Using RFID Technology']);
+
+        $this->assertCount(1, LiteratureReviewService::search('technology rfid attendance student')['results']);
+        $this->assertCount(1, LiteratureReviewService::search('system rfid')['results']);
+    }
+
     public function test_typos_and_word_forms_are_forgiven(): void
     {
         $this->paper(['title' => 'Attendance Monitoring Using RFID']);
