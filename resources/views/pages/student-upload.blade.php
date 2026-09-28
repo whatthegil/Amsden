@@ -71,8 +71,8 @@
             <x-department-program prefix="upload" :department="$old['department'] ?? ''" :program="$old['program'] ?? ''" />
 
             <div class="form-group">
-              <label for="upload-adviser">Adviser</label>
-              <input id="upload-adviser" type="text" name="adviser" required placeholder="Prof. Name" value="{{ $old['adviser'] ?? '' }}">
+              <label for="upload-adviser">Adviser <span style="font-weight:400;color:var(--gray-400);">(Last, First M.I.)</span></label>
+              <input id="upload-adviser" type="text" name="adviser" required placeholder="e.g. Dela Cruz, Juan P." value="{{ $old['adviser'] ?? '' }}">
             </div>
 
             <div class="form-row">

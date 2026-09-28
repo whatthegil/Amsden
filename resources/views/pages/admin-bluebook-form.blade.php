@@ -63,8 +63,8 @@
                                   :program="old('program', $bluebook['program'] ?? '')" />
 
             <div class="form-group">
-              <label for="bb-form-adviser">Adviser</label>
-              <input id="bb-form-adviser" type="text" name="adviser" value="{{ $bluebook['adviser'] ?? '' }}" placeholder="Prof. Name" required>
+              <label for="bb-form-adviser">Adviser <span style="font-weight:400;color:var(--gray-400);">(Last, First M.I.)</span></label>
+              <input id="bb-form-adviser" type="text" name="adviser" value="{{ $bluebook['adviser'] ?? '' }}" placeholder="Last, First M.I." required>
             </div>
 
             <div class="form-row">
