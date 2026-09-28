@@ -50,7 +50,8 @@
             </div>
 
             <div class="form-actions">
-              <button type="submit" class="btn btn-primary">Check Similarity</button>
+              @include('partials.usage-left', ['noun' => 'checks'])
+              <button type="submit" class="btn btn-primary" @disabled($usage['remaining'] === 0)>Check Similarity</button>
             </div>
           </form>
         </div>
@@ -101,8 +102,9 @@
             </div>
 
             <div class="form-actions">
+              @include('partials.usage-left', ['noun' => 'checks'])
               <button type="reset" class="btn btn-outline">Clear</button>
-              <button type="submit" class="btn btn-primary">Check Similarity</button>
+              <button type="submit" class="btn btn-primary" @disabled($usage['remaining'] === 0)>Check Similarity</button>
             </div>
           </form>
         </div>

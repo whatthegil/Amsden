@@ -66,16 +66,6 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(6)->by($request->ip());
         });
 
-        // Cost protection for the AI-powered Literature Review search — each
-        // POST can trigger a paid Claude API call (see LiteratureReviewService).
-        // Keyed by the session user's email when logged in (the normal case,
-        // since the route already requires role:Student), falling
-        // back to IP so an unauthenticated hit still gets throttled.
-        RateLimiter::for('literature-review-ai', function (Request $request) {
-            $email = $request->session()->get('user')['email'] ?? null;
-            return Limit::perHour(15)->by($email ?? $request->ip());
-        });
-
         // The archive is meant to be read a document at a time, and every
         // control around it - the watermark, the capture log, the wrapper app's
         // FLAG_SECURE - assumes a person reading. None of it slows down a loop

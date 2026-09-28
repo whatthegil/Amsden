@@ -15,8 +15,8 @@
       <x-page-hero heading="Literature Review Assistant"
                    sub="Enter a research topic to find related bluebooks, each with an AI-written summary grounded in the paper's own text." />
 
-      @if(session('error'))
-        <div class="alert alert-error" style="margin-bottom:1.25rem;">{{ session('error') }}</div>
+      @if($error ?? session('error'))
+        <div class="alert alert-error" style="margin-bottom:1.25rem;">{{ $error ?? session('error') }}</div>
       @endif
 
       {{-- Input Form --}}
@@ -65,8 +65,9 @@
             </div>
 
             <div class="form-actions">
+              @include('partials.usage-left', ['noun' => 'searches'])
               <button type="reset" class="btn btn-outline">Clear</button>
-              <button type="submit" class="btn btn-primary">Search Literature</button>
+              <button type="submit" class="btn btn-primary" @disabled($usage['remaining'] === 0)>Search Literature</button>
             </div>
           </form>
         </div>

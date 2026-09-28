@@ -10,6 +10,7 @@ use App\Services\Pdf\PdfWatermarker;
 use App\Services\PdfTextExtractor;
 use App\Services\SimilarityService;
 use App\Services\Store;
+use App\Services\UsageLimit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -481,7 +482,9 @@ class StudentController extends Controller
         $proposed = null;
         $error    = null;
 
-        if ($request->isMethod('post')) {
+        if ($request->isMethod('post') && UsageLimit::exhausted($user['id'], UsageLimit::SIMILARITY_CHECK)) {
+            $error = UsageLimit::message(UsageLimit::SIMILARITY_CHECK);
+        } elseif ($request->isMethod('post')) {
             $mode = $request->hasFile('file') ? 'file' : 'text';
 
             if ($mode === 'file') {
@@ -497,7 +500,9 @@ class StudentController extends Controller
                 }
             }
 
-            if ($error === null && $proposed !== null) {
+            if ($error === null && $proposed !== null && !UsageLimit::record($user['id'], UsageLimit::SIMILARITY_CHECK)) {
+                $error = UsageLimit::message(UsageLimit::SIMILARITY_CHECK);
+            } elseif ($error === null && $proposed !== null) {
                 $results = $this->runSimilarityCheck($proposed, $mode);
 
                 Store::addLog([
@@ -515,6 +520,7 @@ class StudentController extends Controller
             'results'  => $results,
             'proposed' => $proposed,
             'error'    => $error,
+            'usage'    => UsageLimit::status($user['id'], UsageLimit::SIMILARITY_CHECK),
         ]);
     }
 
@@ -664,10 +670,14 @@ class StudentController extends Controller
         $within   = in_array((int) $request->input('within'), [5, 10], true) ? (int) $request->input('within') : null;
         $sort     = $request->input('sort') === 'newest' ? 'newest' : 'relevance';
 
+        $error = null;
+
         if ($request->isMethod('post')) {
             $topic = mb_substr(trim((string) $request->input('topic', '')), 0, 300);
 
-            if ($topic !== '') {
+            if ($topic !== '' && !UsageLimit::record($user['id'], UsageLimit::LITERATURE_REVIEW)) {
+                $error = UsageLimit::message(UsageLimit::LITERATURE_REVIEW);
+            } elseif ($topic !== '') {
                 $found    = LiteratureReviewService::search($topic, $within, $sort);
                 $results  = $found['results'];
                 $overview = $found['overview'];
@@ -675,7 +685,7 @@ class StudentController extends Controller
                 $results = [];
             }
 
-            if ($topic !== '') {
+            if ($topic !== '' && $error === null) {
                 Store::addLog([
                     'userName' => $user['name'],
                     'email'    => $user['email'],
@@ -693,6 +703,8 @@ class StudentController extends Controller
             'topic'    => $topic,
             'within'   => $within,
             'sort'     => $sort,
+            'error'    => $error,
+            'usage'    => UsageLimit::status($user['id'], UsageLimit::LITERATURE_REVIEW),
         ]);
     }
 
