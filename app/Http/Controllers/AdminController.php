@@ -119,7 +119,7 @@ class AdminController extends Controller
             ];
         }
 
-        Store::addBluebook(array_merge([
+        $bluebook = Store::addBluebook(array_merge([
             'title'          => $request->input('title'),
             'authors'        => array_map('trim', explode(';', $request->input('authors'))),
             'year'           => (int)$request->input('year'),
@@ -138,6 +138,12 @@ class AdminController extends Controller
             'pages'          => (int)$request->input('pages'),
         ], $fileData));
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Added Bluebook', 'document' => $request->input('title')]);
+
+        // Read the PDF's text in the background, as a student upload does, so
+        // search and the similarity check cover this paper's full text too.
+        if (!empty($fileData['filePath'])) {
+            ProcessBluebookOcr::dispatch($bluebook['id']);
+        }
         return User::allows($user, 'approve_bluebooks')
             ? redirect()->route('admin.bluebooks')->with('success', 'Bluebook added successfully')
             : redirect()->route('admin.pending')->with('success', 'Bluebook added. It will be posted once the Admin approves it.');
