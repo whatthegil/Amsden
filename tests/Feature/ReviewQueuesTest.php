@@ -109,14 +109,15 @@ class ReviewQueuesTest extends TestCase
         $this->assertSame('Pending', $c->fresh()->status);
     }
 
-    public function test_a_sub_admin_can_bulk_approve(): void
+    public function test_a_sub_admin_cannot_bulk_approve(): void
     {
         $a = $this->paper('One', 'Pending', now()->subDay());
 
         $this->withSession($this->staffSession('Sub-Admin'))
             ->post('/admin/bluebooks/approve-selected', ['ids' => [$a->id]]);
 
-        $this->assertNotSame('Pending', $a->fresh()->status);
+        // Approving is the Admin's alone.
+        $this->assertSame('Pending', $a->fresh()->status);
     }
 
     public function test_reviewing_from_the_queue_returns_to_it(): void
@@ -157,7 +158,7 @@ class ReviewQueuesTest extends TestCase
         $this->assertNull(Bluebook::find($b->id));
     }
 
-    public function test_a_sub_admin_sees_the_queue_with_its_buttons(): void
+    public function test_a_sub_admin_sees_the_queue_with_reject_but_not_approve(): void
     {
         $this->paper('Waiting Paper', 'Pending', now()->subDay());
 
@@ -166,7 +167,17 @@ class ReviewQueuesTest extends TestCase
         $res->assertOk();
         $res->assertSee('Waiting Paper');
         $res->assertSee('Confirm Reject');
-        $res->assertSee('id="approve-selected-btn"', false);
+        $res->assertDontSee('id="approve-selected-btn"', false);
+        $res->assertSee('Only the Admin can approve submissions.');
+    }
+
+    public function test_the_admin_sees_the_approve_buttons(): void
+    {
+        $this->paper('Waiting Paper', 'Pending', now()->subDay());
+
+        $this->withSession($this->staffSession())->get('/admin/pending')
+            ->assertSee('id="approve-selected-btn"', false)
+            ->assertDontSee('Only the Admin can approve submissions.');
     }
 
     public function test_the_sidebar_links_both_pages_with_the_count_on_pending(): void

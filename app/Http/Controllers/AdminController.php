@@ -128,15 +128,19 @@ class AdminController extends Controller
             'keywords'       => array_map('trim', explode(',', $request->input('keywords'))),
             'abstract'       => $request->input('abstract'),
             'adviser'        => $request->input('adviser'),
-            'status'         => 'Approved',
-            // Added by the library itself, so posted as public with no waiver step.
+            // Added by the library itself, so public with no waiver step. An
+            // Admin's addition is posted at once; a Sub-Admin's waits for the
+            // Admin's approval, which only the Admin gives.
+            'status'         => User::allows($user, 'approve_bluebooks') ? 'Approved' : 'Pending',
             'waiverRecordedAt' => now(),
             'uploadedBy'     => $user['email'],
             'uploadedByName' => $user['name'],
             'pages'          => (int)$request->input('pages'),
         ], $fileData));
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Added Bluebook', 'document' => $request->input('title')]);
-        return redirect()->route('admin.bluebooks')->with('success', 'Bluebook added successfully');
+        return User::allows($user, 'approve_bluebooks')
+            ? redirect()->route('admin.bluebooks')->with('success', 'Bluebook added successfully')
+            : redirect()->route('admin.pending')->with('success', 'Bluebook added. It will be posted once the Admin approves it.');
     }
 
     /**
@@ -259,14 +263,33 @@ class AdminController extends Controller
         if (!$bluebook || $bluebook['status'] !== 'Pending') {
             return redirect($this->reviewedFrom($request));
         }
+        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Approved Bluebook', 'document' => $bluebook['title']]);
+
+        // One the library added itself (a Sub-Admin's, awaiting the Admin) has
+        // no author waiver to wait for, so approving it posts it.
+        if ($this->addedByLibrary($bluebook)) {
+            Store::setBluebookStatus($id, 'Approved');
+            return redirect($this->reviewedFrom($request))->with('success', 'Bluebook approved and posted in Browse.');
+        }
+
         // Approval is not posting: the author must first hand in the printed,
         // signed waiver, which the admin records with waiverReceived().
         Store::setBluebookStatus($id, Bluebook::STATUS_AWAITING_WAIVER);
-        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Approved Bluebook', 'document' => $bluebook['title']]);
         return redirect($this->reviewedFrom($request))->with('success', 'Bluebook approved. It will be posted once the author hands in the signed waiver.');
     }
 
     /** Back to the page the action was taken from: Pending, Rejected, or the list. */
+    /**
+     * Whether the library added this bluebook itself (through Add Bluebook,
+     * by an Admin or Sub-Admin) rather than a student uploading it: such a
+     * record comes with its waiver already recorded and no author to ask.
+     */
+    private function addedByLibrary(array $bluebook): bool
+    {
+        return $bluebook['waiverRecorded']
+            && User::isStaff(User::where('email', $bluebook['uploadedBy'])->value('role'));
+    }
+
     private function reviewedFrom(Request $request): string
     {
         return match ($request->input('from')) {
@@ -394,7 +417,7 @@ class AdminController extends Controller
             $bluebook = Store::getBluebook($id);
             if (!$bluebook || $bluebook['status'] !== 'Pending') continue;
 
-            Store::setBluebookStatus($id, Bluebook::STATUS_AWAITING_WAIVER);
+            Store::setBluebookStatus($id, $this->addedByLibrary($bluebook) ? 'Approved' : Bluebook::STATUS_AWAITING_WAIVER);
             Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Approved Bluebook', 'document' => $bluebook['title']]);
             $approved++;
         }

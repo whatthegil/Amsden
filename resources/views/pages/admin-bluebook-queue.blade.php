@@ -14,6 +14,8 @@
   $title     = $isPending ? 'Pending Review' : 'Rejected Bluebooks';
   $canReview = \App\Models\User::allows($user, 'review_bluebooks');
   $canManage = \App\Models\User::allows($user, 'manage_bluebooks');
+  // Approving is the Admin's alone; a Sub-Admin reviews and can reject.
+  $canApprove = \App\Models\User::allows($user, 'approve_bluebooks');
   $count     = count($bluebooks);
   $filtered  = collect($query ?? [])->only(['search', 'department'])->filter(fn($v) => $v !== null && $v !== '')->isNotEmpty();
 
@@ -105,7 +107,7 @@
 
       @if($count > 0)
         {{-- Approve selected: the checkboxes below belong to this form. --}}
-        @if($isPending && $canReview)
+        @if($isPending && $canApprove)
           <form method="POST" action="{{ route('admin.bluebooks.approveSelected') }}" id="approve-selected">
             @csrf
           </form>
@@ -113,6 +115,8 @@
             <label class="access-option" style="margin:0;"><input type="checkbox" id="select-all"> <span>Select all</span></label>
             <button type="submit" form="approve-selected" class="btn btn-success btn-sm" id="approve-selected-btn" disabled>Approve selected</button>
           </div>
+        @elseif($isPending && $canReview)
+          <div class="alert alert-info" style="margin-bottom:1rem;">Only the Admin can approve submissions. You can read, check and reject them, and they stay here until the Admin approves them.</div>
         @endif
 
         <div class="card">
@@ -120,7 +124,7 @@
             <table>
               <thead>
                 <tr>
-                  @if($isPending && $canReview)<th><span class="sr-only">Select</span></th>@endif
+                  @if($isPending && $canApprove)<th><span class="sr-only">Select</span></th>@endif
                   <th>Title</th>
                   <th>Uploaded by</th>
                   @if($isPending)
@@ -137,7 +141,7 @@
               <tbody>
                 @foreach($bluebooks as $b)
                   <tr>
-                    @if($isPending && $canReview)
+                    @if($isPending && $canApprove)
                       <td><input type="checkbox" name="ids[]" value="{{ $b['id'] }}" form="approve-selected" class="row-select" aria-label="Select {{ $b['title'] }}"></td>
                     @endif
                     <td style="max-width:260px;">
@@ -181,11 +185,13 @@
                       <div class="td-actions">
                         <a href="{{ route('admin.bluebooks.view', $b['id']) }}" class="btn btn-outline btn-sm">View</a>
                         @if($isPending && $canReview)
+                          @if($canApprove)
                           <form method="POST" action="{{ route('admin.bluebooks.approve', $b['id']) }}" style="display:inline;">
                             @csrf
                             <input type="hidden" name="from" value="pending">
                             <button type="submit" class="btn btn-success btn-sm">Approve</button>
                           </form>
+                          @endif
                           <details class="reject-box">
                             <summary class="btn btn-warning btn-sm">Reject</summary>
                             <form method="POST" action="{{ route('admin.bluebooks.reject', $b['id']) }}">

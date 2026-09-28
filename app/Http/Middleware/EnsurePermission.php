@@ -9,9 +9,10 @@ use Illuminate\Http\Request;
 
 /**
  * Restricts an admin route to the staff who hold one of the named privileges
- * (review_bluebooks, manage_bluebooks, manage_users, view_logs). Admins and
- * Sub-Admins hold them all - see User::allows. Runs after EnsureRole, which
- * has already refreshed the session copy of the account.
+ * (review_bluebooks, manage_bluebooks, manage_users, view_logs,
+ * approve_bluebooks). Admins hold them all; Sub-Admins all but the Admin-only
+ * ones - see User::allows. Runs after EnsureRole, which has already refreshed
+ * the session copy of the account.
  *
  *   ->middleware('permission:review_bluebooks,manage_bluebooks')   // either
  */

@@ -62,9 +62,13 @@ Route::prefix('admin')->middleware('role:Admin,Sub-Admin')->group(function () {
         Route::post('/bluebooks/{id}/edit',        [AdminController::class, 'bluebookUpdate'])->name('admin.bluebooks.update');
     });
 
-    Route::middleware('permission:review_bluebooks')->group(function () {
+    // Approving is the Admin's alone (User::ADMIN_ONLY).
+    Route::middleware('permission:approve_bluebooks')->group(function () {
         Route::post('/bluebooks/{id}/approve',     [AdminController::class, 'bluebookApprove'])->name('admin.bluebooks.approve');
         Route::post('/bluebooks/approve-selected', [AdminController::class, 'bluebookApproveSelected'])->name('admin.bluebooks.approveSelected');
+    });
+
+    Route::middleware('permission:review_bluebooks')->group(function () {
         Route::post('/bluebooks/{id}/waiver-received', [AdminController::class, 'bluebookWaiverReceived'])->name('admin.bluebooks.waiverReceived');
         Route::post('/bluebooks/{id}/reject',      [AdminController::class, 'bluebookReject'])->name('admin.bluebooks.reject');
     });

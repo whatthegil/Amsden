@@ -55,13 +55,25 @@ class User extends Authenticatable
     }
 
     /**
-     * Whether the signed-in user (the session array) holds a privilege. Admins
-     * and Sub-Admins hold every one; what sets an Admin apart is managing
-     * Admin and Sub-Admin accounts (AdminController::mayManage).
+     * Privileges only the Admin holds. Approving an upload is what lets it
+     * reach readers, so that stays with the Admin; a Sub-Admin keeps the
+     * archive running when the Admin is away but cannot publish on their own.
+     */
+    public const ADMIN_ONLY = ['approve_bluebooks'];
+
+    /**
+     * Whether the signed-in user (the session array) holds a privilege. An
+     * Admin holds every one; a Sub-Admin every one outside ADMIN_ONLY. The
+     * other thing that sets an Admin apart is managing Admin and Sub-Admin
+     * accounts (AdminController::mayManage).
      */
     public static function allows(?array $user, string $permission): bool
     {
-        return self::isStaff($user['role'] ?? null);
+        $role = $user['role'] ?? null;
+
+        return in_array($permission, self::ADMIN_ONLY, true)
+            ? $role === self::ROLE_ADMIN
+            : self::isStaff($role);
     }
 
     /**

@@ -9,8 +9,9 @@ use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
- * Sub-Admins: admin-side accounts with every privilege an Admin has. The one
- * thing kept for an Admin is managing Admin and Sub-Admin accounts.
+ * Sub-Admins: admin-side accounts that keep the archive running when the
+ * Admin is away. Two things stay with the Admin: approving uploads so they
+ * reach readers, and managing Admin and Sub-Admin accounts.
  */
 class SubAdminTest extends TestCase
 {
@@ -49,13 +50,67 @@ class SubAdminTest extends TestCase
         }
     }
 
-    public function test_a_sub_admin_can_approve(): void
+    public function test_only_the_admin_can_approve(): void
+    {
+        $sub   = $this->account('Sub-Admin');
+        $admin = $this->account('Admin');
+        $b     = $this->pendingBluebook();
+
+        $this->withSession($this->as($sub))->post("/admin/bluebooks/{$b->id}/approve")
+            ->assertSessionHas('error');
+        $this->withSession($this->as($sub))->post('/admin/bluebooks/approve-selected', ['ids' => [$b->id]]);
+        $this->assertSame('Pending', $b->fresh()->status);
+        $this->assertDatabaseHas('logs', ['action' => 'Unauthorized Access Attempt', 'status' => 'Denied']);
+
+        $this->withSession($this->as($admin))->post("/admin/bluebooks/{$b->id}/approve");
+        $this->assertSame(Bluebook::STATUS_AWAITING_WAIVER, $b->fresh()->status);
+    }
+
+    public function test_a_sub_admin_sees_no_approve_buttons_but_can_still_reject(): void
     {
         $sub = $this->account('Sub-Admin');
         $b   = $this->pendingBluebook();
 
-        $this->withSession($this->as($sub))->post("/admin/bluebooks/{$b->id}/approve");
-        $this->assertSame(Bluebook::STATUS_AWAITING_WAIVER, $b->fresh()->status);
+        $this->withSession($this->as($sub))->get('/admin/pending')
+            ->assertSee('Only the Admin can approve submissions.')
+            ->assertDontSee('id="approve-selected-btn"', false)
+            ->assertDontSee(route('admin.bluebooks.approve', $b->id), false)
+            ->assertSee(route('admin.bluebooks.reject', $b->id), false);
+
+        $this->withSession($this->as($sub))->post("/admin/bluebooks/{$b->id}/reject", ['reason' => 'The abstract does not match the paper.']);
+        $this->assertSame('Rejected', $b->fresh()->status);
+    }
+
+    public function test_a_bluebook_a_sub_admin_adds_waits_for_the_admin_then_posts(): void
+    {
+        $sub   = $this->account('Sub-Admin');
+        $admin = $this->account('Admin');
+        $form  = [
+            'title' => 'Library Copy', 'authors' => 'Cruz, Ana', 'year' => 2024, 'department' => 'CCS',
+            'program' => 'Bachelor of Science in Information Technology', 'keywords' => 'library',
+            'abstract' => 'A paper the library holds.', 'adviser' => 'Reyes, Jose P.', 'pages' => 40,
+        ];
+
+        $this->withSession($this->as($sub))->post('/admin/bluebooks/new', $form)->assertRedirect(route('admin.pending'));
+        $b = Bluebook::where('title', 'Library Copy')->firstOrFail();
+        $this->assertSame('Pending', $b->status);
+
+        // The library holds the paper, so there is no author's waiver to wait for.
+        $this->withSession($this->as($admin))->post("/admin/bluebooks/{$b->id}/approve");
+        $this->assertSame('Approved', $b->fresh()->status);
+    }
+
+    public function test_a_bluebook_the_admin_adds_is_posted_at_once(): void
+    {
+        $admin = $this->account('Admin');
+
+        $this->withSession($this->as($admin))->post('/admin/bluebooks/new', [
+            'title' => 'Admin Copy', 'authors' => 'Cruz, Ana', 'year' => 2024, 'department' => 'CCS',
+            'program' => 'Bachelor of Science in Information Technology', 'keywords' => 'library',
+            'abstract' => 'A paper the library holds.', 'adviser' => 'Reyes, Jose P.', 'pages' => 40,
+        ]);
+
+        $this->assertSame('Approved', Bluebook::where('title', 'Admin Copy')->value('status'));
     }
 
     public function test_a_sub_admin_can_edit_a_bluebook_in_full(): void
