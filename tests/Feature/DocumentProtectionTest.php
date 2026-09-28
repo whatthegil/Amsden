@@ -209,6 +209,8 @@ class DocumentProtectionTest extends TestCase
         // The watermark tile is a canvas exported to a data: URL.
         $this->assertStringContainsString('img-src', $csp);
         $this->assertMatchesRegularExpression('/img-src[^;]*data:/', $csp);
+        // Google profile pictures on the profile page.
+        $this->assertMatchesRegularExpression('/img-src[^;]*https:\/\/\*\.googleusercontent\.com/', $csp);
     }
 
     /** The document stream sets its own headers and must not be given a page policy. */

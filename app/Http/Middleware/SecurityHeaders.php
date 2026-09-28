@@ -71,7 +71,9 @@ class SecurityHeaders
             // under font-src, or the app loses its typeface entirely.
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             // data: is the watermark tile, which is a canvas exported to a URL.
-            "img-src 'self' data: blob:",
+            // googleusercontent.com serves the Google profile pictures shown
+            // on the profile page.
+            "img-src 'self' data: blob: https://*.googleusercontent.com",
             "font-src 'self' data: https://fonts.gstatic.com",
             "object-src 'none'",
             "base-uri 'self'",

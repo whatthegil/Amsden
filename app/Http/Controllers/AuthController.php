@@ -198,9 +198,11 @@ class AuthController extends Controller
         if ($user) {
             if (!$user->google_id) {
                 $user->google_id = $googleUser->getId();
-                $user->avatar    = $googleUser->getAvatar();
-                $user->save();
             }
+            // Refreshed every sign-in: the picture changes when the owner
+            // changes it on Google, and an old link stops working.
+            $user->avatar = $googleUser->getAvatar() ?: $user->avatar;
+            $user->save();
             Store::addLog(['userName' => $user->name, 'email' => $user->email, 'action' => 'Login via Google', 'document' => '—']);
         } else {
             $role = str_ends_with($email, '@my.cspc.edu.ph') ? 'Student' : 'Faculty';

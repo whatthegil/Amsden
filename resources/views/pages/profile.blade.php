@@ -28,11 +28,12 @@
       {{-- Profile Hero --}}
       <div class="card profile-hero-card">
         <div class="profile-hero">
+          {{-- The initial stands in when there is no picture, or when the picture fails to load. --}}
           @if($profile['avatar'])
-            <img src="{{ $profile['avatar'] }}" alt="{{ $profile['name'] }}" class="profile-avatar" referrerpolicy="no-referrer">
-          @else
-            <div class="profile-avatar profile-avatar-initial">{{ strtoupper(substr($profile['name'], 0, 1)) }}</div>
+            <img src="{{ $profile['avatar'] }}" alt="{{ $profile['name'] }}" class="profile-avatar" referrerpolicy="no-referrer"
+                 onerror="this.hidden = true; this.nextElementSibling.hidden = false;">
           @endif
+          <div class="profile-avatar profile-avatar-initial" aria-hidden="true" @if($profile['avatar']) hidden @endif>{{ strtoupper(substr($profile['name'], 0, 1)) }}</div>
           <div class="profile-hero-info">
             <h2>{{ $profile['name'] }}</h2>
             <div class="profile-hero-email">{{ $profile['email'] }}</div>
