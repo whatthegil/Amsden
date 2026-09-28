@@ -3,9 +3,12 @@
 namespace App\Console\Commands;
 
 use App\Models\Bluebook;
+use App\Models\User;
 use App\Services\Store;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * Imports the PDFs committed under Bluebooks/ into the archive.
@@ -150,6 +153,16 @@ class ImportBluebooks extends Command
         $skipped  = 0;
 
         $this->line('Disk: ' . Store::bluebookDisk() . ' | files found: ' . count($files));
+
+        // bluebooks.uploaded_by must name an account, so the library needs one
+        // to file these under. Its password is random: no one signs in as it.
+        if (!$pretend) {
+            User::firstOrCreate(['email' => 'library@cspc.edu.ph'], [
+                'name'     => 'CSPC Library',
+                'password' => Hash::make(Str::random(40)),
+                'role'     => 'Student',
+            ]);
+        }
 
         foreach ($this->manifest() as $needle => $meta) {
             $match = null;
