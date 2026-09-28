@@ -113,6 +113,12 @@
             <span class="key">Readers can see</span>
             <span class="val">{{ $access }}</span>
           </div>
+          @if(($asAdmin ?? false) && $bluebook['uploadedAt'])
+            <div class="info-row">
+              <span class="key">Uploaded</span>
+              <span class="val">{{ $bluebook['uploadedAt'] }} by {{ $bluebook['uploadedByName'] }}</span>
+            </div>
+          @endif
         </div>
 
         {{-- The citation a student needs to reference this paper. --}}

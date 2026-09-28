@@ -456,6 +456,8 @@ class Store
             'pages'          => $b->pages,
             'views'          => $b->views,
             'dateAdded'      => $b->date_added,
+            // When the paper was first uploaded, in Philippine time.
+            'uploadedAt'     => $b->created_at ? $b->created_at->copy()->timezone('Asia/Manila')->format('M j, Y · g:i A') : null,
             // When the record last changed: for a pending paper, when it was
             // (re)submitted; for a rejected one, when it was turned down.
             'updatedAt'      => $b->updated_at ? $b->updated_at->format('Y-m-d H:i') : null,
