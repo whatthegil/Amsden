@@ -90,7 +90,7 @@
       <div class="form-card" style="margin-top:1.5rem;">
         <div class="form-card-header">
           <span class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM8 11V7a4 4 0 118 0v4" fill="currentColor" fill-opacity="0.18"/><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM8 11V7a4 4 0 118 0v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <h2>Change Password</h2>
+          <h2>{{ $profile['hasPassword'] ? 'Change Password' : 'Set a Password' }}</h2>
         </div>
         <div class="form-card-body">
           @if(session('password_error'))
@@ -98,13 +98,14 @@
           @endif
           <form method="POST" action="{{ route('profile.password') }}">
             @csrf
-            <div class="form-group">
-              <label for="profile-current-password">Current Password</label>
-              <input id="profile-current-password" type="password" name="current_password" required autocomplete="current-password" @if($profile['googleLinked']) aria-describedby="profile-google-hint" @endif>
-              @if($profile['googleLinked'])
-                <div class="form-hint" id="profile-google-hint">Registered through Google? Your account may not have a password you know — keep signing in with Google instead.</div>
-              @endif
-            </div>
+            @if($profile['hasPassword'])
+              <div class="form-group">
+                <label for="profile-current-password">Current Password</label>
+                <input id="profile-current-password" type="password" name="current_password" required autocomplete="current-password">
+              </div>
+            @else
+              <p class="form-hint" style="margin:0 0 1rem;font-size:0.88rem;">You signed up with Google, so your account has no password yet. Set one to also log in with your CSPC email ({{ $profile['email'] }}) and password.</p>
+            @endif
             <div class="form-row">
               <div class="form-group">
                 <label for="profile-new-password">New Password</label>
@@ -117,7 +118,7 @@
               </div>
             </div>
             <div class="form-actions">
-              <button type="submit" class="btn btn-primary">Change Password</button>
+              <button type="submit" class="btn btn-primary">{{ $profile['hasPassword'] ? 'Change Password' : 'Set Password' }}</button>
             </div>
           </form>
         </div>

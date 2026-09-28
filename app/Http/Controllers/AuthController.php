@@ -14,7 +14,9 @@ class AuthController extends Controller
 {
     private function isAllowedEmail(string $email): bool
     {
-        return str_ends_with($email, '@cspc.edu.ph') || str_ends_with($email, '@my.cspc.edu.ph');
+        // A well-formed address first, so "a@b@cspc.edu.ph" and the like fail.
+        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false
+            && (str_ends_with($email, '@cspc.edu.ph') || str_ends_with($email, '@my.cspc.edu.ph'));
     }
 
     private function startSession(User $user): void
@@ -67,10 +69,11 @@ class AuthController extends Controller
         }
 
         $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
-        if ($user && $user->google_id && !Hash::check($password, $user->password)) {
+        if ($user && !$user->hasKnownPassword()) {
             // Accounts first created through Google sign-in were given a
-            // random password nobody knows, so a manual login can never work.
-            return view('pages.login', ['error' => 'This account was created with Google. Use "Sign in with Google", or ask the administrator to set a password for it.', 'success' => null, 'email' => $email]);
+            // random password nobody knows, so a manual login can never work
+            // until the owner sets one on their profile.
+            return view('pages.login', ['error' => 'This account was created with Google and has no password yet. Sign in with Google once, then set a password on your Profile page to log in with your email.', 'success' => null, 'email' => $email]);
         }
         if (!$user || !Hash::check($password, $user->password)) {
             return view('pages.login', ['error' => 'Invalid email or password. Please try again.', 'success' => null, 'email' => $email]);

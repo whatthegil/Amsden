@@ -29,7 +29,7 @@ class DatabaseSeeder extends Seeder
             'password'   => Hash::make('admin123'),
             'role'       => 'Admin',
             'can_upload' => true,
-        ]);
+        ])->forceFill(['password_set_at' => now()])->save();
 
         User::create([
             'name'       => 'Gil Rexis E. Realubit',
@@ -37,6 +37,6 @@ class DatabaseSeeder extends Seeder
             'password'   => Hash::make('student123'),
             'role'       => 'Student',
             'can_upload' => false,
-        ]);
+        ])->forceFill(['password_set_at' => now()])->save();
     }
 }

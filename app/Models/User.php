@@ -18,7 +18,23 @@ class User extends Authenticatable
 
     protected $hidden = ['password', 'remember_token'];
 
-    protected $casts = ['can_upload' => 'boolean', 'permissions' => 'array', 'policy_accepted_at' => 'datetime'];
+    protected $casts = ['can_upload' => 'boolean', 'permissions' => 'array', 'policy_accepted_at' => 'datetime', 'password_set_at' => 'datetime'];
+
+    /**
+     * Whether the owner knows this account's password, and so can sign in
+     * with email and password. Accounts made by Google sign-in start with a
+     * random one until the owner sets their own (password_set_at).
+     */
+    public function hasKnownPassword(): bool
+    {
+        return $this->password_set_at !== null || !$this->google_id;
+    }
+
+    /** A password the owner or an administrator chose. */
+    public function setKnownPassword(string $plain): void
+    {
+        $this->forceFill(['password' => \Illuminate\Support\Facades\Hash::make($plain), 'password_set_at' => now()]);
+    }
 
     /** Admins and Sub-Admins: the people who use the admin side. */
     public static function isStaff(?string $role): bool

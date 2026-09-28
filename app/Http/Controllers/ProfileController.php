@@ -37,6 +37,7 @@ class ProfileController extends Controller
                 'canUpload'    => (bool) $user->can_upload,
                 'avatar'       => $user->avatar,
                 'googleLinked' => (bool) $user->google_id,
+                'hasPassword'  => $user->hasKnownPassword(),
                 'createdAt'    => $user->created_at ? $user->created_at->format('F j, Y') : null,
             ],
         ]);
@@ -73,20 +74,27 @@ class ProfileController extends Controller
             return redirect()->route('login');
         }
 
+        // An account made by Google sign-in has only a random password, so it
+        // sets its first one without one; signing in through Google already
+        // proved the owner holds the CSPC email.
+        $first = !$user->hasKnownPassword();
+
         $request->validate([
-            'current_password' => ['required'],
+            'current_password' => $first ? ['nullable'] : ['required'],
             'new_password'     => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        if (!Hash::check($request->input('current_password'), $user->password)) {
+        if (!$first && !Hash::check($request->input('current_password'), $user->password)) {
             return redirect()->route('profile')->with('password_error', 'Your current password is incorrect.');
         }
 
-        $user->password = Hash::make($request->input('new_password'));
+        $user->setKnownPassword($request->input('new_password'));
         $user->save();
 
-        Store::addLog(['userName' => $user->name, 'email' => $user->email, 'action' => 'Changed Password', 'document' => '—']);
+        Store::addLog(['userName' => $user->name, 'email' => $user->email, 'action' => $first ? 'Set Password' : 'Changed Password', 'document' => '—']);
 
-        return redirect()->route('profile')->with('success', 'Password changed successfully.');
+        return redirect()->route('profile')->with('success', $first
+            ? 'Password set. You can now log in with your CSPC email and this password, or keep using Google.'
+            : 'Password changed successfully.');
     }
 }
