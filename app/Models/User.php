@@ -30,6 +30,18 @@ class User extends Authenticatable
         return $this->password_set_at !== null || !$this->google_id;
     }
 
+    /**
+     * Passwords are only ever stored as a bcrypt hash. The places that set one
+     * hash it already; this catches any that forget, so a plain password can
+     * never reach the database. A value that is already a hash is kept as is.
+     */
+    public function setPasswordAttribute(string $value): void
+    {
+        $this->attributes['password'] = password_get_info($value)['algoName'] === 'unknown'
+            ? \Illuminate\Support\Facades\Hash::make($value)
+            : $value;
+    }
+
     /** A password the owner or an administrator chose. */
     public function setKnownPassword(string $plain): void
     {
