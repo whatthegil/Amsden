@@ -29,7 +29,9 @@
       </div>
 
       <div class="bluebook-detail" id="bluebook-detail" data-bluebook-id="{{ $bluebook['id'] }}"
-           data-viewer="{{ $user['email'] ?? '' }}">
+           data-viewer="{{ $user['email'] ?? '' }}"
+           data-wm-size="{{ config('watermark.size') }}" data-wm-opacity="{{ config('watermark.opacity') }}"
+           data-wm-logo-opacity="{{ config('watermark.logo_opacity') }}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
           <h1>{{ $bluebook['title'] }}</h1>
           @unless($asAdmin)

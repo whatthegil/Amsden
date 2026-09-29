@@ -82,36 +82,49 @@
   logo.src = '/images/cspc-logo.png';
 
   // Drawn after the page, so it sits over the content rather than under it.
-  function stamp(canvas) {
+  //
+  // It is the same mark resources/pdf/watermark.js writes into the file - the
+  // same grid, sizes and opacities, measured in PDF points and scaled by the
+  // render - so a page marked here and a page marked by the server look alike,
+  // rather than a large, differently tinted crest beside the stamped small one.
+  const num = (v, d) => { const n = parseFloat(v); return n > 0 ? n : d; };
+  const WM = {
+    size:        num(detail && detail.dataset.wmSize, 12),
+    opacity:     num(detail && detail.dataset.wmOpacity, 0.16),
+    logoOpacity: num(detail && detail.dataset.wmLogoOpacity, 0.09),
+    step: 300,                  // STEP in watermark.js, in points
+    offset: 150,                // PdfWatermarker::VIEWER_OFFSET
+  };
+
+  // pt is the render's pixels per PDF point.
+  function stamp(canvas, pt) {
     const ctx = canvas.getContext('2d');
 
-    // The tile scales with the page: a phone render is not covered edge to edge
-    // and a desktop one is not left with four lonely marks in the corners.
-    const tile = Math.max(260, Math.round(canvas.width / 2.2));
-    const size = Math.max(11, Math.round(tile / 24));
-    const crest = Math.round(tile * 0.28);
+    const size  = WM.size * pt;
+    const crestW = size * 4.2;
     const hasLogo = logo.complete && logo.naturalWidth > 0;
+    const crestH = hasLogo ? crestW * logo.naturalHeight / logo.naturalWidth : 0;
 
     ctx.save();
-    ctx.fillStyle    = '#0f2350';
+    ctx.fillStyle    = '#0f2350';     // 0.06 0.14 0.31 in watermark.js
     ctx.textAlign    = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font         = '600 ' + size + 'px Inter, system-ui, sans-serif';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font         = 'bold ' + size + 'px Helvetica, Arial, sans-serif';
 
-    for (let y = tile / 2; y < canvas.height + tile; y += tile) {
-      for (let x = tile / 2; x < canvas.width + tile; x += tile) {
+    // The PDF's origin is the bottom-left corner, the canvas's the top-left.
+    for (let py = 40 + WM.offset; py < canvas.height / pt + WM.step; py += WM.step) {
+      for (let px = 20 + WM.offset; px < canvas.width / pt + WM.step; px += WM.step) {
         ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(-22 * Math.PI / 180);
-        // Light enough to read the thesis through, dark enough to survive the
-        // contrast knocked out of a photographed screen.
+        ctx.translate(px * pt, canvas.height - py * pt);
+        // Clockwise, as the stamped mark runs: y points down here, up in a PDF.
+        ctx.rotate(22 * Math.PI / 180);
         if (hasLogo) {
-          ctx.globalAlpha = 0.09;   // watermark.logo_opacity, the crest the server stamps
-          ctx.drawImage(logo, -crest / 2, -crest - size * 0.4, crest, crest);
+          ctx.globalAlpha = WM.logoOpacity;
+          ctx.drawImage(logo, -crestW / 2, -size * 0.9 - crestH, crestW, crestH);
         }
         if (viewer) {
-          ctx.globalAlpha = 0.14;
-          ctx.fillText(viewer, 0, size * 0.6);
+          ctx.globalAlpha = WM.opacity;
+          ctx.fillText(viewer, 0, 0);
         }
         ctx.restore();
       }
@@ -274,7 +287,7 @@
           // page is on screen to be captured. A page the server already marked
           // for this reader is left alone: a second grid at its own spacing
           // put crests over the words and doubled the address into a blur.
-          if (!done[1]) stamp(canvas);
+          if (!done[1]) stamp(canvas, viewport.scale);
           // Scrolled far away while this was drawing: drop it rather than keep
           // a canvas for a page nowhere near the viewport.
           if (!keep.has(num)) return;

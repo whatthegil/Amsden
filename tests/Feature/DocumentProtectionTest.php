@@ -56,14 +56,14 @@ class DocumentProtectionTest extends TestCase
         $js = file_get_contents(public_path('js/pdf-viewer.js'));
 
         $this->assertMatchesRegularExpression(
-            '/stamp\(canvas\);/',
+            '/stamp\(canvas[^)]*\);/',
             $js,
             'Each rendered page must be stamped, not merely covered by an overlay.'
         );
 
         // Before it is shown: a page appended first is a clean frame on screen.
         $this->assertMatchesRegularExpression(
-            '/stamp\(canvas\);[\s\S]{0,400}?holder\.appendChild\(canvas\)/',
+            '/stamp\(canvas[^)]*\);[\s\S]{0,400}?holder\.appendChild\(canvas\)/',
             $js,
             'The stamp must be applied before the page is put on screen.'
         );
