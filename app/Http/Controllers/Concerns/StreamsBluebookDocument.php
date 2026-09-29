@@ -51,7 +51,7 @@ trait StreamsBluebookDocument
             ]);
         }
 
-        $stamp = (bool) config('watermark.per_viewer', true);
+        $stamp = (bool) config('watermark.per_viewer', false);
         $path  = $this->documentCachePath($bluebook, $pageList, $stamp ? (string) ($user['email'] ?? '') : null);
 
         if (!$this->isFreshDocument($path)) {

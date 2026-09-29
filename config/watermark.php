@@ -36,8 +36,12 @@ return [
     | through PHP. It is therefore bypassed entirely when
     | BLUEBOOK_DIRECT_FETCH is on, since a signed link serves the stored
     | object: that copy carries the provenance mark above and nothing else.
+    |
+    | Off by default: the viewer already draws the crest and the reader's
+    | email over every page, and a second, smaller email stamped into the file
+    | crossed it on screen and scrambled the words beneath.
     */
-    'per_viewer' => (bool) env('WATERMARK_PER_VIEWER', true),
+    'per_viewer' => (bool) env('WATERMARK_PER_VIEWER', false),
 
     /*
     |--------------------------------------------------------------------------
