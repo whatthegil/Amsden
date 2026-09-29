@@ -99,7 +99,7 @@
     ctx.fillStyle    = '#0f2350';
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font         = '600 ' + size + 'px Inter, system-ui, sans-serif';
+    ctx.font         = '700 ' + size + 'px Inter, system-ui, sans-serif';
 
     for (let y = tile / 2; y < canvas.height + tile; y += tile) {
       for (let x = tile / 2; x < canvas.width + tile; x += tile) {
@@ -109,11 +109,11 @@
         // Light enough to read the thesis through, dark enough to survive the
         // contrast knocked out of a photographed screen.
         if (hasLogo) {
-          ctx.globalAlpha = 0.10;
+          ctx.globalAlpha = 0.18;
           ctx.drawImage(logo, -crest / 2, -crest - size * 0.4, crest, crest);
         }
         if (viewer) {
-          ctx.globalAlpha = 0.14;
+          ctx.globalAlpha = 0.30;
           ctx.fillText(viewer, 0, size * 0.6);
         }
         ctx.restore();
