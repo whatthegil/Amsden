@@ -352,13 +352,25 @@ class Store
 
     public static function addLog(array $logData): void
     {
+        $document = $logData['document'] ?? '—';
+
+        // Which paper this is about, so the entry still finds it after a title
+        // edit. Given outright when the caller has it; otherwise read from the
+        // title as it stands now - but only when exactly one paper has it.
+        $bluebookId = $logData['bluebookId'] ?? null;
+        if ($bluebookId === null && $document !== '—') {
+            $matches = Bluebook::where('title', $document)->limit(2)->pluck('id');
+            $bluebookId = $matches->count() === 1 ? $matches->first() : null;
+        }
+
         Log::create([
             // Empty for a visitor with no account ("Unknown", "—").
-            'user_id'   => User::where('email', $logData['email'])->value('id'),
+            'user_id'     => User::where('email', $logData['email'])->value('id'),
+            'bluebook_id' => $bluebookId,
             'user_name' => $logData['userName'],
             'email'     => $logData['email'],
             'action'    => $logData['action'],
-            'document'  => $logData['document'] ?? '—',
+            'document'  => $document,
             'timestamp' => self::now(),
             'status'    => $logData['status'] ?? 'Success',
         ]);

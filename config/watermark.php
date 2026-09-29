@@ -69,7 +69,8 @@ return [
 
     'page_images'       => (bool) env('WATERMARK_PAGE_IMAGES', true),
     'page_dpi'          => (int) env('WATERMARK_PAGE_DPI', 150),
-    'page_quality'      => (int) env('WATERMARK_PAGE_QUALITY', 80),
+    'page_quality'      => (int) env('WATERMARK_PAGE_QUALITY', 80),        // JPEG sent to the reader
+    'page_store_quality' => (int) env('WATERMARK_PAGE_STORE_QUALITY', 80), // WebP kept in storage
     'page_text_opacity' => (float) env('WATERMARK_PAGE_TEXT_OPACITY', 0.30),
     'page_logo_opacity' => (float) env('WATERMARK_PAGE_LOGO_OPACITY', 0.18),
 

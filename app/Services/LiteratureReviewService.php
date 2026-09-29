@@ -219,15 +219,11 @@ SYS;
             default             => implode(', ', array_slice($names, 0, -1)) . ', & ' . end($names),
         };
 
-        $title = trim((string) ($book['title'] ?? 'Untitled'));
-        // A title stored in capitals is shouting, and APA wants sentence case.
-        if ($title !== '' && $title === mb_strtoupper($title)) {
-            $title = mb_strtoupper(mb_substr($title, 0, 1)) . mb_strtolower(mb_substr($title, 1));
-        }
-        $title = rtrim($title, '.');
+        // APA wants a thesis title in sentence case, keeping proper nouns.
+        $title = rtrim(\App\Services\Citation\TitleCase::sentence((string) ($book['title'] ?? '')) ?: 'Untitled', '.');
 
         $lead = ($authors !== '' ? $authors . ' ' : '') . "({$year}).";
-        $tail = "[Unpublished bachelor's thesis]. Camarines Sur Polytechnic Colleges.";
+        $tail = "[Unpublished bachelor's thesis]. " . config('citation.school', 'Camarines Sur Polytechnic Colleges') . '.';
 
         $inText = match (true) {
             count($surnames) === 0 => "(\"" . \Illuminate\Support\Str::limit($title, 30) . "\", {$year})",
@@ -243,31 +239,27 @@ SYS;
         ];
     }
 
-    /** "Dela Cruz, Maria Anne" (or "Maria Anne Dela Cruz") as "Dela Cruz, M. A." */
+    /**
+     * "Dela Cruz, Maria Anne" or "Maria Anne Dela Cruz Jr." as
+     * "Dela Cruz, M. A." / "Dela Cruz, M. A., Jr."
+     */
     private static function apaName(string $person): string
     {
-        $surname = self::surname($person);
-        $given   = str_contains($person, ',')
-            ? trim(substr($person, strpos($person, ',') + 1))
-            : trim(mb_substr($person, 0, max(0, mb_strlen($person) - mb_strlen($surname))));
+        $name = \App\Services\Citation\PersonName::parse($person);
 
         $initials = implode(' ', array_map(
             fn($part) => mb_strtoupper(mb_substr($part, 0, 1)) . '.',
-            array_filter(preg_split('/[\s.]+/u', $given) ?: [], fn($p) => $p !== '' && !preg_match('/^(jr|sr|ii|iii|iv)$/i', $p))
+            array_filter(preg_split('/[\s.]+/u', $name['given']) ?: [], fn($p) => $p !== '')
         ));
 
-        return $initials !== '' ? "{$surname}, {$initials}" : $surname;
+        $out = $initials !== '' ? "{$name['surname']}, {$initials}" : $name['surname'];
+        return $name['suffix'] !== '' ? "{$out}, {$name['suffix']}" : $out;
     }
 
-    /** The family name: before the comma when there is one, else the last word. */
+    /** The family name, particles and all: "Dela Cruz", not "Cruz". */
     private static function surname(string $person): string
     {
-        if (str_contains($person, ',')) {
-            return trim(substr($person, 0, strpos($person, ',')));
-        }
-
-        $parts = preg_split('/\s+/u', trim($person)) ?: [$person];
-        return (string) end($parts);
+        return \App\Services\Citation\PersonName::parse($person)['surname'];
     }
 
     public static function summarize(array $book, array $terms): string

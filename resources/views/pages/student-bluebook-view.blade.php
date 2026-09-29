@@ -130,14 +130,29 @@
             The author has not permitted this bluebook for general use. It is accessible after consultation with the author.
           </div>
           <div style="font-size:0.78rem;color:var(--gray-400);">Access logged for: {{ $user['email'] }}</div>
+        @elseif($asAdmin && ($preview ?? false) && ($pageImages ?? 0) === 0)
+          <div class="alert alert-info" style="margin-bottom:0.5rem;">
+            Previewing as a reader: <strong>readers are sent no pages of this bluebook</strong>
+            ({{ \App\Models\Bluebook::ACCESS_LEVELS[$bluebook['accessLevel']] ?? $bluebook['accessLevel'] }}).
+            <a href="{{ route('admin.bluebooks.view', $bluebook['id']) }}">Show the whole document</a>
+          </div>
         @elseif($bluebook['hasFile'])
-          @if($asAdmin)
+          @if($asAdmin && ($preview ?? false))
+            <div class="alert alert-info" style="margin-bottom:0.75rem;">
+              Previewing as a reader: these are the <strong>{{ $pageImages }} of {{ $bluebook['pageImagesCount'] }} pages</strong>
+              a student is sent, numbered as they see them and marked with your email.
+              <a href="{{ route('admin.bluebooks.view', $bluebook['id']) }}">Show the whole document</a>
+            </div>
+          @elseif($asAdmin)
             <div class="alert alert-info" style="margin-bottom:0.75rem;">
               You are seeing the whole document. Readers get:
               <strong>{{ \App\Models\Bluebook::ACCESS_LEVELS[$bluebook['accessLevel']] ?? $bluebook['accessLevel'] }}</strong>@if($bluebook['accessLevel'] === 'partial' && $bluebook['accessParts']) &mdash;
                 @foreach($bluebook['accessParts'] as $key => $range){{ \App\Models\Bluebook::ACCESS_PART_LABELS[$key] ?? $key }} (pp. {{ $range['from'] }}–{{ $range['to'] }}){{ $loop->last ? '' : ', ' }}@endforeach
               @endif.
               @unless($bluebook['waiverRecorded']) <em>(Not recorded yet.)</em> @endunless
+              @if($canPreview ?? false)
+                <a href="{{ route('admin.bluebooks.view', ['id' => $bluebook['id'], 'preview' => 'reader']) }}">Preview as a reader</a>
+              @endif
             </div>
           @elseif($bluebook['accessLevel'] === 'partial')
             <div class="alert alert-info" style="margin-bottom:0.75rem;">
@@ -169,9 +184,10 @@
                  data-direct="1"
                  data-fallback-url="{{ route('student.bluebook.file', $bluebook['id']) }}"
                @endif
-               @if(!$asAdmin && ($pageImages ?? 0) > 0)
-                 {{-- Watermarked page images instead of the PDF: see PageImages. --}}
-                 data-pages-url="{{ route('student.bluebook.page', [$bluebook['id'], '__N__', 'v' => \App\Services\Pdf\PageImages::version($bluebook, $user['email'] ?? '')]) }}"
+               @if(($pageImages ?? 0) > 0)
+                 {{-- Watermarked page images instead of the PDF: see PageImages.
+                      An admin gets them only when previewing as a reader. --}}
+                 data-pages-url="{{ route($asAdmin ? 'admin.bluebooks.page' : 'student.bluebook.page', [$bluebook['id'], '__N__', 'v' => \App\Services\Pdf\PageImages::version($bluebook, $user['email'] ?? '')]) }}"
                  data-page-count="{{ $pageImages }}"
                @endif
                data-worker-url="/vendor/pdfjs/pdf.worker.min.js">
@@ -220,12 +236,12 @@
 </div>
 
 @if($bluebook['hasFile'])
-  @if(!$asAdmin && ($pageImages ?? 0) > 0)
+  @if(($pageImages ?? 0) > 0)
     {{-- Start on page one now, while the viewer script is still loading. --}}
-    <link rel="preload" as="image" href="{{ route('student.bluebook.page', [$bluebook['id'], 1, 'v' => \App\Services\Pdf\PageImages::version($bluebook, $user['email'] ?? '')]) }}">
+    <link rel="preload" as="image" href="{{ route($asAdmin ? 'admin.bluebooks.page' : 'student.bluebook.page', [$bluebook['id'], 1, 'v' => \App\Services\Pdf\PageImages::version($bluebook, $user['email'] ?? '')]) }}">
   @endif
   {{-- The page-image viewer draws pictures, so it needs no PDF engine. --}}
-  @if($asAdmin || ($pageImages ?? 0) === 0)
+  @if(($pageImages ?? 0) === 0)
     <script src="/vendor/pdfjs/pdf.min.js"></script>
   @endif
   <script src="/js/pdf-viewer.js?v={{ filemtime(public_path('js/pdf-viewer.js')) }}"></script>

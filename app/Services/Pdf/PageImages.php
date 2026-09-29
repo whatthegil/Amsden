@@ -21,10 +21,16 @@ use GdImage;
  */
 class PageImages
 {
-    /** Where page $n of bluebook $id is kept on the bluebook disk. */
+    /**
+     * Where page $n of bluebook $id is kept on the bluebook disk.
+     *
+     * Kept as WebP: about half the size of a JPEG of the same page, with text
+     * as sharp. It is only stored that way - pages are sent as JPEG, because
+     * WebP takes several times longer to encode and that happens per request.
+     */
     public static function path(int $id, int $n): string
     {
-        return "bluebook-pages/{$id}/{$n}.jpg";
+        return "bluebook-pages/{$id}/{$n}.webp";
     }
 
     public static function directory(int $id): string

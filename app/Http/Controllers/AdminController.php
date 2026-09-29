@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\ProcessBluebookOcr;
 use App\Models\Bluebook;
 use App\Models\User;
+use App\Services\Pdf\PageImages;
 use App\Services\SearchService;
 use App\Services\SimilarityService;
 use App\Services\Store;
@@ -18,6 +19,7 @@ class AdminController extends Controller
 {
     use Concerns\ReadsAccessWaiver;
     use Concerns\StreamsBluebookDocument;
+    use Concerns\ServesPageImages;
 
     private const ROLES = ['Student', 'Faculty', User::ROLE_SUB_ADMIN, User::ROLE_ADMIN];
 
@@ -60,7 +62,37 @@ class AdminController extends Controller
                 'recentLogs'      => Store::getRecentLogs(5),
                 'recentBluebooks' => array_slice($recent, 0, 5),
             ],
+            'worker'       => self::workerBacklog(),
         ]);
+    }
+
+    /**
+     * What is waiting on the queue worker, and when it last finished anything.
+     *
+     * Reading a document's text and drawing its pages need MuPDF and Tesseract,
+     * which Laravel Cloud does not have, so they run on a worker elsewhere - and
+     * when that machine is off, uploads quietly stop becoming searchable and
+     * readers are sent the PDF instead of marked pages. This says so, where an
+     * administrator will see it.
+     */
+    private static function workerBacklog(): array
+    {
+        $withFile = Bluebook::whereNotNull('file_path');
+
+        $ocr = (clone $withFile)->whereIn('ocr_status', ['pending', 'processing'])->count();
+
+        $pages = config('watermark.page_images', true)
+            ? (clone $withFile)->where('status', 'Approved')->where(function ($q) {
+                $q->whereNull('page_images_source')->orWhereColumn('page_images_source', '!=', 'file_path');
+            })->count()
+            : 0;
+
+        $last = collect([
+            Bluebook::max('ocr_processed_at'),
+            Bluebook::max('page_images_at'),
+        ])->filter()->map(fn($t) => \Illuminate\Support\Carbon::parse($t))->max();
+
+        return ['ocr' => $ocr, 'pages' => $pages, 'lastFinished' => $last];
     }
 
     public function bluebooks(Request $request)
@@ -162,6 +194,12 @@ class AdminController extends Controller
 
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Viewed Bluebook', 'document' => $bluebook['title']]);
 
+        // "Preview as a reader": the admin sees exactly the pages a student is
+        // sent under the waiver, through the same code that sends them, so a
+        // mistyped page range shows up here rather than in front of a reader.
+        $canPreview = $bluebook['hasFile'] && PageImages::ready($bluebook);
+        $preview    = $canPreview && request()->query('preview') === 'reader';
+
         return view('pages.student-bluebook-view', [
             'user'         => $user,
             'active'       => 'bluebooks',
@@ -169,8 +207,17 @@ class AdminController extends Controller
             'isBookmarked' => false,
             'fileUrl'      => null,
             'asAdmin'      => true,
+            'canPreview'   => $canPreview,
+            'preview'      => $preview,
+            'pageImages'   => $preview ? count(PageImages::visiblePages($bluebook)) : 0,
             'pendingCount' => Store::getPendingCount(),
         ]);
+    }
+
+    /** A page as a reader is sent it, for the admin's preview - marked with the admin's email. */
+    public function bluebookPage(int $id, int $n)
+    {
+        return $this->servePageImage($id, $n, (string) (session('user')['email'] ?? ''), false);
     }
 
     /** The whole document, at any status, stamped with the admin's email. */

@@ -19,6 +19,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class StudentController extends Controller
 {
     use Concerns\StreamsBluebookDocument;
+    use Concerns\ServesPageImages;
 
     public function policy()
     {
@@ -167,50 +168,7 @@ class StudentController extends Controller
      */
     public function bluebookPage(int $id, int $n)
     {
-        $user = session('user');
-
-        // Only what the access check needs. This runs once per page, and the
-        // full record carries the paper's extracted text - a hundred kilobytes
-        // or more, read and thrown away for every page of every reader.
-        $row = Bluebook::query()
-            ->select(['id', 'status', 'file_path', 'access_level', 'access_parts', 'page_images_count', 'page_images_source'])
-            ->find($id);
-        $bluebook = $row ? [
-            'status'           => $row->status,
-            'filePath'         => $row->file_path,
-            'accessLevel'      => $row->access_level ?: Bluebook::ACCESS_PUBLIC,
-            'accessParts'      => $row->access_parts ?? [],
-            'pageImagesCount'  => (int) ($row->page_images_count ?? 0),
-            'pageImagesSource' => $row->page_images_source,
-        ] : null;
-
-        if (!$bluebook || $bluebook['status'] !== 'Approved' || !$bluebook['filePath'] || !PageImages::ready($bluebook)) {
-            abort(404);
-        }
-
-        if ($bluebook['accessLevel'] === Bluebook::ACCESS_CONSULTATION) {
-            abort(403, 'This bluebook is available only after consultation with the author.');
-        }
-
-        $pages = PageImages::visiblePages($bluebook);
-        if ($n < 1 || $n > count($pages)) {
-            abort(404);
-        }
-
-        $stored = PageImages::disk()->get(PageImages::path($id, $pages[$n - 1]));
-        if ($stored === null) {
-            abort(404);
-        }
-
-        return response(PageImages::watermark($stored, (string) ($user['email'] ?? '')), 200, [
-            'Content-Type'           => 'image/jpeg',
-            // Marked for this reader, so never shared by a cache between readers.
-            // Kept a day: the viewer's page addresses carry a version naming the
-            // reader, the file and the waiver (PageImages::version), so a change
-            // to any of them is a new address rather than a stale page.
-            'Cache-Control'          => 'private, max-age=86400, immutable',
-            'X-Content-Type-Options' => 'nosniff',
-        ]);
+        return $this->servePageImage($id, $n, (string) (session('user')['email'] ?? ''), true);
     }
 
     public function bluebookFile(int $id)

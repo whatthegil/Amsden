@@ -35,6 +35,27 @@ class DashboardRendersTest extends TestCase
         $res->assertDontSee('stat-card', false);
     }
 
+    public function test_the_admin_is_told_when_documents_wait_on_the_worker(): void
+    {
+        $admin = ['id' => 1, 'name' => 'A B', 'email' => 'a@cspc.edu.ph', 'role' => 'Admin', 'canUpload' => true];
+        $as = $this->withSession(['user' => $admin]);
+
+        // Nothing waiting: no callout.
+        $as->get('/admin/dashboard')->assertOk()->assertDontSee('Waiting on the document worker');
+
+        \App\Models\Bluebook::create([
+            'title' => 'T', 'authors' => ['A, B'], 'year' => 2025, 'department' => 'CCS', 'program' => 'P',
+            'keywords' => [], 'abstract' => 'A.', 'adviser' => '', 'status' => 'Approved',
+            'uploaded_by' => 'a@cspc.edu.ph', 'uploaded_by_name' => 'A B', 'date_added' => '2025-01-01',
+            'file_path' => 'bluebooks/t.pdf', 'ocr_status' => 'pending',
+        ]);
+
+        $as->get('/admin/dashboard')->assertOk()
+            ->assertSee('Waiting on the document worker')
+            ->assertSee('1 to read for search')
+            ->assertSee('1 to draw as watermarked pages');
+    }
+
     public function test_student_dashboard_renders_without_stat_cards(): void
     {
         User::create(['name' => 'S T', 'email' => 's@my.cspc.edu.ph', 'password' => Hash::make('x'), 'role' => 'Student']);

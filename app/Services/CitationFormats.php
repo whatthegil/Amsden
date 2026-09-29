@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Services\Citation\PersonName;
+use App\Services\Citation\TitleCase;
+
 /**
  * A bluebook cited in the styles a student is asked for: APA 7, MLA 9 and ACM.
  *
@@ -11,9 +14,6 @@ namespace App\Services;
  */
 class CitationFormats
 {
-    private const SCHOOL   = 'Camarines Sur Polytechnic Colleges';
-    private const LOCATION = 'Nabua, Camarines Sur, Philippines';
-
     /**
      * @return array<string, array{label: string, text: string, html: string}>
      */
@@ -42,7 +42,7 @@ class CitationFormats
         // which in ACM starts with a first name.
         $key = function (array $book) {
             $first = self::people($book)[0] ?? '';
-            return ($first !== '' ? self::split($first)[1] : '') . ' ' . self::title($book);
+            return ($first !== '' ? PersonName::parse($first)['surname'] : '') . ' ' . self::title($book);
         };
         usort($books, fn($a, $b) => strnatcasecmp($key($a), $key($b)));
 
@@ -85,7 +85,7 @@ class CitationFormats
         $title = self::title($book);
         $year  = $book['year'] ?: 'n.d.';
         $lead  = $authors !== '' ? self::sentence($authors) . ' ' : '';
-        $tail  = "{$year}. " . self::SCHOOL . ", Bachelor's thesis.";
+        $tail  = "{$year}. " . config('citation.school') . ", Bachelor's thesis.";
 
         return [
             'text' => $lead . self::sentence($title) . ' ' . $tail,
@@ -115,7 +115,7 @@ class CitationFormats
         $title = self::title($book);
         $year  = $book['year'] ?: 'n.d.';
         $lead  = ($authors !== '' ? self::sentence($authors) . ' ' : '') . "{$year}.";
-        $tail  = "Bachelor's thesis. " . self::SCHOOL . ', ' . self::LOCATION . '.';
+        $tail  = "Bachelor's thesis. " . config('citation.school') . ', ' . config('citation.location') . '.';
 
         return [
             'text' => $lead . ' ' . self::sentence($title) . ' ' . $tail,
@@ -129,59 +129,25 @@ class CitationFormats
         return array_values(array_filter(array_map('trim', $book['authors'] ?? [])));
     }
 
-    /** [given names, surname] from "Surname, Given M." or "Given M. Surname". */
-    private static function split(string $person): array
-    {
-        if (str_contains($person, ',')) {
-            return [trim(substr($person, strpos($person, ',') + 1)), trim(substr($person, 0, strpos($person, ',')))];
-        }
-
-        $parts = preg_split('/\s+/u', trim($person)) ?: [$person];
-        $surname = array_pop($parts);
-
-        return [implode(' ', $parts), $surname];
-    }
-
-    /** "Tombado, Marygrace L." */
+    /** "Dela Cruz, Juan A., Jr." - MLA's first author. */
     private static function inverted(string $person): string
     {
-        [$given, $surname] = self::split($person);
-        return $given !== '' ? "{$surname}, {$given}" : $surname;
+        $n   = PersonName::parse($person);
+        $out = $n['given'] !== '' ? "{$n['surname']}, {$n['given']}" : $n['surname'];
+        return $n['suffix'] !== '' ? "{$out}, {$n['suffix']}" : $out;
     }
 
-    /** "Marygrace L. Tombado" */
+    /** "Juan A. Dela Cruz Jr." - every ACM author, and MLA's second. */
     private static function natural(string $person): string
     {
-        [$given, $surname] = self::split($person);
-        return trim("{$given} {$surname}");
+        $n = PersonName::parse($person);
+        return trim("{$n['given']} {$n['surname']} {$n['suffix']}");
     }
 
-    /**
-     * The title in title case, which both styles use. A title stored in
-     * capitals is recased; any other is kept as written, so acronyms such as
-     * KKBN or YOLOv11 survive.
-     */
+    /** Title case, which both styles use; see TitleCase. */
     private static function title(array $book): string
     {
-        $title = trim((string) ($book['title'] ?? '')) ?: 'Untitled';
-
-        if ($title !== mb_strtoupper($title)) {
-            return $title;
-        }
-
-        $minor = ['a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'so', 'yet',
-                  'at', 'by', 'in', 'of', 'on', 'to', 'up', 'as', 'via', 'with', 'from', 'into'];
-        $words = preg_split('/(\s+)/u', mb_strtolower($title), -1, PREG_SPLIT_DELIM_CAPTURE) ?: [];
-        $last  = count($words) - 1;
-
-        foreach ($words as $i => $word) {
-            $after = $i > 0 && str_ends_with(rtrim($words[$i - 2] ?? ''), ':');
-            if ($i === 0 || $i === $last || $after || !in_array($word, $minor, true)) {
-                $words[$i] = mb_strtoupper(mb_substr($word, 0, 1)) . mb_substr($word, 1);
-            }
-        }
-
-        return implode('', $words);
+        return TitleCase::title((string) ($book['title'] ?? '')) ?: 'Untitled';
     }
 
     /** Text closed with a full stop, unless it already ends in one or a ?/!. */

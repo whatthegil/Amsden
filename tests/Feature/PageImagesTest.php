@@ -158,6 +158,50 @@ class PageImagesTest extends TestCase
         $this->withSession(['user' => $this->student()])->get("/student/bluebooks/{$b->id}/pages/1")->assertNotFound();
     }
 
+    private function admin(): array
+    {
+        return ['id' => 9, 'name' => 'A D', 'email' => 'admin@cspc.edu.ph', 'role' => 'Admin', 'canUpload' => true];
+    }
+
+    public function test_the_admin_can_preview_exactly_what_a_reader_is_sent(): void
+    {
+        $b = $this->bluebookWithPages(10, [
+            'access_level' => Bluebook::ACCESS_PARTIAL,
+            'access_parts' => ['abstract' => ['from' => 2, 'to' => 3], 'chapter1' => ['from' => 7, 'to' => 7]],
+        ]);
+        $as = $this->withSession(['user' => $this->admin()]);
+
+        // The ordinary admin view keeps the whole PDF and offers the preview.
+        $as->get("/admin/bluebooks/{$b->id}")->assertOk()
+            ->assertSee('Preview as a reader')
+            ->assertDontSee('data-pages-url', false);
+
+        // The preview is the reader's pages, numbered as they see them.
+        $as->get("/admin/bluebooks/{$b->id}?preview=reader")->assertOk()
+            ->assertSee('data-page-count="3"', false)
+            ->assertSee('3 of 10 pages', false);
+        $this->assertSame(402, $this->widthOf($as->get("/admin/bluebooks/{$b->id}/pages/1")->getContent()));
+        $this->assertSame(407, $this->widthOf($as->get("/admin/bluebooks/{$b->id}/pages/3")->getContent()));
+        $as->get("/admin/bluebooks/{$b->id}/pages/4")->assertNotFound();
+    }
+
+    public function test_the_preview_says_when_readers_are_sent_nothing(): void
+    {
+        $b = $this->bluebookWithPages(3, ['access_level' => Bluebook::ACCESS_CONSULTATION]);
+
+        $this->withSession(['user' => $this->admin()])->get("/admin/bluebooks/{$b->id}?preview=reader")
+            ->assertOk()
+            ->assertSee('readers are sent no pages of this bluebook', false)
+            ->assertDontSee('id="pdf-view"', false);
+    }
+
+    public function test_the_page_route_is_not_open_to_students(): void
+    {
+        $b = $this->bluebookWithPages();
+
+        $this->withSession(['user' => $this->student()])->get("/admin/bluebooks/{$b->id}/pages/1")->assertStatus(302);
+    }
+
     public function test_the_worker_renders_every_page(): void
     {
         if (PdfWatermarker::mutool() === null) {

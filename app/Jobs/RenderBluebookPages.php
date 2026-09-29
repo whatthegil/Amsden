@@ -77,7 +77,7 @@ class RenderBluebookPages implements ShouldQueue
                     throw new \RuntimeException("Page {$n} did not render.");
                 }
                 ob_start();
-                imagejpeg($img, null, (int) config('watermark.page_quality', 80));
+                imagewebp($img, null, (int) config('watermark.page_store_quality', 80));
                 $disk->put(PageImages::path($bluebook->id, $n), (string) ob_get_clean());
                 imagedestroy($img);
                 @unlink($png);
@@ -88,9 +88,12 @@ class RenderBluebookPages implements ShouldQueue
                 throw new \RuntimeException('MuPDF rendered no pages.');
             }
 
-            // A document that got shorter leaves its old tail behind; drop it.
-            for ($n = $count + 1; $disk->exists(PageImages::path($bluebook->id, $n)); $n++) {
-                $disk->delete(PageImages::path($bluebook->id, $n));
+            // Anything else in the folder is left over: the tail of a document
+            // that got shorter, or pages drawn before they were kept as WebP.
+            $keep = array_map(fn($n) => PageImages::path($bluebook->id, $n), range(1, $count));
+            $stale = array_diff($disk->files(PageImages::directory($bluebook->id)), $keep);
+            if ($stale) {
+                $disk->delete(array_values($stale));
             }
 
             // Only if the file is still the one that was drawn: a re-upload

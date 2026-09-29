@@ -47,6 +47,7 @@ Route::prefix('admin')->middleware('role:Admin,Sub-Admin')->group(function () {
     Route::get('/rejected',                    [AdminController::class, 'rejectedList'])->name('admin.rejected');
     Route::get('/bluebooks/{id}',              [AdminController::class, 'bluebookView'])->whereNumber('id')->name('admin.bluebooks.view');
     Route::get('/bluebooks/{id}/file',         [AdminController::class, 'bluebookFile'])->whereNumber('id')->name('admin.bluebooks.file');
+    Route::get('/bluebooks/{id}/pages/{n}',    [AdminController::class, 'bluebookPage'])->whereNumber(['id', 'n'])->middleware('throttle:bluebook-page')->name('admin.bluebooks.page');
 
     Route::middleware('permission:manage_bluebooks')->group(function () {
         Route::get('/bluebooks/new',               [AdminController::class, 'bluebookNewForm'])->name('admin.bluebooks.new');

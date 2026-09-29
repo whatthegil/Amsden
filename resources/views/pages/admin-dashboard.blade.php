@@ -62,6 +62,29 @@
         </div>
       @endif
 
+      {{-- Text reading and page drawing run on a worker, not on this host;
+           when it is off they simply stop. Shown only when something waits. --}}
+      @if(($worker['ocr'] ?? 0) + ($worker['pages'] ?? 0) > 0)
+        <div class="callout">
+          <div class="callout-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="12" rx="2"/><path stroke-linecap="round" d="M8 20h8M12 16v4"/></svg>
+          </div>
+          <div class="callout-body">
+            <strong>
+              Waiting on the document worker:
+              {{ implode(' · ', array_filter([
+                  $worker['ocr'] > 0 ? $worker['ocr'] . ' to read for search' : null,
+                  $worker['pages'] > 0 ? $worker['pages'] . ' to draw as watermarked pages' : null,
+              ])) }}
+            </strong>
+            <span>
+              The worker runs on the library computer, not on this server{{ $worker['lastFinished'] ? '; it last finished a document ' . $worker['lastFinished']->diffForHumans() : '' }}.
+              If that is a while ago, start it there with <code>scripts\run-queue-worker.ps1</code>. Until then, new uploads are not searchable by their contents and readers get the PDF viewer.
+            </span>
+          </div>
+        </div>
+      @endif
+
       <div class="grid-2">
         <div class="card">
           <div class="card-header">
