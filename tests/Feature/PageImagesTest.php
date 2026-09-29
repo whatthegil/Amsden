@@ -83,8 +83,34 @@ class PageImagesTest extends TestCase
 
         $res->assertOk();
         $res->assertSee('data-page-count="7"', false);
-        $res->assertSee('data-pages-url="' . url("/student/bluebooks/{$b->id}/pages/__N__") . '"', false);
+        $res->assertSee('data-pages-url="' . url("/student/bluebooks/{$b->id}/pages/__N__") . '?v=', false);
         $res->assertDontSee('data-direct="1"', false);
+        // No PDF engine to download, and page one is asked for straight away.
+        $res->assertDontSee('pdf.min.js', false);
+        $res->assertSee('<link rel="preload" as="image" href="' . url("/student/bluebooks/{$b->id}/pages/1") . '?v=', false);
+    }
+
+    public function test_page_addresses_change_with_the_reader_the_file_and_the_waiver(): void
+    {
+        $book = ['pageImagesSource' => 'bluebooks/a.pdf', 'pageImagesCount' => 5, 'accessLevel' => 'public', 'accessParts' => []];
+        $base = PageImages::version($book, 'one@my.cspc.edu.ph');
+
+        // A second student on the same computer must not be shown the first one's cached pages.
+        $this->assertNotSame($base, PageImages::version($book, 'two@my.cspc.edu.ph'));
+        $this->assertNotSame($base, PageImages::version(['pageImagesSource' => 'bluebooks/b.pdf'] + $book, 'one@my.cspc.edu.ph'));
+        $this->assertNotSame($base, PageImages::version(['accessLevel' => 'partial', 'accessParts' => ['abstract' => ['from' => 1, 'to' => 2]]] + $book, 'one@my.cspc.edu.ph'));
+        $this->assertSame($base, PageImages::version($book, 'one@my.cspc.edu.ph'));
+    }
+
+    public function test_pages_may_be_kept_by_the_browser_but_never_shared(): void
+    {
+        $b = $this->bluebookWithPages();
+
+        $cache = $this->withSession(['user' => $this->student()])
+            ->get("/student/bluebooks/{$b->id}/pages/1")->headers->get('Cache-Control');
+
+        $this->assertStringContainsString('private', $cache);
+        $this->assertStringContainsString('max-age=86400', $cache);
     }
 
     public function test_the_pdf_itself_is_no_longer_handed_to_students(): void

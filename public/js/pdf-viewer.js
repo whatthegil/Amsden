@@ -24,6 +24,9 @@
   // box rather than against the window.
   const RENDER_MARGIN = '1600px 0px';  // draw a page or two ahead of the scroll
   const KEEP_MARGIN   = '4000px 0px';  // let go only well past that
+  // A page image is one small request with nothing to parse, so fetch further
+  // ahead: a reader scrolling finds the next few pages already there.
+  const IMAGE_RENDER_MARGIN = '3200px 0px';
   // A ceiling on canvases regardless of what the margins admit. A page at
   // desktop width costs a few megabytes of backing store, so an unbounded keep
   // set on a 200-page document is how a phone tab gets killed mid-read.
@@ -382,7 +385,7 @@
         keep.add(num);
         render(entry.target, num);
       });
-    }, { root: pagesEl, rootMargin: RENDER_MARGIN });
+    }, { root: pagesEl, rootMargin: imageMode ? IMAGE_RENDER_MARGIN : RENDER_MARGIN });
 
     const far = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {

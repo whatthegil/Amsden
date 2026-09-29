@@ -54,6 +54,24 @@ class PageImages
     }
 
     /**
+     * A short fingerprint of everything a served page depends on: the reader
+     * (their email is drawn in), the file, and the waiver (which decides which
+     * thesis page reader page n is). Put in the page address so a browser may
+     * keep pages long, and a new reader on a shared computer, a replaced file or
+     * an edited waiver all get fresh addresses instead of someone else's pages.
+     */
+    public static function version(array $bluebook, string $email): string
+    {
+        return substr(sha1(implode('|', [
+            $email,
+            $bluebook['pageImagesSource'] ?? '',
+            $bluebook['pageImagesCount'] ?? 0,
+            $bluebook['accessLevel'] ?? '',
+            json_encode($bluebook['accessParts'] ?? []),
+        ])), 0, 12);
+    }
+
+    /**
      * The original page numbers a student may see, in order. Empty for a
      * consultation-only paper, and for a partial one whose ranges name nothing
      * usable - failing closed, as the document route does.
@@ -158,6 +176,32 @@ class PageImages
      * with its transparency kept. Built once per size and reused for a page.
      */
     private static function crest(int $px, int $percent, float $angle): ?GdImage
+    {
+        // Fading it touches every pixel, which was most of the time a page took.
+        // Every page of a document is the same width, so one prepared crest per
+        // size serves them all: kept as a file, since each page is its own request.
+        $cached = storage_path("framework/cache/crest-{$px}-{$percent}-" . (int) $angle . '.png');
+        if (is_file($cached) && ($img = @imagecreatefrompng($cached)) instanceof GdImage) {
+            imagealphablending($img, false);
+            imagesavealpha($img, true);
+            return $img;
+        }
+
+        $made = self::buildCrest($px, $percent, $angle);
+        if ($made) {
+            // Written aside and moved into place, so a request reading it at the
+            // same moment never sees half a file.
+            $tmp = $cached . '.' . bin2hex(random_bytes(4));
+            if (@imagepng($made, $tmp)) {
+                @rename($tmp, $cached);
+            }
+            @unlink($tmp);
+        }
+
+        return $made;
+    }
+
+    private static function buildCrest(int $px, int $percent, float $angle): ?GdImage
     {
         $src = @imagecreatefrompng(public_path('images/cspc-logo.png'));
         if (!$src instanceof GdImage) {

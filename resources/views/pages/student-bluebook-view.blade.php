@@ -171,7 +171,7 @@
                @endif
                @if(!$asAdmin && ($pageImages ?? 0) > 0)
                  {{-- Watermarked page images instead of the PDF: see PageImages. --}}
-                 data-pages-url="{{ route('student.bluebook.page', [$bluebook['id'], '__N__']) }}"
+                 data-pages-url="{{ route('student.bluebook.page', [$bluebook['id'], '__N__', 'v' => \App\Services\Pdf\PageImages::version($bluebook, $user['email'] ?? '')]) }}"
                  data-page-count="{{ $pageImages }}"
                @endif
                data-worker-url="/vendor/pdfjs/pdf.worker.min.js">
@@ -220,7 +220,14 @@
 </div>
 
 @if($bluebook['hasFile'])
-  <script src="/vendor/pdfjs/pdf.min.js"></script>
+  @if(!$asAdmin && ($pageImages ?? 0) > 0)
+    {{-- Start on page one now, while the viewer script is still loading. --}}
+    <link rel="preload" as="image" href="{{ route('student.bluebook.page', [$bluebook['id'], 1, 'v' => \App\Services\Pdf\PageImages::version($bluebook, $user['email'] ?? '')]) }}">
+  @endif
+  {{-- The page-image viewer draws pictures, so it needs no PDF engine. --}}
+  @if($asAdmin || ($pageImages ?? 0) === 0)
+    <script src="/vendor/pdfjs/pdf.min.js"></script>
+  @endif
   <script src="/js/pdf-viewer.js?v={{ filemtime(public_path('js/pdf-viewer.js')) }}"></script>
 @endif
 {{-- The same paper in each style a student may be asked for. --}}
