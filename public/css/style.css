@@ -1912,6 +1912,11 @@ a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
   flex-wrap: wrap;
   gap: 0.25rem 1rem;
 }
+.access-parts-all {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--gray-100);
+}
 .access-range { display: flex; align-items: center; gap: 0.4rem; color: var(--gray-400); }
 .access-range input {
   width: 5.5rem;

@@ -122,6 +122,9 @@ class AccessWaiverTest extends TestCase
 
         $res->assertOk();
         $res->assertSee('Access Permission Waiver');
+        // One box ticks every part; it has no name, so it is never submitted as a part.
+        $res->assertSee('Select all parts');
+        $res->assertSee('id="access-parts-all"', false);
         $this->assertMatchesRegularExpression('/value="consultation" required\s+checked/', $res->getContent());
         $this->assertDoesNotMatchRegularExpression('/value="public" required\s+checked/', $res->getContent());
     }
