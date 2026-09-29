@@ -2115,6 +2115,9 @@ a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
   font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray-400);
 }
 .cite-format .val { font-size: 0.88rem; color: var(--gray-800); line-height: 1.5; }
+/* A reference list: hanging indent, as all three styles lay entries out. */
+.cite-entry { margin: 0 0 0.6rem; padding-left: 1.5rem; text-indent: -1.5rem; }
+.cite-entry:last-child { margin-bottom: 0; }
 
 @media (max-width: 768px) {
   .pdf-pages { max-height: 75vh; }

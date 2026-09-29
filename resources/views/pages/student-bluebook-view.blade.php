@@ -219,43 +219,5 @@
   <script src="/js/pdf-viewer.js?v={{ filemtime(public_path('js/pdf-viewer.js')) }}"></script>
 @endif
 {{-- The same paper in each style a student may be asked for. --}}
-<div class="modal-overlay" id="cite-modal" role="dialog" aria-modal="true" aria-labelledby="cite-modal-title">
-  <div class="modal-card cite-modal">
-    <div class="modal-header">
-      <h3 id="cite-modal-title">Cite this paper</h3>
-      <button type="button" class="modal-close" data-close-modal aria-label="Close">&times;</button>
-    </div>
-    <div class="modal-body">
-      @foreach(\App\Services\CitationFormats::all($bluebook) as $style)
-        <div class="cite-format">
-          <div class="cite-format-head">
-            <span class="key">{{ $style['label'] }}</span>
-            <button type="button" class="btn btn-outline btn-sm" data-copy="{{ $style['text'] }}">Copy</button>
-          </div>
-          <div class="val">{!! $style['html'] !!}</div>
-        </div>
-      @endforeach
-    </div>
-  </div>
-</div>
-<script>
-(function () {
-  const modal = document.getElementById('cite-modal');
-  const open  = document.querySelector('[data-open-modal="cite-modal"]');
-  if (!modal || !open) return;
-
-  function close() { modal.classList.remove('open'); open.focus(); }
-
-  open.addEventListener('click', function () {
-    modal.classList.add('open');
-    modal.querySelector('[data-close-modal]').focus();
-  });
-  modal.addEventListener('click', function (e) {
-    if (e.target === modal || e.target.closest('[data-close-modal]')) close();
-  });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && modal.classList.contains('open')) close();
-  });
-})();
-</script>
+<x-cite-modal id="cite-modal" :styles="\App\Services\CitationFormats::all($bluebook)" />
 @include('partials.footer')

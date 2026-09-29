@@ -112,6 +112,21 @@ class LiteratureReviewTest extends TestCase
         $this->assertStringStartsWith('Dela Cruz, M., & Santos, J. (2024).', $two['text']);
     }
 
+    public function test_reference_lists_run_by_first_author_surname_in_every_style(): void
+    {
+        $lists = \App\Services\CitationFormats::lists([
+            ['authors' => ['Zamora, Ana'], 'year' => 2024, 'title' => 'Second'],
+            ['authors' => ['Bautista, Zed'], 'year' => 2024, 'title' => 'First'],
+        ]);
+
+        $this->assertSame(['apa', 'mla', 'acm'], array_keys($lists));
+        $this->assertStringStartsWith('Bautista, Z. (2024).', $lists['apa']['text']);
+        $this->assertStringStartsWith('Bautista, Zed.', $lists['mla']['text']);
+        // ACM starts with the first name but is still ordered by surname.
+        $this->assertStringStartsWith('Zed Bautista. 2024.', $lists['acm']['text']);
+        $this->assertStringContainsString("\n\nAna Zamora. 2024.", $lists['acm']['text']);
+    }
+
     public function test_the_page_offers_citations_to_copy(): void
     {
         $this->paper(['title' => 'Crop Disease Detection']);
@@ -122,7 +137,16 @@ class LiteratureReviewTest extends TestCase
 
         $res->assertOk();
         $res->assertSee('APA 7 citation');
-        $res->assertSee('Copy all 1 citations (APA 7)');
+        // A Cite button per paper and one for the whole list, each opening the
+        // three styles with a Copy apiece.
+        $res->assertSee('data-open-modal="cite-0"', false);
+        $res->assertSee('data-open-modal="cite-all"', false);
+        $res->assertSee('Cite all 1 papers');
+        $res->assertSee('id="cite-0"', false);
+        $res->assertSee('id="cite-all"', false);
+        foreach (['APA 7', 'MLE', 'ACM'] as $style) {
+            $res->assertSee($style);
+        }
         $res->assertSee('data-copy=', false);
     }
 }

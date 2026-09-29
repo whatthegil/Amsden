@@ -96,11 +96,6 @@
             </div>
           </div>
 
-          @php
-            // The reference list: every result's citation, alphabetical, as APA wants.
-            $references = collect($results)->pluck('citation.text')->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->all();
-          @endphp
-
           @if(!empty($overview))
             <div class="card" style="margin-top:1.25rem;">
               <div class="card-header">
@@ -115,7 +110,7 @@
           @endif
 
           <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
-            <button type="button" class="btn btn-outline btn-sm" data-copy="{{ implode("\n\n", $references) }}">Copy all {{ $total }} citations (APA 7)</button>
+            <button type="button" class="btn btn-outline btn-sm" data-open-modal="cite-all">Cite all {{ $total }} papers</button>
           </div>
 
           <div style="display:flex;flex-direction:column;gap:1rem;margin-top:1.25rem;">
@@ -182,7 +177,7 @@
                       </span>
                       {!! $result['citation']['html'] !!}
                     </div>
-                    <button type="button" class="btn btn-outline btn-sm" style="flex-shrink:0;" data-copy="{{ $result['citation']['text'] }}">Copy</button>
+                    <button type="button" class="btn btn-outline btn-sm" style="flex-shrink:0;" data-open-modal="cite-{{ $loop->index }}">Cite</button>
                   </div>
                 </div>
               </div>
@@ -198,4 +193,13 @@
   </main>
 </div>
 
+{{-- The citation dialogs, out here rather than in the result cards so no
+     card's styling can clip or shift them. --}}
+@if(!empty($results))
+  <x-cite-modal id="cite-all" title="Reference list ({{ $total }} papers)"
+                :styles="\App\Services\CitationFormats::lists(array_column($results, 'bluebook'))" />
+  @foreach($results as $result)
+    <x-cite-modal id="cite-{{ $loop->index }}" :styles="\App\Services\CitationFormats::all($result['bluebook'])" />
+  @endforeach
+@endif
 @include('partials.footer')

@@ -406,6 +406,44 @@ document.addEventListener('click', function (e) {
   }
 });
 
+// Dialogs opened by a button ([data-open-modal="id"]), such as the citation
+// styles: closed by their × button, a click on the backdrop, or Escape, with
+// focus returned to the button that opened them.
+(function () {
+  let opener = null;
+
+  function close(modal) {
+    modal.classList.remove('open');
+    if (opener) opener.focus();
+    opener = null;
+  }
+
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('[data-open-modal]');
+    if (btn) {
+      const modal = document.getElementById(btn.getAttribute('data-open-modal'));
+      if (!modal) return;
+      opener = btn;
+      modal.classList.add('open');
+      const x = modal.querySelector('[data-close-modal]');
+      if (x) x.focus();
+      return;
+    }
+
+    const modal = e.target.closest('.modal-overlay.open');
+    if (modal && modal.hasAttribute('role') && modal.getAttribute('role') === 'dialog'
+        && (e.target === modal || e.target.closest('[data-close-modal]'))) {
+      close(modal);
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    const modal = document.querySelector('.modal-overlay.open[role="dialog"]');
+    if (modal) close(modal);
+  });
+})();
+
 // ─── Idle sign-out ────────────────────────────────────────────────────────────
 // After IDLE_WARN seconds without a click, key, scroll or touch, ask whether to
 // stay signed in, and sign out if no one answers within IDLE_GRACE seconds.

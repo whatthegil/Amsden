@@ -30,6 +30,42 @@ class CitationFormats
     }
 
     /**
+     * A reference list of several papers in each style, alphabetical by its
+     * first author as all three styles order them.
+     *
+     * @return array<string, array{label: string, text: string, html: string}>
+     */
+    public static function lists(array $books): array
+    {
+        $lists = [];
+
+        // By the first author's surname, then title - not by each entry's text,
+        // which in ACM starts with a first name.
+        $key = function (array $book) {
+            $first = self::people($book)[0] ?? '';
+            return ($first !== '' ? self::split($first)[1] : '') . ' ' . self::title($book);
+        };
+        usort($books, fn($a, $b) => strnatcasecmp($key($a), $key($b)));
+
+        foreach ($books as $book) {
+            foreach (self::all($book) as $key => $style) {
+                $lists[$key]['label'] = $style['label'];
+                $lists[$key]['entries'][] = $style;
+            }
+        }
+
+        return array_map(function (array $list) {
+            $entries = $list['entries'];
+
+            return [
+                'label' => $list['label'],
+                'text'  => implode("\n\n", array_column($entries, 'text')),
+                'html'  => implode('', array_map(fn($e) => '<p class="cite-entry">' . $e['html'] . '</p>', $entries)),
+            ];
+        }, $lists);
+    }
+
+    /**
      *   Tombado, Marygrace L., et al. Readiness of Academic Libraries in
      *   Makerspace Implementation. 2025. Camarines Sur Polytechnic Colleges,
      *   Bachelor's thesis.
