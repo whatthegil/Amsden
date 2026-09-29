@@ -144,7 +144,7 @@ class LiteratureReviewTest extends TestCase
         $res->assertSee('Cite all 1 papers');
         $res->assertSee('id="cite-0"', false);
         $res->assertSee('id="cite-all"', false);
-        foreach (['APA 7', 'MLE', 'ACM'] as $style) {
+        foreach (['APA 7', 'MLA 9', 'ACM'] as $style) {
             $res->assertSee($style);
         }
         $res->assertSee('data-copy=', false);
