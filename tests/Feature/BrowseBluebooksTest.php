@@ -176,6 +176,37 @@ class BrowseBluebooksTest extends TestCase
         $res->assertSee("Dela Cruz, M. (2024).", false);
     }
 
+    public function test_the_cite_button_offers_apa_mla_and_acm(): void
+    {
+        $bluebook = $this->makeBluebook(['authors' => ['Dela Cruz, Maria A.', 'Santos, Juan'], 'year' => 2024]);
+
+        $res = $this->withSession(['user' => $this->student()])->get("/student/bluebooks/{$bluebook->id}");
+
+        $res->assertOk();
+        $res->assertSee('data-open-modal="cite-modal"', false);
+        $res->assertSee('id="cite-modal"', false);
+        foreach (['APA 7', 'MLA 9', 'ACM'] as $style) {
+            $res->assertSee($style);
+        }
+        // Each style carries its own copy button, holding that style's text.
+        $res->assertSee('data-copy="Dela Cruz, Maria A., and Juan Santos. An Automated Attendance System. 2024.', false);
+        $res->assertSee('data-copy="Maria A. Dela Cruz and Juan Santos. 2024. An Automated Attendance System. Bachelor&#039;s thesis.', false);
+    }
+
+    public function test_mla_and_acm_follow_the_number_of_authors(): void
+    {
+        $book = fn(array $authors) => ['authors' => $authors, 'year' => 2025, 'title' => 'TRACKCSPC: A SMART CAMPUS PLATFORM'];
+
+        $one   = \App\Services\CitationFormats::mla($book(['Paat, Ronan V.']));
+        $three = \App\Services\CitationFormats::mla($book(['Beriña, Raxine D.', 'Layron, Debie S.', 'Paat, Ronan V.']));
+        $acm   = \App\Services\CitationFormats::acm($book(['Beriña, Raxine D.', 'Layron, Debie S.', 'Paat, Ronan V.']));
+
+        $this->assertSame("Paat, Ronan V. Trackcspc: A Smart Campus Platform. 2025. Camarines Sur Polytechnic Colleges, Bachelor's thesis.", $one['text']);
+        $this->assertStringStartsWith('Beriña, Raxine D., et al. ', $three['text']);
+        $this->assertStringStartsWith('Raxine D. Beriña, Debie S. Layron, and Ronan V. Paat. 2025. ', $acm['text']);
+        $this->assertStringContainsString('<em>Trackcspc: A Smart Campus Platform</em>.', $acm['html']);
+    }
+
     public function test_the_paper_page_keeps_program_and_adviser_but_not_upload_details(): void
     {
         $bluebook = $this->makeBluebook([
