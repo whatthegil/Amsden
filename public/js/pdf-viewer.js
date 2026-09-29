@@ -109,7 +109,7 @@
         // Light enough to read the thesis through, dark enough to survive the
         // contrast knocked out of a photographed screen.
         if (hasLogo) {
-          ctx.globalAlpha = 0.06;
+          ctx.globalAlpha = 0.10;
           ctx.drawImage(logo, -crest / 2, -crest - size * 0.4, crest, crest);
         }
         if (viewer) {
