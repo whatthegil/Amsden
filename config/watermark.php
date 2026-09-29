@@ -68,6 +68,9 @@ return [
     */
 
     'page_images'       => (bool) env('WATERMARK_PAGE_IMAGES', true),
+    // Queue a render whenever a bluebook gets a new file. Off in the test
+    // suite, whose queue runs jobs on the spot.
+    'page_autorender'   => (bool) env('WATERMARK_PAGE_AUTORENDER', true),
     'page_dpi'          => (int) env('WATERMARK_PAGE_DPI', 150),
     'page_quality'      => (int) env('WATERMARK_PAGE_QUALITY', 80),        // JPEG sent to the reader
     'page_store_quality' => (int) env('WATERMARK_PAGE_STORE_QUALITY', 80), // WebP kept in storage

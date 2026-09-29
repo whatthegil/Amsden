@@ -85,7 +85,7 @@ while ($true) {
     # semantics with shared-read access, and writes php's ASCII console
     # output byte-for-byte with no PowerShell re-encoding (which previously
     # corrupted it into letter-spaced garbage).
-    $cmdLine = "`"$phpExe`" artisan queue:work$envArg --sleep=3 --tries=3 --max-time=3600 >> `"$logFile`" 2>&1"
+    $cmdLine = "`"$phpExe`" artisan queue:work$envArg --queue=default,pages --sleep=3 --tries=3 --max-time=3600 >> `"$logFile`" 2>&1"
     & cmd.exe /c $cmdLine
 
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"

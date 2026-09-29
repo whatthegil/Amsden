@@ -128,10 +128,14 @@ class SystemCheck extends Command
         // is what lets a host with no MuPDF (Laravel Cloud) still send marked
         // pages. Drawing them is the worker's job and needs mutool (above).
         if (\App\Services\Pdf\PageImages::canWatermark()) {
+            $renderer = \App\Jobs\RenderBluebookPages::rasterizer()?->name();
             $this->capability('Watermarked page viewer', true, [
                 'Students are sent page images with their email drawn in, never the PDF,',
-                'for every bluebook whose pages the worker has rendered',
-                '(php artisan bluebooks:render-pages).',
+                'for every bluebook whose pages have been rendered.',
+                $renderer
+                    ? "This host can render them itself (with {$renderer}): php artisan bluebooks:render-pages,"
+                      . ' or a worker on the "pages" queue.'
+                    : 'This host cannot render them (no mutool or pdftoppm); a worker elsewhere must.',
             ]);
         } else {
             $failed++;

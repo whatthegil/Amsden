@@ -83,10 +83,6 @@ class ProcessBluebookOcr implements ShouldQueue
         $bluebook->ocr_rasterizer = $result['rasterizer'];
         $bluebook->ocr_processed_at = now();
         $bluebook->save();
-
-        // Every new or replaced file comes through here, so this is where its
-        // pages are drawn for the watermarked page viewer.
-        RenderBluebookPages::dispatch($bluebook->id);
     }
 
     public function failed(Throwable $exception): void

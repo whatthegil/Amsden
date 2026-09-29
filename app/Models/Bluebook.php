@@ -82,6 +82,31 @@ class Bluebook extends Model
         'waiver_recorded_at' => 'datetime',
     ];
 
+    /**
+     * A new or replaced file has its pages drawn for the watermarked page
+     * viewer, on the render queue - whatever the path that stored it (student
+     * upload, re-upload, admin add or edit, import). It used to wait for OCR to
+     * finish first, which only a worker with Tesseract can do; drawing pages
+     * needs no text, so it no longer waits.
+     */
+    protected static function booted(): void
+    {
+        $render = function (Bluebook $bluebook) {
+            if ($bluebook->file_path && config('watermark.page_images', true) && config('watermark.page_autorender', true)) {
+                \App\Jobs\RenderBluebookPages::dispatch($bluebook->id)->afterCommit();
+            }
+        };
+
+        // Created with a file, or given a different one. (On a new record
+        // wasChanged() is false, hence the two events.)
+        static::created($render);
+        static::updated(function (Bluebook $bluebook) use ($render) {
+            if ($bluebook->wasChanged('file_path')) {
+                $render($bluebook);
+            }
+        });
+    }
+
     /** The account that submitted this paper (uploaded_by → users.email). */
     public function uploader(): BelongsTo
     {

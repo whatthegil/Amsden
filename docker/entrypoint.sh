@@ -26,7 +26,7 @@ php artisan view:cache
 # recycle), running as www-data so the files it writes stay readable to Apache.
 (
     while true; do
-        su -s /bin/sh www-data -c "php artisan queue:work --sleep=3 --tries=3 --max-time=3600" || true
+        su -s /bin/sh www-data -c "php artisan queue:work --queue=default,pages --sleep=3 --tries=3 --max-time=3600" || true
         sleep 5
     done
 ) &

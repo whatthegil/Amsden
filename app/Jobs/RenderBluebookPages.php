@@ -4,23 +4,25 @@ namespace App\Jobs;
 
 use App\Models\Bluebook;
 use App\Services\Pdf\PageImages;
-use App\Services\Pdf\PdfWatermarker;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Services\Ocr\Rasterizers\MuPdfRasterizer;
+use App\Services\Ocr\Rasterizers\PdfRasterizer;
+use App\Services\Ocr\Rasterizers\PopplerRasterizer;
 use Illuminate\Support\Facades\File;
-use Symfony\Component\Process\Process;
 
 /**
- * Renders every page of a bluebook to a JPEG on the bluebook disk, so readers
- * can be sent watermarked pages instead of the PDF (see PageImages).
+ * Renders every page of a bluebook to an image on the bluebook disk, so
+ * readers can be sent watermarked pages instead of the PDF (see PageImages).
  *
- * Needs MuPDF, so it runs on the worker, not on Laravel Cloud - which is the
- * point: the host that serves pages only has to draw a mark onto an image,
- * and GD can do that anywhere. Until a bluebook's pages exist, readers get the
- * PDF viewer as before.
+ * Drawn with MuPDF where there is one, and with Poppler's pdftoppm otherwise -
+ * which Laravel Cloud has, so production can draw its own pages without the
+ * worker machine. Not Ghostscript, though it is there too: that build is old
+ * enough to have had security fixes since, and these are uploaded files.
+ * Until a bluebook's pages exist, readers get the PDF viewer as before.
  */
 class RenderBluebookPages implements ShouldQueue
 {
@@ -30,8 +32,16 @@ class RenderBluebookPages implements ShouldQueue
 
     public int $timeout = 900;
 
+    /**
+     * Its own queue, apart from OCR. A worker on Laravel Cloud can render
+     * pages (it has Poppler) but cannot read text (no Tesseract); on the shared
+     * queue it would take OCR jobs too and fail every one of them.
+     */
+    public const QUEUE = 'pages';
+
     public function __construct(private int $bluebookId)
     {
+        $this->onQueue(self::QUEUE);
     }
 
     public function handle(): void
@@ -41,11 +51,11 @@ class RenderBluebookPages implements ShouldQueue
             return;
         }
 
-        $mutool = PdfWatermarker::mutool();
-        if ($mutool === null) {
+        $rasterizer = self::rasterizer();
+        if ($rasterizer === null) {
             // Said plainly in failed_jobs rather than retried forever: this host
-            // cannot render, and only a worker that has MuPDF can.
-            throw new \RuntimeException('Page images need MuPDF (mutool), which this host does not have. Run the queue worker on a machine that does.');
+            // cannot render, and only a worker that can should take the job.
+            throw new \RuntimeException('Page images need MuPDF (mutool) or Poppler (pdftoppm), and this host has neither. Run the queue worker on a machine that does.');
         }
 
         $source = $bluebook->file_path;
@@ -66,12 +76,20 @@ class RenderBluebookPages implements ShouldQueue
             // Sharp at the viewer's widest (fit-width on a laptop, at 1.5x
             // density), without making each page heavier than it need be.
             $dpi = (int) config('watermark.page_dpi', 150);
-            (new Process([$mutool, 'draw', '-q', '-r', (string) $dpi, '-o', $work . '/%d.png', $pdf]))
-                ->setTimeout($this->timeout - 60)
-                ->mustRun();
+
+            // The rasterizers take their time limit from OCR's, which is set
+            // for a few pages at a time; a whole thesis needs this job's.
+            $ocrTimeout = config('ocr.timeout');
+            config(['ocr.timeout' => $this->timeout - 60]);
+            try {
+                $pngs = $rasterizer->rasterize($pdf, $work, $dpi);
+            } finally {
+                config(['ocr.timeout' => $ocrTimeout]);
+            }
 
             $count = 0;
-            for ($n = 1; is_file($png = "{$work}/{$n}.png"); $n++) {
+            foreach (array_values($pngs) as $i => $png) {
+                $n   = $i + 1;
                 $img = imagecreatefrompng($png);
                 if (!$img) {
                     throw new \RuntimeException("Page {$n} did not render.");
@@ -85,7 +103,7 @@ class RenderBluebookPages implements ShouldQueue
             }
 
             if ($count === 0) {
-                throw new \RuntimeException('MuPDF rendered no pages.');
+                throw new \RuntimeException($rasterizer->name() . ' rendered no pages.');
             }
 
             // Anything else in the folder is left over: the tail of a document
@@ -106,5 +124,17 @@ class RenderBluebookPages implements ShouldQueue
         } finally {
             File::deleteDirectory($work);
         }
+    }
+
+    /** MuPDF if this host has it, else Poppler; null when it has neither. */
+    public static function rasterizer(): ?PdfRasterizer
+    {
+        foreach ([new MuPdfRasterizer(), new PopplerRasterizer()] as $candidate) {
+            if ($candidate->isAvailable()) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 }
