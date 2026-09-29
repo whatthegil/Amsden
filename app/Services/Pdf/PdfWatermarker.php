@@ -178,8 +178,8 @@ class PdfWatermarker
         // here would be undone before it arrived.
         $process = new Process([
             $bin, 'run', $script, $src, $dest, $line1, $line2,
-            (string) config('watermark.opacity', 0.13),
-            (string) config('watermark.size', 11),
+            (string) config('watermark.opacity', 0.16),
+            (string) config('watermark.size', 12),
             (string) $offset,
             $withLogo && is_file(self::logoPng()) ? self::logoPng() : '',
         ]);
@@ -366,8 +366,8 @@ class PdfWatermarker
     private static function stampWithGhostscript(
         string $bin, string $src, string $dest, string $line1, string $line2, float $offset, bool $withLogo = false
     ): bool {
-        $size    = (float) config('watermark.size', 11);
-        $opacity = (float) config('watermark.opacity', 0.13);
+        $size    = (float) config('watermark.size', 12);
+        $opacity = (float) config('watermark.opacity', 0.16);
         $logo    = $withLogo ? self::logoPostScript($size) : '';
 
         $program = sprintf(
@@ -382,7 +382,7 @@ class PdfWatermarker
             . 'systemdict /.setopacityalpha known '
             . '{ %.2F .setopacityalpha 0.06 0.14 0.31 setrgbcolor } '
             . '{ 0.87 0.88 0.92 setrgbcolor } ifelse '
-            . '/Helvetica findfont %.1F scalefont setfont '
+            . '/Helvetica-Bold findfont %.1F scalefont setfont '
             . '%.1F %d ph %d add { /yy exch def '
             . '%.1F %d pw %d add { /xx exch def '
             . 'gsave xx yy translate -22 rotate '

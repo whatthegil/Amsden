@@ -61,8 +61,9 @@
 
   pdfjsLib.GlobalWorkerOptions.workerSrc = view.dataset.workerUrl;
 
-  // Above 1.5 the memory cost on a phone outweighs the sharpness gained.
-  const scaleFor = () => Math.min(window.devicePixelRatio || 1, 1.5);
+  // At 1.5 a phone's 2x-3x screen upscaled every page and the text went soft;
+  // above 2 the memory cost outweighs the sharpness gained.
+  const scaleFor = () => Math.min(window.devicePixelRatio || 1, 2);
 
   // ── The watermark, in the page rather than over it ─────────────────────────
   // The watermark belongs to the document only, so it is drawn here, into the
@@ -197,6 +198,15 @@
     const tasks    = new Map();   // page number -> in-flight RenderTask
     const keep     = new Set();   // pages close enough to hold in memory
 
+    // Whether the file itself carries this reader's mark. The server's stamp
+    // records the address it wrote (resources/pdf/watermark.js); a copy served
+    // unstamped - a signed storage link, or a host with no MuPDF - has no such
+    // entry, or someone else's, and gets the mark drawn here instead.
+    const markedInFile = pdf.getMetadata().then(function (meta) {
+      const custom = meta && meta.info && meta.info.Custom;
+      return !!viewer && !!custom && custom.CBAMSMarked === viewer;
+    }).catch(function () { return false; });
+
     function release(num) {
       // Cancel first: a render left running draws into a canvas that is about
       // to be discarded, which on a long document is most of the work the
@@ -257,12 +267,14 @@
         const task = page.render({ canvasContext: canvas.getContext('2d'), viewport });
         tasks.set(num, task);
 
-        return task.promise.then(function () {
+        return Promise.all([task.promise, markedInFile]).then(function (done) {
           tasks.delete(num);
           holder.textContent = '';
           // Stamped before it is shown, so there is no frame in which a clean
-          // page is on screen to be captured.
-          stamp(canvas);
+          // page is on screen to be captured. A page the server already marked
+          // for this reader is left alone: a second grid at its own spacing
+          // put crests over the words and doubled the address into a blur.
+          if (!done[1]) stamp(canvas);
           // Scrolled far away while this was drawing: drop it rather than keep
           // a canvas for a page nowhere near the viewport.
           if (!keep.has(num)) return;

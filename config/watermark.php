@@ -49,8 +49,8 @@ return [
     |
     */
 
-    'opacity' => (float) env('WATERMARK_OPACITY', 0.13),
-    'size'    => (float) env('WATERMARK_SIZE', 11),
+    'opacity' => (float) env('WATERMARK_OPACITY', 0.16),
+    'size'    => (float) env('WATERMARK_SIZE', 12),
 
     /*
     | Seconds before a stamping run is abandoned. Documents here reach 200 pages

@@ -90,7 +90,7 @@ trait StreamsBluebookDocument
         $key = sha1(implode('|', [
             $bluebook['id'], $bluebook['filePath'], $bluebook['fileSize'] ?? '',
             $pageList ?? 'all', $viewer ?? 'unstamped',
-            config('watermark.opacity'), config('watermark.size'), 'v1',
+            config('watermark.opacity'), config('watermark.size'), 'v2',
         ]));
 
         return storage_path('app/document-cache/' . $bluebook['id'] . '-' . $key . '.pdf');

@@ -20,8 +20,8 @@ var input   = scriptArgs[0];
 var output  = scriptArgs[1];
 var line1   = scriptArgs[2] || '';
 var line2   = scriptArgs[3] || '';
-var opacity = scriptArgs[4] ? parseFloat(scriptArgs[4]) : 0.13;
-var size    = scriptArgs[5] ? parseFloat(scriptArgs[5]) : 11;
+var opacity = scriptArgs[4] ? parseFloat(scriptArgs[4]) : 0.16;
+var size    = scriptArgs[5] ? parseFloat(scriptArgs[5]) : 12;
 // Shifts the grid, so a document stamped twice does not print the second mark
 // on top of the first and leave both unreadable.
 var offset  = scriptArgs[6] ? parseFloat(scriptArgs[6]) : 0;
@@ -32,17 +32,42 @@ var COS = 0.927, SIN = 0.375;
 var STEP = 300;               // gap between marks, in points
 
 var doc  = new PDFDocument(input);
-// "Latin" is CP1252, which is the encoding esc() below writes bytes for.
-var font = doc.addSimpleFont(new Font('Helvetica'), 'Latin');
+// Bold, because a thin stroke at this opacity is what read as blurred. "Latin"
+// is CP1252, which is the encoding esc() below writes bytes for.
+var face = new Font('Helvetica-Bold');
+var font = doc.addSimpleFont(face, 'Latin');
 var pages = doc.countPages();
 
 // Added once and shared by every page, so the file grows by one image, not one
 // per page. A logo that will not load leaves the mark as text alone.
-var logo = null;
+var logo = null, logoRatio = 1;
 if (logoPath) {
-    try { logo = doc.addImage(new Image(logoPath)); } catch (e) { logo = null; }
+    try {
+        var img = new Image(logoPath);
+        logoRatio = img.getHeight() / img.getWidth();
+        logo = doc.addImage(img);
+    } catch (e) { logo = null; }
 }
-var LOGO = size * 4.2;           // drawn size of the logo, in points
+var LOGO = size * 4.2;           // drawn width of the logo, in points
+
+// The crest is a faint emblem behind the address, not a second mark competing
+// with it: at the text's opacity its colours turned to a grey smudge over the
+// words beneath.
+var LOGO_OPACITY = opacity * 0.6;
+
+// Width of a line in points, so it can be centred under the crest.
+function widthOf(s) {
+    var w = 0, i, g;
+    for (i = 0; i < s.length; i++) {
+        try {
+            g = face.encodeCharacter(s.charCodeAt(i));
+            w += face.advanceGlyph(g, 0);
+        } catch (e) {
+            w += 0.6;
+        }
+    }
+    return w * size;
+}
 
 // The few CP1252 bytes that are not simply the Unicode code point. Everything
 // from 0xA0 to 0xFF matches Latin-1 and needs no entry, which covers the
@@ -114,6 +139,27 @@ function dictAt(parent, key) {
     return d;
 }
 
+// One pair of states shared by every page.
+function alphaState(alpha) {
+    var gs = doc.newDictionary();
+    gs.put('ca', alpha);
+    gs.put('CA', alpha);
+    return doc.addObject(gs);
+}
+var textState = alphaState(opacity);
+var logoState = alphaState(LOGO_OPACITY);
+
+// Page coordinates of (u, v) in a mark's rotated frame centred on (ox, oy).
+function at(ox, oy, u, v) {
+    return (ox + COS * u + SIN * v).toFixed(1) + ' ' + (oy - SIN * u + COS * v).toFixed(1);
+}
+
+// One line of the mark, centred on the mark's axis, baseline v points up it.
+function text(s, ox, oy, v) {
+    return 'BT /CBAMSGS gs ' + COS + ' ' + (-SIN) + ' ' + SIN + ' ' + COS + ' '
+         + at(ox, oy, -widthOf(s) / 2, v) + ' Tm (' + esc(s) + ') Tj ET\n';
+}
+
 for (var i = 0; i < pages; i++) {
     var page = doc.findPage(i);
     var box  = boxOf(page);
@@ -126,10 +172,8 @@ for (var i = 0; i < pages; i++) {
 
     // Transparency has to come from an ExtGState; there is no operator for it.
     var egs = dictAt(res, 'ExtGState');
-    var gs  = doc.newDictionary();
-    gs.put('ca', opacity);
-    gs.put('CA', opacity);
-    egs.put('CBAMSGS', doc.addObject(gs));
+    egs.put('CBAMSGS', textState);
+    egs.put('CBAMSGSL', logoState);
 
     if (logo) {
         dictAt(res, 'XObject').put('CBAMSLOGO', logo);
@@ -139,31 +183,28 @@ for (var i = 0; i < pages; i++) {
     // below. Without that pairing the mark inherits whatever clip, transform or
     // colour the page's own stream happened to leave set, which on a real
     // document means it lands somewhere unpredictable or not at all.
-    var ops = 'Q q /CBAMSGS gs 0.06 0.14 0.31 rg /CBAMSWM ' + size + ' Tf\n';
+    var ops = 'Q q 0.06 0.14 0.31 rg /CBAMSWM ' + size + ' Tf\n';
 
     for (var y = 40 + offset; y < h + STEP; y += STEP) {
         for (var x = 20 + offset; x < w + STEP; x += STEP) {
-            var px  = (x + box[0]).toFixed(1);
-            var py  = (y + box[1]).toFixed(1);
-            var py2 = (y + box[1] - size - 3).toFixed(1);
-            var m   = COS + ' ' + (-SIN) + ' ' + SIN + ' ' + COS + ' ';
+            // Everything is placed in the mark's own rotated frame, (u, v)
+            // with v up, centred on (x, y), then mapped onto the page.
+            var ox = x + box[0], oy = y + box[1];
 
             if (logo) {
-                // Above the text, in the same rotated frame: the matrix maps the
-                // unit square the image is drawn in to a LOGO-sized square
-                // whose corner sits size + 4 points up the rotated y axis.
-                var lift = size + 4;
-                var lx = (x + box[0] + SIN * lift).toFixed(1);
-                var ly = (y + box[1] + COS * lift).toFixed(1);
-                ops += 'q ' + (LOGO * COS).toFixed(2) + ' ' + (-LOGO * SIN).toFixed(2) + ' '
-                     + (LOGO * SIN).toFixed(2) + ' ' + (LOGO * COS).toFixed(2) + ' '
-                     + lx + ' ' + ly + ' cm /CBAMSLOGO Do Q\n';
+                // Centred above the first line, clear of its capitals.
+                var lw = LOGO, lh = LOGO * logoRatio;
+                var lu = -lw / 2, lv = size * 0.9;
+                ops += 'q /CBAMSGSL gs '
+                     + (lw * COS).toFixed(2) + ' ' + (-lw * SIN).toFixed(2) + ' '
+                     + (lh * SIN).toFixed(2) + ' ' + (lh * COS).toFixed(2) + ' '
+                     + at(ox, oy, lu, lv) + ' cm /CBAMSLOGO Do Q\n';
             }
             if (line1) {
-                ops += 'BT ' + m + px + ' ' + py + ' Tm (' + esc(line1) + ') Tj ET\n';
+                ops += text(line1, ox, oy, 0);
             }
             if (line2) {
-                ops += 'BT ' + m + px + ' ' + py2 + ' Tm (' + esc(line2) + ') Tj ET\n';
+                ops += text(line2, ox, oy, -(size + 3));
             }
         }
     }
@@ -186,6 +227,18 @@ for (var i = 0; i < pages; i++) {
     }
     arr.push(post);
     page.put('Contents', doc.addObject(arr));
+}
+
+// Records whose copy this is, so the viewer knows the pages already carry this
+// reader's mark and does not draw a second, misaligned one over them.
+if (line1) {
+    var trailer = doc.getTrailer();
+    var info = trailer.get('Info');
+    if (!info || !info.isDictionary()) {
+        info = doc.addObject(doc.newDictionary());
+        trailer.put('Info', info);
+    }
+    info.put('CBAMSMarked', doc.newString(line1));
 }
 
 doc.save(output, 'compress');
