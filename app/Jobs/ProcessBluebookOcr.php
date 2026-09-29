@@ -46,18 +46,20 @@ class ProcessBluebookOcr implements ShouldQueue
      * $localPdf is the uploaded file while it is still on this machine, which
      * saves fetching it back from storage.
      */
-    public static function readNowOrQueue(int $bluebookId, ?string $localPdf = null): void
+    public static function readNowOrQueue(int $bluebookId, ?string $localPdf = null): bool
     {
         try {
             $bluebook = Bluebook::find($bluebookId);
             if ($bluebook && self::readTextLayer($bluebook, $localPdf)) {
-                return;
+                return true;
             }
         } catch (Throwable $e) {
             report($e);         // the queued OCR below is the fallback
         }
 
         self::dispatch($bluebookId);
+
+        return false;
     }
 
     /**

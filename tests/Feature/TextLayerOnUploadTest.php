@@ -131,6 +131,37 @@ class TextLayerOnUploadTest extends TestCase
         @unlink($temp);
     }
 
+    public function test_reprocess_reads_the_text_on_the_spot(): void
+    {
+        $local = $this->thesisExtract();
+        Storage::disk(Store::bluebookDisk())->put('bluebooks/t.pdf', file_get_contents($local));
+        @unlink($local);
+        $b = $this->paper('bluebooks/t.pdf');
+        $b->forceFill(['status' => 'Approved', 'ocr_status' => 'failed'])->save();
+        $admin = ['id' => 1, 'name' => 'A D', 'email' => 'a@cspc.edu.ph', 'role' => 'Admin', 'canUpload' => true];
+
+        $this->withSession(['user' => $admin])->post("/admin/bluebooks/{$b->id}/reprocess-ocr")
+            ->assertRedirect()
+            ->assertSessionHas('success', fn($m) => str_contains($m, 'searchable now'));
+
+        $this->assertSame('completed', $b->fresh()->ocr_status);
+        Queue::assertNotPushed(ProcessBluebookOcr::class);
+    }
+
+    public function test_reprocess_queues_a_scan_and_says_so(): void
+    {
+        Storage::disk(Store::bluebookDisk())->put('bluebooks/s.pdf', file_get_contents($this->scan()));
+        $b = $this->paper('bluebooks/s.pdf');
+        $b->forceFill(['status' => 'Approved', 'ocr_status' => 'failed', 'uploaded_by' => 's@my.cspc.edu.ph'])->save();
+        $student = ['id' => 2, 'name' => 'S T', 'email' => 's@my.cspc.edu.ph', 'role' => 'Student', 'canUpload' => true];
+
+        $this->withSession(['user' => $student])->post("/student/bluebooks/{$b->id}/reprocess-ocr")
+            ->assertRedirect()
+            ->assertSessionHas('success', fn($m) => str_contains($m, 'it is a scan'));
+
+        Queue::assertPushed(ProcessBluebookOcr::class);
+    }
+
     public function test_it_can_be_switched_off(): void
     {
         config(['ocr.text_layer' => false]);

@@ -562,10 +562,16 @@ class AdminController extends Controller
             return redirect()->route('admin.bluebooks')->with('success', 'OCR is already processing for this bluebook');
         }
 
-        ProcessBluebookOcr::dispatch($id);
+        // Read here and now when the PDF carries its text, as an upload is;
+        // only a scan is queued for OCR, which needs a worker with Tesseract.
+        // Queuing everything left the button looking dead on Laravel Cloud,
+        // where no worker takes OCR jobs.
+        $readNow = ProcessBluebookOcr::readNowOrQueue($id);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Reprocessed OCR', 'document' => $bluebook['title']]);
 
-        return redirect()->route('admin.bluebooks')->with('success', 'OCR reprocessing started');
+        return redirect()->route('admin.bluebooks')->with('success', $readNow
+            ? 'Text read from the PDF - "' . $bluebook['title'] . '" is searchable now'
+            : 'This PDF has no text layer (it is a scan), so it is queued for OCR on the document worker');
     }
 
     public function users(Request $request)

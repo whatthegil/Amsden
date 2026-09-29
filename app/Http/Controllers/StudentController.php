@@ -279,10 +279,13 @@ class StudentController extends Controller
             return redirect()->route('student.my-uploads')->with('success', 'OCR is already processing for this bluebook');
         }
 
-        ProcessBluebookOcr::dispatch($id);
+        // Read now when the PDF carries its text; only a scan waits for OCR.
+        $readNow = ProcessBluebookOcr::readNowOrQueue($id);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Reprocessed OCR', 'document' => $bluebook['title']]);
 
-        return redirect()->route('student.my-uploads')->with('success', 'OCR reprocessing started');
+        return redirect()->route('student.my-uploads')->with('success', $readNow
+            ? 'Your paper\'s text was read - it is searchable now'
+            : 'Your PDF has no text layer (it is a scan), so it is queued for OCR, which can take a while');
     }
 
     public function uploadForm()
