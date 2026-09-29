@@ -23,7 +23,8 @@ class CitationFormats
 
         return [
             'apa' => ['label' => 'APA 7', 'text' => $apa['text'], 'html' => $apa['html']],
-            'mla' => ['label' => 'MLA 9'] + self::mla($book),
+            // MLA 9 in form; the library calls it MLE.
+            'mla' => ['label' => 'MLE'] + self::mla($book),
             'acm' => ['label' => 'ACM'] + self::acm($book),
         ];
     }

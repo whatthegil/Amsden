@@ -185,7 +185,7 @@ class BrowseBluebooksTest extends TestCase
         $res->assertOk();
         $res->assertSee('data-open-modal="cite-modal"', false);
         $res->assertSee('id="cite-modal"', false);
-        foreach (['APA 7', 'MLA 9', 'ACM'] as $style) {
+        foreach (['APA 7', 'MLE', 'ACM'] as $style) {
             $res->assertSee($style);
         }
         // Each style carries its own copy button, holding that style's text.
