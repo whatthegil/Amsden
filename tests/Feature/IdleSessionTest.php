@@ -64,7 +64,7 @@ class IdleSessionTest extends TestCase
     public function test_the_page_signing_out_idle_says_why(): void
     {
         $this->withSession(['user' => $this->student(), 'last_activity' => time()])
-            ->get('/logout?idle=1')
+            ->post('/logout?idle=1')
             ->assertRedirect(route('login'))
             ->assertSessionHas('error');
 

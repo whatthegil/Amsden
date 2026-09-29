@@ -11,7 +11,7 @@
     <div class="modal-body">
       <p id="idle-modal-text">You have been inactive for {{ \App\Http\Middleware\ExpireIdleSession::IDLE_WARN / 60 }} minutes. For your security you will be signed out in <strong id="idle-countdown" aria-live="polite">2:00</strong>.</p>
       <div style="display:flex;gap:0.5rem;justify-content:flex-end;flex-wrap:wrap;">
-        <a href="{{ route('logout') }}" class="btn btn-outline">Sign out</a>
+        <x-logout-button class="btn btn-outline">Sign out</x-logout-button>
         <button type="button" class="btn btn-primary" id="idle-extend">Stay signed in</button>
       </div>
     </div>

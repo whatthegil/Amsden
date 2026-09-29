@@ -21,6 +21,12 @@ class AuthController extends Controller
 
     private function startSession(User $user): void
     {
+        // A new session id for the signed-in user. Keeping the one from before
+        // sign-in let anyone who had planted that id in the browser - on a
+        // shared library computer, say - ride in on the login that followed
+        // (session fixation). Both password and Google sign-in come through here.
+        session()->regenerate();
+
         session(['user' => [
             'id'        => $user->id,
             'name'      => $user->name,
@@ -30,6 +36,23 @@ class AuthController extends Controller
             'avatar'    => $user->avatar,
             'createdAt' => $user->created_at ? $user->created_at->format('Y-m-d') : now()->format('Y-m-d'),
         ], 'last_activity' => time()]);
+    }
+
+    /**
+     * A sign-in that did not get through. Only successful ones used to be
+     * recorded, so someone working through passwords for an account left no
+     * trace an administrator could see. The reason goes in the log, never the
+     * password tried.
+     */
+    private function logFailedLogin(string $email, ?User $user, string $reason): void
+    {
+        Store::addLog([
+            'userName' => $user?->name ?? 'Unknown',
+            'email'    => mb_substr($email !== '' ? $email : '—', 0, 190),
+            'action'   => 'Failed Login',
+            'document' => $reason . ' · ' . request()->ip(),
+            'status'   => 'Denied',
+        ]);
     }
 
     private function redirectToDashboard(User $user)
@@ -65,17 +88,20 @@ class AuthController extends Controller
         $password = (string) $request->input('password');
 
         if (!$this->isAllowedEmail($email)) {
+            $this->logFailedLogin($email, null, 'Not a CSPC address');
             return view('pages.login', ['error' => 'Only @cspc.edu.ph or @my.cspc.edu.ph email addresses are allowed.', 'success' => null, 'email' => $email]);
         }
 
         $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
         if ($user && !$user->hasKnownPassword()) {
+            $this->logFailedLogin($email, $user, 'No password set yet');
             // Accounts first created through Google sign-in were given a
             // random password nobody knows, so a manual login can never work
             // until the owner sets one on their profile.
             return view('pages.login', ['error' => 'This account was created with Google and has no password yet. Sign in with Google once, then set a password on your Profile page to log in with your email.', 'success' => null, 'email' => $email]);
         }
         if (!$user || !Hash::check($password, $user->password)) {
+            $this->logFailedLogin($email, $user, $user ? 'Wrong password' : 'No such account');
             return view('pages.login', ['error' => 'Invalid email or password. Please try again.', 'success' => null, 'email' => $email]);
         }
 
@@ -102,7 +128,11 @@ class AuthController extends Controller
         if ($user) {
             Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => $idle ? 'Logout (Idle)' : 'Logout', 'document' => '—']);
         }
-        session()->forget(['user', 'last_activity']);
+        // The whole session goes, not just who was in it, and the CSRF token
+        // with it: on a shared computer the next person must not inherit the
+        // last one's session or a token that still works for it.
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
         $redirect = redirect()->route('login');
         return $idle ? $redirect->with('error', ExpireIdleSession::message()) : $redirect;
     }

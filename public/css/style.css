@@ -644,6 +644,16 @@ html.sidebar-collapsed .sidebar-collapse-btn { display: none; }
   transition: all var(--transition);
 }
 .nav-item:hover { background: var(--gray-100); color: var(--gray-800); }
+/* Sign Out is a form button (a POST), made to look like the links around it. */
+.logout-form { margin: 0; display: contents; }
+button.nav-item {
+  width: 100%;
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
 .nav-item.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
 .nav-item .icon { width: 18px; flex-shrink: 0; opacity: 0.8; }
 .nav-item.active .icon { opacity: 1; }

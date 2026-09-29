@@ -55,10 +55,12 @@
       </section>
 
       <div class="consent-actions">
-        <a href="{{ route('logout') }}" class="btn btn-outline">Sign out</a>
+        {{-- Submits the sign-out form below: forms cannot nest. --}}
+        <button type="submit" form="policy-logout" class="btn btn-outline" formnovalidate>Sign out</button>
         <button type="submit" class="btn btn-primary">I Agree &mdash; Continue</button>
       </div>
     </form>
+    <form id="policy-logout" method="POST" action="{{ route('logout') }}" hidden>@csrf</form>
 
     <p class="consent-note">
       You can read these again at any time:

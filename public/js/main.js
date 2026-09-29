@@ -476,7 +476,19 @@ document.addEventListener('click', function (e) {
   function signOut() {
     if (leaving) return;
     leaving = true;
-    window.location.href = modal.dataset.logout;
+    // Signing out is a POST with the CSRF token (see AuthController::logout),
+    // so the page submits a form rather than following a link.
+    const form  = document.createElement('form');
+    form.method = 'POST';
+    form.action = modal.dataset.logout;
+    const token = document.querySelector('meta[name="csrf-token"]');
+    const field = document.createElement('input');
+    field.type  = 'hidden';
+    field.name  = '_token';
+    field.value = token ? token.getAttribute('content') : '';
+    form.appendChild(field);
+    document.body.appendChild(form);
+    form.submit();
   }
   function ping() {
     lastPing = Date.now();
