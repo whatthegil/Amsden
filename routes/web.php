@@ -100,6 +100,7 @@ Route::prefix('student')->middleware('role:Student,Faculty')->group(function () 
     // without ever asking for a file.
     Route::get('/bluebooks/{id}',              [StudentController::class, 'bluebookView'])->middleware('throttle:bluebook-read')->name('student.bluebook');
     Route::get('/bluebooks/{id}/file',         [StudentController::class, 'bluebookFile'])->middleware('throttle:bluebook-read')->name('student.bluebook.file');
+    Route::get('/bluebooks/{id}/pages/{n}',    [StudentController::class, 'bluebookPage'])->whereNumber(['id', 'n'])->middleware('throttle:bluebook-page')->name('student.bluebook.page');
     Route::post('/bluebooks/{id}/flag-capture', [StudentController::class, 'flagCaptureAttempt'])->middleware('throttle:capture-flag')->name('student.bluebook.flag-capture');
 
     Route::get('/history',                     [StudentController::class, 'history'])->name('student.history');

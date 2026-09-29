@@ -137,7 +137,7 @@ class PdfWatermarker
         return null;
     }
 
-    private static function mutool(): ?string
+    public static function mutool(): ?string
     {
         // Same binary the OCR rasterizer looks for, so one pin configures both.
         return BinaryFinder::find(config('ocr.mutool_path'), ['mutool'], [

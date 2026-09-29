@@ -92,6 +92,14 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(30)->by($email ?? $request->ip());
         });
 
+        // A watermarked page is one request per page, and a reader scrolling
+        // quickly through a 200-page thesis asks for dozens a minute. Generous
+        // for reading, still a ceiling on pulling a whole archive page by page.
+        RateLimiter::for('bluebook-page', function (Request $request) {
+            $email = $request->session()->get('user')['email'] ?? null;
+            return Limit::perMinute(240)->by('page:' . ($email ?? $request->ip()));
+        });
+
         // The capture log is evidence, so it must not be floodable into
         // uselessness by a page that has been told to post in a loop. Generous
         // enough for the real thing: the viewer reports a focus loss, a tab

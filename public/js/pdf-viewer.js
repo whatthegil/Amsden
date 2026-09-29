@@ -54,12 +54,71 @@
     setStatus('This document could not be loaded. Please try again, or contact the CSPC Library.');
   }
 
-  if (typeof pdfjsLib === 'undefined') {
+  // Watermarked page images, when the server has them: the reader is sent each
+  // page with their email already drawn into it, never the PDF. See
+  // App\Services\Pdf\PageImages. Without them, the PDF is read as before.
+  const pagesUrl  = view.dataset.pagesUrl || '';
+  const pageCount = Number(view.dataset.pageCount || 0);
+  const imageMode = pagesUrl !== '' && pageCount > 0;
+
+  if (!imageMode && typeof pdfjsLib === 'undefined') {
     fail('pdf.js did not load', new Error('pdfjsLib is undefined'));
     return;
   }
 
-  pdfjsLib.GlobalWorkerOptions.workerSrc = view.dataset.workerUrl;
+  if (!imageMode) pdfjsLib.GlobalWorkerOptions.workerSrc = view.dataset.workerUrl;
+
+  // Page images dressed as the little of a PDF.js document this viewer uses -
+  // a page count, pages with a size, and a render into a canvas - so zoom,
+  // page jumps, full screen and lazy drawing all work on them unchanged.
+  //
+  // Images are not kept between renders: a decoded page is megabytes, and the
+  // browser's cache (the route allows ten minutes, privately) makes fetching a
+  // page again cheap.
+  function imageDocument(template, count) {
+    function load(num) {
+      return new Promise(function (resolve, reject) {
+        const img = new Image();
+        img.onload  = function () { resolve(img); };
+        img.onerror = function () { reject(new Error('page ' + num + ' did not load')); };
+        img.src = template.replace('__N__', String(num));
+      });
+    }
+
+    return {
+      numPages: count,
+      getPage: function (num) {
+        return load(num).then(function (img) {
+          return {
+            getViewport: function (opts) {
+              const scale = (opts && opts.scale) || 1;
+              return { width: img.naturalWidth * scale, height: img.naturalHeight * scale, scale: scale };
+            },
+            render: function (params) {
+              let cancelled = false;
+              const promise = new Promise(function (resolve, reject) {
+                requestAnimationFrame(function () {
+                  if (cancelled) {
+                    const err = new Error('Rendering cancelled');
+                    err.name = 'RenderingCancelledException';
+                    reject(err);
+                    return;
+                  }
+                  const ctx = params.canvasContext;
+                  ctx.imageSmoothingQuality = 'high';
+                  ctx.drawImage(img, 0, 0, params.viewport.width, params.viewport.height);
+                  resolve();
+                });
+              });
+              return { promise: promise, cancel: function () { cancelled = true; } };
+            },
+          };
+        });
+      },
+      // A picture of a page has no bookmarks; the contents list stays hidden.
+      getOutline: function () { return Promise.resolve(null); },
+    };
+  }
 
   // Above 1.5 the memory cost on a phone outweighs the sharpness gained.
   const scaleFor = () => Math.min(window.devicePixelRatio || 1, 1.5);
@@ -181,7 +240,11 @@
   const direct   = view.dataset.direct === '1';
   const fallback = view.dataset.fallbackUrl;
 
-  load(view.dataset.pdfUrl, direct).catch(function (err) {
+  const opening = imageMode
+    ? Promise.resolve(imageDocument(pagesUrl, pageCount))
+    : load(view.dataset.pdfUrl, direct);
+
+  opening.catch(function (err) {
     // The signed link is the fast path, not the only one. A bucket with no CORS
     // rule for this origin, a link that has outlived the reading session, or
     // storage that cannot be reached all land here - and the document is still
@@ -266,7 +329,9 @@
           holder.textContent = '';
           // Stamped before it is shown, so there is no frame in which a clean
           // page is on screen to be captured.
-          stamp(canvas);
+          // A page image already carries the reader's mark, drawn in by the
+          // server; a second one here would cross it.
+          if (!imageMode) stamp(canvas);
           // Scrolled far away while this was drawing: drop it rather than keep
           // a canvas for a page nowhere near the viewport.
           if (!keep.has(num)) return;

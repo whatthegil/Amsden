@@ -6,6 +6,7 @@ use App\Jobs\ProcessBluebookOcr;
 use App\Models\Bluebook;
 use App\Services\LiteratureReviewService;
 use App\Services\OcrService;
+use App\Services\Pdf\PageImages;
 use App\Services\Pdf\PdfWatermarker;
 use App\Services\PdfTextExtractor;
 use App\Services\SimilarityService;
@@ -137,7 +138,14 @@ class StudentController extends Controller
         // Not under a restrictive waiver, though: a signed link hands over the
         // stored file whole, so a partial document has to come through the
         // route that cuts it down, and a consultation-only one is not sent.
-        $fileUrl = $bluebook['hasFile'] && $bluebook['accessLevel'] === Bluebook::ACCESS_PUBLIC
+        //
+        // Where its pages have been drawn, no file is sent at all: the reader
+        // gets watermarked page images, so there is no link to hand out.
+        $pageImages = $bluebook['hasFile'] && PageImages::ready($bluebook)
+            ? count(PageImages::visiblePages($bluebook))
+            : 0;
+
+        $fileUrl = !$pageImages && $bluebook['hasFile'] && $bluebook['accessLevel'] === Bluebook::ACCESS_PUBLIC
             ? Store::bluebookFileUrl($bluebook['filePath'])
             : null;
 
@@ -147,6 +155,43 @@ class StudentController extends Controller
             'bluebook'     => $bluebook,
             'isBookmarked' => Store::isBookmarked($user['email'], $id),
             'fileUrl'      => $fileUrl,
+            'pageImages'   => $pageImages,
+        ]);
+    }
+
+    /**
+     * Page $n of what this reader may see, as an image with their email and
+     * the crest drawn into it. $n counts the reader's pages, not the file's: a
+     * partial waiver's pages run 1, 2, 3 however far apart they sit in the
+     * thesis, so the numbers give nothing away about what is withheld.
+     */
+    public function bluebookPage(int $id, int $n)
+    {
+        $user     = session('user');
+        $bluebook = Store::getBluebook($id);
+        if (!$bluebook || $bluebook['status'] !== 'Approved' || !$bluebook['hasFile'] || !PageImages::ready($bluebook)) {
+            abort(404);
+        }
+
+        if ($bluebook['accessLevel'] === Bluebook::ACCESS_CONSULTATION) {
+            abort(403, 'This bluebook is available only after consultation with the author.');
+        }
+
+        $pages = PageImages::visiblePages($bluebook);
+        if ($n < 1 || $n > count($pages)) {
+            abort(404);
+        }
+
+        $stored = PageImages::disk()->get(PageImages::path($id, $pages[$n - 1]));
+        if ($stored === null) {
+            abort(404);
+        }
+
+        return response(PageImages::watermark($stored, (string) ($user['email'] ?? '')), 200, [
+            'Content-Type'           => 'image/jpeg',
+            // Marked for this reader, so never shared by a cache between readers.
+            'Cache-Control'          => 'private, max-age=600',
+            'X-Content-Type-Options' => 'nosniff',
         ]);
     }
 
@@ -160,6 +205,12 @@ class StudentController extends Controller
         $disk = Storage::disk(Store::bluebookDisk());
 
         if (!$disk->exists($bluebook['filePath'])) {
+            abort(404);
+        }
+
+        // Its pages are served watermarked instead, and handing out the file
+        // here too would put the clean copy back one URL away.
+        if (PageImages::ready($bluebook)) {
             abort(404);
         }
 

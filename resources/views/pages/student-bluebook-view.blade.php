@@ -169,6 +169,11 @@
                  data-direct="1"
                  data-fallback-url="{{ route('student.bluebook.file', $bluebook['id']) }}"
                @endif
+               @if(!$asAdmin && ($pageImages ?? 0) > 0)
+                 {{-- Watermarked page images instead of the PDF: see PageImages. --}}
+                 data-pages-url="{{ route('student.bluebook.page', [$bluebook['id'], '__N__']) }}"
+                 data-page-count="{{ $pageImages }}"
+               @endif
                data-worker-url="/vendor/pdfjs/pdf.worker.min.js">
             {{-- Reading controls; pdf-viewer.js enables them once the document is open. --}}
             <div class="pdf-toolbar" id="pdf-toolbar" role="toolbar" aria-label="Document controls">

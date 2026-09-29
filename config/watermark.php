@@ -57,6 +57,23 @@ return [
     'size'    => (float) env('WATERMARK_SIZE', 11),
 
     /*
+    |--------------------------------------------------------------------------
+    | Watermarked page images
+    |--------------------------------------------------------------------------
+    |
+    | Students are sent each page as an image with their email and the crest
+    | drawn into it, never the PDF (see App\Services\Pdf\PageImages). The worker
+    | renders the pages once at page_dpi; the mark is added per request.
+    |
+    */
+
+    'page_images'       => (bool) env('WATERMARK_PAGE_IMAGES', true),
+    'page_dpi'          => (int) env('WATERMARK_PAGE_DPI', 150),
+    'page_quality'      => (int) env('WATERMARK_PAGE_QUALITY', 80),
+    'page_text_opacity' => (float) env('WATERMARK_PAGE_TEXT_OPACITY', 0.30),
+    'page_logo_opacity' => (float) env('WATERMARK_PAGE_LOGO_OPACITY', 0.18),
+
+    /*
     | Seconds before a stamping run is abandoned. Documents here reach 200 pages
     | and 30 MB; a run that has not finished by this point is stuck, and the
     | reader is better served the stored file than a spinner.

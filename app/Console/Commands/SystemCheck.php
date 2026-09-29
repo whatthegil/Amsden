@@ -124,6 +124,23 @@ class SystemCheck extends Command
             ]));
         }
 
+        // Serving watermarked pages needs only PHP's GD - not a binary - which
+        // is what lets a host with no MuPDF (Laravel Cloud) still send marked
+        // pages. Drawing them is the worker's job and needs mutool (above).
+        if (\App\Services\Pdf\PageImages::canWatermark()) {
+            $this->capability('Watermarked page viewer', true, [
+                'Students are sent page images with their email drawn in, never the PDF,',
+                'for every bluebook whose pages the worker has rendered',
+                '(php artisan bluebooks:render-pages).',
+            ]);
+        } else {
+            $failed++;
+            $this->capability('Watermarked page viewer', false, [
+                'PHP\'s GD extension with FreeType, or the bundled font, is missing.',
+                'Students are sent the PDF instead, marked only on screen.',
+            ]);
+        }
+
         // Optional: only a shortcut, and its absence costs time rather than function.
         if ($found['pdftotext']) {
             $this->capability('Similarity fast path', true, [

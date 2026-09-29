@@ -300,6 +300,7 @@ class Store
         if ($bluebook->file_path) {
             Storage::disk(self::bluebookDisk())->delete($bluebook->file_path);
         }
+        Storage::disk(self::bluebookDisk())->deleteDirectory(\App\Services\Pdf\PageImages::directory($id));
 
         Bookmark::where('bluebook_id', $id)->delete();
         $bluebook->delete();
@@ -469,7 +470,9 @@ class Store
             'ocrEngine'        => $b->ocr_engine,
             'ocrRasterizer'    => $b->ocr_rasterizer,
             'ocrProcessedAt'   => $b->ocr_processed_at ? $b->ocr_processed_at->format('Y-m-d H:i:s') : null,
-            'accessLevel'      => $b->access_level ?: Bluebook::ACCESS_PUBLIC,
+            'pageImagesCount'  => (int) ($b->page_images_count ?? 0),
+            'pageImagesSource' => $b->page_images_source,
+            'accessLevel'     => $b->access_level ?: Bluebook::ACCESS_PUBLIC,
             'accessParts'      => $b->access_parts ?? [],
             'waiverRecorded'   => $b->waiver_recorded_at !== null,
             'waiverRequested'  => $b->waiver_requested_at !== null,
