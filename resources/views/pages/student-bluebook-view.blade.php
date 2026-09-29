@@ -135,7 +135,7 @@
             <div class="alert alert-info" style="margin-bottom:0.75rem;">
               You are seeing the whole document. Readers get:
               <strong>{{ \App\Models\Bluebook::ACCESS_LEVELS[$bluebook['accessLevel']] ?? $bluebook['accessLevel'] }}</strong>@if($bluebook['accessLevel'] === 'partial' && $bluebook['accessParts']) &mdash;
-                @foreach($bluebook['accessParts'] as $key => $range){{ \App\Models\Bluebook::ACCESS_PARTS[$key] ?? $key }} (pp. {{ $range['from'] }}–{{ $range['to'] }}){{ $loop->last ? '' : ', ' }}@endforeach
+                @foreach($bluebook['accessParts'] as $key => $range){{ \App\Models\Bluebook::ACCESS_PART_LABELS[$key] ?? $key }} (pp. {{ $range['from'] }}–{{ $range['to'] }}){{ $loop->last ? '' : ', ' }}@endforeach
               @endif.
               @unless($bluebook['waiverRecorded']) <em>(Not recorded yet.)</em> @endunless
             </div>
@@ -143,7 +143,7 @@
             <div class="alert alert-info" style="margin-bottom:0.75rem;">
               The author has permitted only certain parts of this bluebook to be viewed:
               @foreach($bluebook['accessParts'] as $key => $range)
-                <strong>{{ \App\Models\Bluebook::ACCESS_PARTS[$key] ?? $key }}</strong>
+                <strong>{{ \App\Models\Bluebook::ACCESS_PART_LABELS[$key] ?? $key }}</strong>
                 (pp. {{ $range['from'] }}–{{ $range['to'] }}){{ $loop->last ? '.' : ',' }}
               @endforeach
             </div>

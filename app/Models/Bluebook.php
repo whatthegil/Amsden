@@ -34,15 +34,26 @@ class Bluebook extends Model
         self::ACCESS_PARTIAL      => 'Only certain parts of the material',
     ];
 
-    /** The parts an author can open to readers under ACCESS_PARTIAL. */
+    /**
+     * The parts an author can open to readers under ACCESS_PARTIAL. Preliminary
+     * pages are not among them: the admin handles those.
+     */
     public const ACCESS_PARTS = [
-        'preliminary' => 'Preliminary pages',
         'abstract'    => 'Abstract',
         'chapter1'    => 'Chapter 1',
         'chapter2'    => 'Chapter 2',
         'chapter3'    => 'Chapter 3',
         'chapter4'    => 'Chapter 4',
         'chapter5'    => 'Chapter 5',
+    ];
+
+    /**
+     * Labels for every part a saved waiver may name, including ones no longer
+     * offered - a bluebook that opened its preliminary pages before they were
+     * dropped from the list still shows readers what they are.
+     */
+    public const ACCESS_PART_LABELS = self::ACCESS_PARTS + [
+        'preliminary' => 'Preliminary pages',
     ];
 
     protected $fillable = [
