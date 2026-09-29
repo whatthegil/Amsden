@@ -49,15 +49,8 @@ return [
     |
     */
 
-    'opacity' => (float) env('WATERMARK_OPACITY', 0.09),
-    'size'    => (float) env('WATERMARK_SIZE', 12),
-
-    /*
-    | The crest, on its own opacity. It matches the address by default, so the
-    | email does not read darker than the crest above it.
-    */
-
-    'logo_opacity' => (float) env('WATERMARK_LOGO_OPACITY', 0.09),
+    'opacity' => (float) env('WATERMARK_OPACITY', 0.13),
+    'size'    => (float) env('WATERMARK_SIZE', 11),
 
     /*
     | Seconds before a stamping run is abandoned. Documents here reach 200 pages

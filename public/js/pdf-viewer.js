@@ -61,9 +61,8 @@
 
   pdfjsLib.GlobalWorkerOptions.workerSrc = view.dataset.workerUrl;
 
-  // At 1.5 a phone's 2x-3x screen upscaled every page and the text went soft;
-  // above 2 the memory cost outweighs the sharpness gained.
-  const scaleFor = () => Math.min(window.devicePixelRatio || 1, 2);
+  // Above 1.5 the memory cost on a phone outweighs the sharpness gained.
+  const scaleFor = () => Math.min(window.devicePixelRatio || 1, 1.5);
 
   // ── The watermark, in the page rather than over it ─────────────────────────
   // The watermark belongs to the document only, so it is drawn here, into the
@@ -82,59 +81,36 @@
   logo.src = '/images/cspc-logo.png';
 
   // Drawn after the page, so it sits over the content rather than under it.
-  //
-  // It is the same mark resources/pdf/watermark.js writes into the file - the
-  // same grid, sizes and opacities, measured in PDF points and scaled by the
-  // render - so a page marked here and a page marked by the server look alike,
-  // rather than a large, differently tinted crest beside the stamped small one.
-  const num = (v, d) => { const n = parseFloat(v); return n > 0 ? n : d; };
-  const WM = {
-    size:        num(detail && detail.dataset.wmSize, 12),
-    opacity:     num(detail && detail.dataset.wmOpacity, 0.09),
-    logoOpacity: num(detail && detail.dataset.wmLogoOpacity, 0.09),
-    step: 300,                  // STEP in watermark.js, in points
-    offset: 150,                // PdfWatermarker::VIEWER_OFFSET
-  };
-
-  // pt is the render's pixels per PDF point.
-  function stamp(canvas, pt) {
+  function stamp(canvas) {
     const ctx = canvas.getContext('2d');
 
-    const size  = WM.size * pt;
-    const crestW = size * 4.2;
+    // The tile scales with the page: a phone render is not covered edge to edge
+    // and a desktop one is not left with four lonely marks in the corners.
+    const tile = Math.max(260, Math.round(canvas.width / 2.2));
+    const size = Math.max(11, Math.round(tile / 24));
+    const crest = Math.round(tile * 0.28);
     const hasLogo = logo.complete && logo.naturalWidth > 0;
-    const crestH = hasLogo ? crestW * logo.naturalHeight / logo.naturalWidth : 0;
 
     ctx.save();
-    // Multiplied into the page rather than laid over it: the mark tints the
-    // white paper but cannot lighten ink, so a word under a crest stays as
-    // black as it was. On Laravel Cloud, which has no MuPDF to stamp the file,
-    // this is the only mark a reader sees, so it is the one that must not
-    // cover the text.
-    ctx.globalCompositeOperation = 'multiply';
-    // The crest is a 500px image drawn at a few dozen; the default smoothing
-    // shrinks it into a smudge.
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.fillStyle    = '#0f2350';     // 0.06 0.14 0.31 in watermark.js
+    ctx.fillStyle    = '#0f2350';
     ctx.textAlign    = 'center';
-    ctx.textBaseline = 'alphabetic';
-    ctx.font         = 'bold ' + size + 'px Helvetica, Arial, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.font         = '600 ' + size + 'px Inter, system-ui, sans-serif';
 
-    // The PDF's origin is the bottom-left corner, the canvas's the top-left.
-    for (let py = 40 + WM.offset; py < canvas.height / pt + WM.step; py += WM.step) {
-      for (let px = 20 + WM.offset; px < canvas.width / pt + WM.step; px += WM.step) {
+    for (let y = tile / 2; y < canvas.height + tile; y += tile) {
+      for (let x = tile / 2; x < canvas.width + tile; x += tile) {
         ctx.save();
-        ctx.translate(px * pt, canvas.height - py * pt);
-        // Clockwise, as the stamped mark runs: y points down here, up in a PDF.
-        ctx.rotate(22 * Math.PI / 180);
+        ctx.translate(x, y);
+        ctx.rotate(-22 * Math.PI / 180);
+        // Light enough to read the thesis through, dark enough to survive the
+        // contrast knocked out of a photographed screen.
         if (hasLogo) {
-          ctx.globalAlpha = WM.logoOpacity;
-          ctx.drawImage(logo, -crestW / 2, -size * 0.9 - crestH, crestW, crestH);
+          ctx.globalAlpha = 0.09;
+          ctx.drawImage(logo, -crest / 2, -crest - size * 0.4, crest, crest);
         }
         if (viewer) {
-          ctx.globalAlpha = WM.opacity;
-          ctx.fillText(viewer, 0, 0);
+          ctx.globalAlpha = 0.14;
+          ctx.fillText(viewer, 0, size * 0.6);
         }
         ctx.restore();
       }
@@ -221,15 +197,6 @@
     const tasks    = new Map();   // page number -> in-flight RenderTask
     const keep     = new Set();   // pages close enough to hold in memory
 
-    // Whether the file itself carries this reader's mark. The server's stamp
-    // records the address it wrote (resources/pdf/watermark.js); a copy served
-    // unstamped - a signed storage link, or a host with no MuPDF - has no such
-    // entry, or someone else's, and gets the mark drawn here instead.
-    const markedInFile = pdf.getMetadata().then(function (meta) {
-      const custom = meta && meta.info && meta.info.Custom;
-      return !!viewer && !!custom && custom.CBAMSMarked === viewer;
-    }).catch(function () { return false; });
-
     function release(num) {
       // Cancel first: a render left running draws into a canvas that is about
       // to be discarded, which on a long document is most of the work the
@@ -290,14 +257,12 @@
         const task = page.render({ canvasContext: canvas.getContext('2d'), viewport });
         tasks.set(num, task);
 
-        return Promise.all([task.promise, markedInFile]).then(function (done) {
+        return task.promise.then(function () {
           tasks.delete(num);
           holder.textContent = '';
           // Stamped before it is shown, so there is no frame in which a clean
-          // page is on screen to be captured. A page the server already marked
-          // for this reader is left alone: a second grid at its own spacing
-          // put crests over the words and doubled the address into a blur.
-          if (!done[1]) stamp(canvas, viewport.scale);
+          // page is on screen to be captured.
+          stamp(canvas);
           // Scrolled far away while this was drawing: drop it rather than keep
           // a canvas for a page nowhere near the viewport.
           if (!keep.has(num)) return;

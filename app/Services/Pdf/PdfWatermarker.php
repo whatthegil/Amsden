@@ -178,11 +178,10 @@ class PdfWatermarker
         // here would be undone before it arrived.
         $process = new Process([
             $bin, 'run', $script, $src, $dest, $line1, $line2,
-            (string) config('watermark.opacity', 0.09),
-            (string) config('watermark.size', 12),
+            (string) config('watermark.opacity', 0.13),
+            (string) config('watermark.size', 11),
             (string) $offset,
             $withLogo && is_file(self::logoPng()) ? self::logoPng() : '',
-            (string) config('watermark.logo_opacity', 0.09),
         ]);
         $process->setTimeout((float) config('watermark.timeout', 120));
 
@@ -367,8 +366,8 @@ class PdfWatermarker
     private static function stampWithGhostscript(
         string $bin, string $src, string $dest, string $line1, string $line2, float $offset, bool $withLogo = false
     ): bool {
-        $size    = (float) config('watermark.size', 12);
-        $opacity = (float) config('watermark.opacity', 0.09);
+        $size    = (float) config('watermark.size', 11);
+        $opacity = (float) config('watermark.opacity', 0.13);
         $logo    = $withLogo ? self::logoPostScript($size) : '';
 
         $program = sprintf(
@@ -383,7 +382,7 @@ class PdfWatermarker
             . 'systemdict /.setopacityalpha known '
             . '{ %.2F .setopacityalpha 0.06 0.14 0.31 setrgbcolor } '
             . '{ 0.87 0.88 0.92 setrgbcolor } ifelse '
-            . '/Helvetica-Bold findfont %.1F scalefont setfont '
+            . '/Helvetica findfont %.1F scalefont setfont '
             . '%.1F %d ph %d add { /yy exch def '
             . '%.1F %d pw %d add { /xx exch def '
             . 'gsave xx yy translate -22 rotate '
@@ -528,12 +527,10 @@ class PdfWatermarker
         }
 
         return sprintf(
-            'gsave systemdict /.setopacityalpha known { %.2F .setopacityalpha } if '
-            . '0 %.1F translate %.1F %.1F scale /DeviceRGB setcolorspace '
+            'gsave 0 %.1F translate %.1F %.1F scale /DeviceRGB setcolorspace '
             . '<< /ImageType 4 /Width %d /Height %d /BitsPerComponent 8 /Decode [0 1 0 1 0 1] '
             . '/ImageMatrix [%d 0 0 -%d 0 %d] /MaskColor [235 255 235 255 235 255] '
             . '/DataSource <%s> >> image grestore ',
-            (float) config('watermark.logo_opacity', 0.09),
             $size + 4, $size * 4.2, $size * 4.2 * $h / $w,
             $w, $h, $w, $h, $h,
             $hex
