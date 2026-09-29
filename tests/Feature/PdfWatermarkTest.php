@@ -279,7 +279,7 @@ class PdfWatermarkTest extends TestCase
         @unlink($dest);
     }
 
-    /** The served copy carries the CSPC crest as an image, not only the email. */
+    /** The stamper can carry the CSPC crest as an image, not only the email. */
     public function test_the_served_mark_embeds_the_crest(): void
     {
         if (!PdfWatermarker::available()) {

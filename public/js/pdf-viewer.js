@@ -92,6 +92,10 @@
     const hasLogo = logo.complete && logo.naturalWidth > 0;
 
     ctx.save();
+    // Multiplied into the page rather than laid over it: the mark tints the
+    // white paper but cannot lighten ink, so a word under the crest stays as
+    // black as it was.
+    ctx.globalCompositeOperation = 'multiply';
     ctx.fillStyle    = '#0f2350';
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
@@ -105,7 +109,7 @@
         // Light enough to read the thesis through, dark enough to survive the
         // contrast knocked out of a photographed screen.
         if (hasLogo) {
-          ctx.globalAlpha = 0.09;
+          ctx.globalAlpha = 0.06;
           ctx.drawImage(logo, -crest / 2, -crest - size * 0.4, crest, crest);
         }
         if (viewer) {

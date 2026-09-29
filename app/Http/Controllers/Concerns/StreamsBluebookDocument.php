@@ -90,7 +90,7 @@ trait StreamsBluebookDocument
         $key = sha1(implode('|', [
             $bluebook['id'], $bluebook['filePath'], $bluebook['fileSize'] ?? '',
             $pageList ?? 'all', $viewer ?? 'unstamped',
-            config('watermark.opacity'), config('watermark.size'), 'v1',
+            config('watermark.opacity'), config('watermark.size'), 'v2',
         ]));
 
         return storage_path('app/document-cache/' . $bluebook['id'] . '-' . $key . '.pdf');
@@ -127,7 +127,9 @@ trait StreamsBluebookDocument
             $lines   = PdfWatermarker::viewerLines($user);
             $stamped = $work . '.stamped.pdf';
 
-            if (PdfWatermarker::stampFile($work, $stamped, $lines[0], $lines[1], PdfWatermarker::VIEWER_OFFSET, true)) {
+            // The email only. The viewer draws the crest over every page, and a
+            // second, smaller crest stamped here sat beside it on screen.
+            if (PdfWatermarker::stampFile($work, $stamped, $lines[0], $lines[1], PdfWatermarker::VIEWER_OFFSET)) {
                 @unlink($work);
                 $work = $stamped;
             } elseif ($pageList === null) {
