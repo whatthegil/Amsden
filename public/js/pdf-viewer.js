@@ -90,7 +90,7 @@
   const num = (v, d) => { const n = parseFloat(v); return n > 0 ? n : d; };
   const WM = {
     size:        num(detail && detail.dataset.wmSize, 12),
-    opacity:     num(detail && detail.dataset.wmOpacity, 0.16),
+    opacity:     num(detail && detail.dataset.wmOpacity, 0.09),
     logoOpacity: num(detail && detail.dataset.wmLogoOpacity, 0.09),
     step: 300,                  // STEP in watermark.js, in points
     offset: 150,                // PdfWatermarker::VIEWER_OFFSET

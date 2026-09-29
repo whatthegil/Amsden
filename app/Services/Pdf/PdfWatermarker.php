@@ -178,7 +178,7 @@ class PdfWatermarker
         // here would be undone before it arrived.
         $process = new Process([
             $bin, 'run', $script, $src, $dest, $line1, $line2,
-            (string) config('watermark.opacity', 0.16),
+            (string) config('watermark.opacity', 0.09),
             (string) config('watermark.size', 12),
             (string) $offset,
             $withLogo && is_file(self::logoPng()) ? self::logoPng() : '',
@@ -368,7 +368,7 @@ class PdfWatermarker
         string $bin, string $src, string $dest, string $line1, string $line2, float $offset, bool $withLogo = false
     ): bool {
         $size    = (float) config('watermark.size', 12);
-        $opacity = (float) config('watermark.opacity', 0.16);
+        $opacity = (float) config('watermark.opacity', 0.09);
         $logo    = $withLogo ? self::logoPostScript($size) : '';
 
         $program = sprintf(

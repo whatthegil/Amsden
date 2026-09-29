@@ -49,13 +49,12 @@ return [
     |
     */
 
-    'opacity' => (float) env('WATERMARK_OPACITY', 0.16),
+    'opacity' => (float) env('WATERMARK_OPACITY', 0.09),
     'size'    => (float) env('WATERMARK_SIZE', 12),
 
     /*
-    | The crest, on its own opacity so it can sit fainter than the address.
-    | Matches the crest pdf-viewer.js draws on pages it marks itself, so the
-    | mark looks the same whichever side put it there.
+    | The crest, on its own opacity. It matches the address by default, so the
+    | email does not read darker than the crest above it.
     */
 
     'logo_opacity' => (float) env('WATERMARK_LOGO_OPACITY', 0.09),

@@ -20,7 +20,7 @@ var input   = scriptArgs[0];
 var output  = scriptArgs[1];
 var line1   = scriptArgs[2] || '';
 var line2   = scriptArgs[3] || '';
-var opacity = scriptArgs[4] ? parseFloat(scriptArgs[4]) : 0.16;
+var opacity = scriptArgs[4] ? parseFloat(scriptArgs[4]) : 0.09;
 var size    = scriptArgs[5] ? parseFloat(scriptArgs[5]) : 12;
 // Shifts the grid, so a document stamped twice does not print the second mark
 // on top of the first and leave both unreadable.
