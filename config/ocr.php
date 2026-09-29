@@ -36,6 +36,10 @@ return [
     // Per-process timeout in seconds (applies to each rasterizer/OCR invocation).
     'timeout' => (int) env('OCR_TIMEOUT', 120),
 
+    // Render pages at the lowest CPU priority (nice -n 19) on Linux, so a long
+    // render on the web server does not slow readers down. See LowPriority.
+    'low_priority' => (bool) env('OCR_LOW_PRIORITY', true),
+
     // Wall-clock budget for one queued OCR job (seconds). A 60-page document
     // measures ~205s on a dev machine, so leave room for slower hosts.
     'job_timeout' => (int) env('OCR_JOB_TIMEOUT', 600),
@@ -48,4 +52,10 @@ return [
 
     // Cap on stored extracted text length (characters) to bound DB row size.
     'max_text_length' => (int) env('OCR_MAX_TEXT_LENGTH', 500000),
+
+    // Read a PDF's own text layer before resorting to OCR (see
+    // ProcessBluebookOcr::readNowOrQueue). Fewer letters than this means a
+    // scan - pictures of pages - and OCR is queued instead.
+    'text_layer'             => (bool) env('OCR_TEXT_LAYER', true),
+    'text_layer_min_letters' => (int) env('OCR_TEXT_LAYER_MIN_LETTERS', 1500),
 ];

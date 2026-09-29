@@ -8,6 +8,8 @@ use Symfony\Component\Process\Process;
 
 class PopplerRasterizer implements PdfRasterizer
 {
+    use LowPriority;
+
     private ?string $bin;
 
     public function __construct()
@@ -45,7 +47,7 @@ class PopplerRasterizer implements PdfRasterizer
         $args[] = $pdfPath;
         $args[] = $prefix;
 
-        $process = new Process($args);
+        $process = new Process($this->lowPriority($args));
         $process->setTimeout(config('ocr.timeout'));
         $process->run();
 

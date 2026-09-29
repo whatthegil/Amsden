@@ -8,6 +8,8 @@ use Symfony\Component\Process\Process;
 
 class GhostscriptRasterizer implements PdfRasterizer
 {
+    use LowPriority;
+
     private ?string $bin;
 
     public function __construct()
@@ -46,7 +48,7 @@ class GhostscriptRasterizer implements PdfRasterizer
         $args[] = "-sOutputFile={$pattern}";
         $args[] = $pdfPath;
 
-        $process = new Process($args);
+        $process = new Process($this->lowPriority($args));
         $process->setTimeout(config('ocr.timeout'));
         $process->run();
 

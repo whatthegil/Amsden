@@ -116,10 +116,15 @@ class RenderBluebookPages implements ShouldQueue
 
             // Only if the file is still the one that was drawn: a re-upload
             // while this ran has queued its own render, which will mark it.
+            //
+            // The page count shown to readers was whatever the uploader typed
+            // - one test upload claimed 120 pages and had 3. The render has
+            // just counted them, so the record takes the true number.
             Bluebook::where('id', $bluebook->id)->where('file_path', $source)->update([
                 'page_images_count'  => $count,
                 'page_images_source' => $source,
                 'page_images_at'     => now(),
+                'pages'              => $count,
             ]);
         } finally {
             File::deleteDirectory($work);

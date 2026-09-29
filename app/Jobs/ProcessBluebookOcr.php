@@ -32,6 +32,90 @@ class ProcessBluebookOcr implements ShouldQueue
         $this->timeout = (int) config('ocr.job_timeout', 600);
     }
 
+    /**
+     * Read a newly stored file's text now if it has a text layer, and queue
+     * OCR only if it does not.
+     *
+     * Almost every thesis is a PDF exported from Word, with its text already
+     * in it. That text can be read in a second or two with no OCR at all - on
+     * Laravel Cloud too, which has pdftotext but no Tesseract - so such an
+     * upload is searchable at once instead of "pending" until a worker with
+     * Tesseract comes along. Only a scanned document, pictures of pages with
+     * no text in them, goes to the OCR queue.
+     *
+     * $localPdf is the uploaded file while it is still on this machine, which
+     * saves fetching it back from storage.
+     */
+    public static function readNowOrQueue(int $bluebookId, ?string $localPdf = null): void
+    {
+        try {
+            $bluebook = Bluebook::find($bluebookId);
+            if ($bluebook && self::readTextLayer($bluebook, $localPdf)) {
+                return;
+            }
+        } catch (Throwable $e) {
+            report($e);         // the queued OCR below is the fallback
+        }
+
+        self::dispatch($bluebookId);
+    }
+
+    /**
+     * Save the PDF's own text as the bluebook's text, if there is enough of it
+     * to be a real text layer rather than a scan with a stray caption. True
+     * when it did.
+     */
+    public static function readTextLayer(Bluebook $bluebook, ?string $localPdf = null): bool
+    {
+        if (!$bluebook->file_path || !config('ocr.text_layer', true)) {
+            return false;
+        }
+
+        $temp = null;
+        try {
+            $path = $localPdf && is_file($localPdf) ? $localPdf : null;
+            if ($path === null) {
+                $disk = Storage::disk(Store::bluebookDisk());
+                try {
+                    $path = $disk->path($bluebook->file_path);
+                } catch (\RuntimeException) {
+                    $temp = tempnam(sys_get_temp_dir(), 'bluebook_') . '.pdf';
+                    $in = $disk->readStream($bluebook->file_path);
+                    $out = fopen($temp, 'wb');
+                    stream_copy_to_stream($in, $out);
+                    fclose($out);
+                    if (is_resource($in)) {
+                        fclose($in);
+                    }
+                    $path = $temp;
+                }
+            }
+
+            $text = \App\Services\PdfTextExtractor::extract($path, (int) config('ocr.max_text_length', 500000));
+        } finally {
+            if ($temp !== null) {
+                @unlink($temp);
+            }
+        }
+
+        // Letters, not bytes: a scan can still carry a line of page numbers.
+        $letters = preg_match_all('/\p{L}/u', $text);
+        if ($letters < (int) config('ocr.text_layer_min_letters', 1500)) {
+            return false;
+        }
+
+        $bluebook->forceFill([
+            'ocr_text'         => \App\Services\Pdf\PdfWatermarker::stripMarks($text, ['title' => $bluebook->title, 'year' => $bluebook->year]),
+            'ocr_status'       => 'completed',
+            'ocr_error'        => null,
+            'ocr_engine'       => 'text layer',
+            'ocr_rasterizer'   => null,
+            'ocr_processed_at' => now(),
+        ])->save();
+
+        return true;
+    }
+
     public function handle(): void
     {
         $bluebook = Bluebook::find($this->bluebookId);
@@ -42,6 +126,17 @@ class ProcessBluebookOcr implements ShouldQueue
         // Sweep work dirs abandoned by previously killed runs; their own
         // finally-block cleanup never got to run.
         OcrService::pruneOrphanedWorkDirs();
+
+        // A text layer, where there is one, is the whole thesis read exactly -
+        // OCR is capped at the first pages and can misread. So it is tried
+        // first here as well, which is what reprocessing now gets too.
+        try {
+            if (self::readTextLayer($bluebook)) {
+                return;
+            }
+        } catch (Throwable $e) {
+            report($e);
+        }
 
         $bluebook->ocr_status = 'processing';
         $bluebook->save();

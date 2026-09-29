@@ -222,6 +222,7 @@ class PageImagesTest extends TestCase
             'keywords' => [], 'abstract' => 'A.', 'adviser' => '', 'status' => 'Approved',
             'uploaded_by' => 's@my.cspc.edu.ph', 'uploaded_by_name' => 'S T', 'date_added' => '2025-01-01',
             'file_path' => 'bluebooks/cut.pdf',
+            'pages'     => 120,           // as typed by the uploader - wrong
         ]);
         Storage::disk(Store::bluebookDisk())->put('bluebooks/cut.pdf', file_get_contents($cut));
         @unlink($cut);
@@ -230,6 +231,7 @@ class PageImagesTest extends TestCase
 
         $b->refresh();
         $this->assertSame(2, $b->page_images_count);
+        $this->assertSame(2, $b->pages, 'The record takes the page count the render found.');
         $this->assertSame('bluebooks/cut.pdf', $b->page_images_source);
         Storage::disk(Store::bluebookDisk())->assertExists([PageImages::path($b->id, 1), PageImages::path($b->id, 2)]);
     }

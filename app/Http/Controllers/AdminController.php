@@ -174,7 +174,7 @@ class AdminController extends Controller
         // Read the PDF's text in the background, as a student upload does, so
         // search and the similarity check cover this paper's full text too.
         if (!empty($fileData['filePath'])) {
-            ProcessBluebookOcr::dispatch($bluebook['id']);
+            ProcessBluebookOcr::readNowOrQueue($bluebook['id'], isset($file) ? ($file->getRealPath() ?: null) : null);
         }
         return User::allows($user, 'approve_bluebooks')
             ? redirect()->route('admin.bluebooks')->with('success', 'Bluebook added successfully')
@@ -305,6 +305,13 @@ class AdminController extends Controller
         }
 
         Store::updateBluebook($id, $fields);
+
+        // A replaced file's text replaces the old file's, which search and the
+        // similarity check would otherwise go on matching against.
+        if (isset($fields['filePath'])) {
+            ProcessBluebookOcr::readNowOrQueue($id, isset($file) ? ($file->getRealPath() ?: null) : null);
+        }
+
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => $canManage ? 'Edited Bluebook' : 'Recorded Waiver', 'document' => Store::getBluebook($id)['title'] ?? $request->input('title')]);
         return redirect()->route('admin.bluebooks')->with('success', 'Bluebook updated successfully');
     }

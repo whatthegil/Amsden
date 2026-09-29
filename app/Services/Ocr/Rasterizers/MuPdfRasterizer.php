@@ -8,6 +8,8 @@ use Symfony\Component\Process\Process;
 
 class MuPdfRasterizer implements PdfRasterizer
 {
+    use LowPriority;
+
     private ?string $bin;
 
     public function __construct()
@@ -40,7 +42,7 @@ class MuPdfRasterizer implements PdfRasterizer
             $args[] = '1-' . $maxPages;
         }
 
-        $process = new Process($args);
+        $process = new Process($this->lowPriority($args));
         $process->setTimeout(config('ocr.timeout'));
         $process->run();
 

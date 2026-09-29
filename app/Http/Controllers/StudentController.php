@@ -357,7 +357,8 @@ class StudentController extends Controller
                 // from the signed copy the author hands in to the library.
             ]);
             Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Uploaded Bluebook', 'document' => $title]);
-            ProcessBluebookOcr::dispatch($bluebook['id']);
+            // Its text now if it has a text layer; OCR queued only for a scan.
+            ProcessBluebookOcr::readNowOrQueue($bluebook['id'], $file->getRealPath() ?: null);
         } catch (\Throwable $e) {
             report($e);
             return view('pages.student-upload', [
@@ -468,7 +469,7 @@ class StudentController extends Controller
         }
 
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Resubmitted Bluebook', 'document' => $bluebook['title']]);
-        ProcessBluebookOcr::dispatch($id);
+        ProcessBluebookOcr::readNowOrQueue($id, isset($file) ? ($file->getRealPath() ?: null) : null);
 
         return redirect()->route('student.my-uploads')->with('success', 'Your corrected bluebook was resubmitted and is waiting for review again.');
     }
