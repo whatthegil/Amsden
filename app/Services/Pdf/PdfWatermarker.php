@@ -182,6 +182,7 @@ class PdfWatermarker
             (string) config('watermark.size', 12),
             (string) $offset,
             $withLogo && is_file(self::logoPng()) ? self::logoPng() : '',
+            (string) config('watermark.logo_opacity', 0.09),
         ]);
         $process->setTimeout((float) config('watermark.timeout', 120));
 
@@ -527,10 +528,12 @@ class PdfWatermarker
         }
 
         return sprintf(
-            'gsave 0 %.1F translate %.1F %.1F scale /DeviceRGB setcolorspace '
+            'gsave systemdict /.setopacityalpha known { %.2F .setopacityalpha } if '
+            . '0 %.1F translate %.1F %.1F scale /DeviceRGB setcolorspace '
             . '<< /ImageType 4 /Width %d /Height %d /BitsPerComponent 8 /Decode [0 1 0 1 0 1] '
             . '/ImageMatrix [%d 0 0 -%d 0 %d] /MaskColor [235 255 235 255 235 255] '
             . '/DataSource <%s> >> image grestore ',
+            (float) config('watermark.logo_opacity', 0.09),
             $size + 4, $size * 4.2, $size * 4.2 * $h / $w,
             $w, $h, $w, $h, $h,
             $hex

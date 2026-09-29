@@ -12,7 +12,7 @@
 // standard Helvetica, whose encoding is one byte per glyph, so a UTF-8 middle
 // dot arrives as two characters and prints as one. PdfWatermarker converts.
 //
-//   mutool run watermark.js <input> <output> <line1> <line2> [opacity] [size] [offset] [logo]
+//   mutool run watermark.js <input> <output> <line1> <line2> [opacity] [size] [offset] [logo] [logoOpacity]
 //
 // With a logo (a PNG path), each mark is the logo with line1 under it.
 
@@ -26,6 +26,7 @@ var size    = scriptArgs[5] ? parseFloat(scriptArgs[5]) : 12;
 // on top of the first and leave both unreadable.
 var offset  = scriptArgs[6] ? parseFloat(scriptArgs[6]) : 0;
 var logoPath = scriptArgs[7] || '';
+var logoOpacity = scriptArgs[8] ? parseFloat(scriptArgs[8]) : 0.09;
 
 // -22 degrees, as the matrix PDF wants: cos, sin, -sin, cos.
 var COS = 0.927, SIN = 0.375;
@@ -53,7 +54,7 @@ var LOGO = size * 4.2;           // drawn width of the logo, in points
 // The crest is a faint emblem behind the address, not a second mark competing
 // with it: at the text's opacity its colours turned to a grey smudge over the
 // words beneath.
-var LOGO_OPACITY = opacity * 0.6;
+var LOGO_OPACITY = logoOpacity;
 
 // Width of a line in points, so it can be centred under the crest.
 function widthOf(s) {

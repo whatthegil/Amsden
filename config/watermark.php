@@ -53,6 +53,14 @@ return [
     'size'    => (float) env('WATERMARK_SIZE', 12),
 
     /*
+    | The crest, on its own opacity so it can sit fainter than the address.
+    | Matches the crest pdf-viewer.js draws on pages it marks itself, so the
+    | mark looks the same whichever side put it there.
+    */
+
+    'logo_opacity' => (float) env('WATERMARK_LOGO_OPACITY', 0.09),
+
+    /*
     | Seconds before a stamping run is abandoned. Documents here reach 200 pages
     | and 30 MB; a run that has not finished by this point is stuck, and the
     | reader is better served the stored file than a spinner.
