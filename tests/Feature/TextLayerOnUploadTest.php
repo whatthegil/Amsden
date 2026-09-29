@@ -103,6 +103,34 @@ class TextLayerOnUploadTest extends TestCase
         $this->assertSame('completed', $b->fresh()->ocr_status);
     }
 
+    /**
+     * On an S3 disk path() does not fail - it returns the object's key, which
+     * is no file on this machine. Taken at its word, every production document
+     * read as empty and was left "pending"; it has to be fetched instead.
+     */
+    public function test_a_disk_whose_path_points_at_nothing_is_fetched_from(): void
+    {
+        $local = $this->thesisExtract();
+        $bytes = file_get_contents($local);
+        @unlink($local);
+
+        $disk = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
+        $disk->shouldReceive('path')->andReturn('bluebooks/not-on-this-machine.pdf');
+        $disk->shouldReceive('readStream')->andReturnUsing(function () use ($bytes) {
+            $s = fopen('php://temp', 'w+b');
+            fwrite($s, $bytes);
+            rewind($s);
+            return $s;
+        });
+        Storage::shouldReceive('disk')->andReturn($disk);
+
+        [$path, $temp] = ProcessBluebookOcr::localCopy('bluebooks/t.pdf');
+
+        $this->assertNotNull($temp, 'It was downloaded, not taken from path().');
+        $this->assertSame($bytes, file_get_contents($path));
+        @unlink($temp);
+    }
+
     public function test_it_can_be_switched_off(): void
     {
         config(['ocr.text_layer' => false]);

@@ -75,20 +75,7 @@ class ProcessBluebookOcr implements ShouldQueue
         try {
             $path = $localPdf && is_file($localPdf) ? $localPdf : null;
             if ($path === null) {
-                $disk = Storage::disk(Store::bluebookDisk());
-                try {
-                    $path = $disk->path($bluebook->file_path);
-                } catch (\RuntimeException) {
-                    $temp = tempnam(sys_get_temp_dir(), 'bluebook_') . '.pdf';
-                    $in = $disk->readStream($bluebook->file_path);
-                    $out = fopen($temp, 'wb');
-                    stream_copy_to_stream($in, $out);
-                    fclose($out);
-                    if (is_resource($in)) {
-                        fclose($in);
-                    }
-                    $path = $temp;
-                }
+                [$path, $temp] = self::localCopy($bluebook->file_path);
             }
 
             $text = \App\Services\PdfTextExtractor::extract($path, (int) config('ocr.max_text_length', 500000));
@@ -114,6 +101,44 @@ class ProcessBluebookOcr implements ShouldQueue
         ])->save();
 
         return true;
+    }
+
+    /**
+     * A stored document as a file on this machine: [path, temp or null].
+     *
+     * On a local disk that is the file itself. On object storage it has to be
+     * fetched - and that cannot be told from path() failing, because on an S3
+     * disk it does not fail: it returns the object's key, a path to nothing on
+     * this machine, and every tool handed it quietly read an empty document.
+     * So the file is checked for, and downloaded when it is not there. The
+     * caller deletes the temp copy.
+     *
+     * @return array{0: string, 1: ?string}
+     */
+    public static function localCopy(string $storedPath): array
+    {
+        $disk = Storage::disk(Store::bluebookDisk());
+
+        try {
+            $local = $disk->path($storedPath);
+            if (is_file($local)) {
+                return [$local, null];
+            }
+        } catch (\RuntimeException) {
+            // a disk with no local path at all: fetch it below
+        }
+
+        $temp = tempnam(sys_get_temp_dir(), 'bluebook_') . '.pdf';
+        $in   = $disk->readStream($storedPath);
+        if (!is_resource($in)) {
+            throw new \RuntimeException("Could not read {$storedPath} from storage.");
+        }
+        $out = fopen($temp, 'wb');
+        stream_copy_to_stream($in, $out);
+        fclose($out);
+        fclose($in);
+
+        return [$temp, $temp];
     }
 
     public function handle(): void
@@ -142,20 +167,11 @@ class ProcessBluebookOcr implements ShouldQueue
         $bluebook->save();
 
         // OcrService shells out to mutool/Ghostscript/Tesseract, so it needs a
-        // real path on disk. Only local-style disks can supply one; object
-        // storage cannot, so the PDF is streamed to a temp file for the run and
-        // removed afterwards.
-        $disk    = Storage::disk(Store::bluebookDisk());
+        // real file on this machine.
         $tempPdf = null;
 
         try {
-            try {
-                $absolutePath = $disk->path($bluebook->file_path);
-            } catch (\RuntimeException) {
-                $tempPdf = tempnam(sys_get_temp_dir(), 'bluebook_') . '.pdf';
-                file_put_contents($tempPdf, $disk->get($bluebook->file_path));
-                $absolutePath = $tempPdf;
-            }
+            [$absolutePath, $tempPdf] = self::localCopy($bluebook->file_path);
 
             $result = OcrService::extractText($absolutePath);
         } finally {
