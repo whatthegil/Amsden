@@ -52,7 +52,16 @@ trait StreamsBluebookDocument
         }
 
         $stamp = (bool) config('watermark.per_viewer', true);
-        $path  = $this->documentCachePath($bluebook, $pageList, $stamp ? (string) ($user['email'] ?? '') : null);
+
+        // A host with no stamper (Laravel Cloud has no MuPDF) would pull the
+        // whole document out of the bucket on every request, fail to stamp it,
+        // throw the copy away and serve the stored file anyway. Serve it
+        // straight off; the viewer draws the reader's mark into the pages.
+        if ($stamp && $pageList === null && !PdfWatermarker::available()) {
+            return $this->streamStoredDocument($bluebook, $disk);
+        }
+
+        $path  =$this->documentCachePath($bluebook, $pageList, $stamp ? (string) ($user['email'] ?? '') : null);
 
         if (!$this->isFreshDocument($path)) {
             // One reader opening a paper sends several requests at once; only

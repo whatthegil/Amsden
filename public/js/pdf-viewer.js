@@ -106,6 +106,16 @@
     const crestH = hasLogo ? crestW * logo.naturalHeight / logo.naturalWidth : 0;
 
     ctx.save();
+    // Multiplied into the page rather than laid over it: the mark tints the
+    // white paper but cannot lighten ink, so a word under a crest stays as
+    // black as it was. On Laravel Cloud, which has no MuPDF to stamp the file,
+    // this is the only mark a reader sees, so it is the one that must not
+    // cover the text.
+    ctx.globalCompositeOperation = 'multiply';
+    // The crest is a 500px image drawn at a few dozen; the default smoothing
+    // shrinks it into a smudge.
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.fillStyle    = '#0f2350';     // 0.06 0.14 0.31 in watermark.js
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'alphabetic';
