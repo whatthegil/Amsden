@@ -675,6 +675,8 @@ class AdminController extends Controller
 
     public function userStore(Request $request)
     {
+        $request->merge(['name' => trim((string) $request->input('name'))]);
+        $request->validate(['name' => ['required', 'string', 'min:2', 'max:100', new \App\Rules\PersonName]]);
         $user = session('user');
         if (Store::findUserByEmail($request->input('email'))) {
             return redirect()->route('admin.users')->with('success', 'Email already exists');
@@ -702,6 +704,8 @@ class AdminController extends Controller
 
     public function userUpdate(Request $request, int $id)
     {
+        $request->merge(['name' => trim((string) $request->input('name'))]);
+        $request->validate(['name' => ['required', 'string', 'min:2', 'max:100', new \App\Rules\PersonName]]);
         $user   = session('user');
         $target = $this->findUser($id);
         if (!$target) return redirect()->route('admin.users');

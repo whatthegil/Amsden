@@ -73,7 +73,9 @@
             @csrf
             <div class="form-group">
               <label for="profile-name">Full Name</label>
-              <input id="profile-name" type="text" name="name" required minlength="2" maxlength="100" value="{{ old('name', $profile['name']) }}">
+              <input id="profile-name" type="text" name="name" required minlength="2" maxlength="100" value="{{ old('name', $profile['name']) }}"
+                     pattern="{{ \App\Rules\PersonName::HTML_PATTERN }}"
+                     title="Letters only - spaces, hyphens, apostrophes and periods are allowed. No numbers or symbols.">
             </div>
             <div class="form-group">
               <label for="profile-email">Email Address</label>

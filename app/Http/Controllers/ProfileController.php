@@ -52,7 +52,7 @@ class ProfileController extends Controller
         }
 
         $request->validate([
-            'name' => ['required', 'string', 'min:2', 'max:100'],
+            'name' => ['required', 'string', 'min:2', 'max:100', new \App\Rules\PersonName],
         ]);
 
         $user->name = trim($request->input('name'));

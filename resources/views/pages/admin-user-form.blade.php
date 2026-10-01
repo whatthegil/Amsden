@@ -30,7 +30,10 @@
 
             <div class="form-group">
               <label for="user-form-name">Full Name</label>
-              <input id="user-form-name" type="text" name="name" value="{{ $editUser['name'] ?? '' }}" required>
+              <input id="user-form-name" type="text" name="name" value="{{ old('name', $editUser['name'] ?? '') }}" required
+                     minlength="2" maxlength="100" pattern="{{ \App\Rules\PersonName::HTML_PATTERN }}"
+                     title="Letters only - spaces, hyphens, apostrophes and periods are allowed. No numbers or symbols.">
+              @error('name') <div class="form-error" style="color:var(--red);font-size:0.8rem;margin-top:0.3rem;">{{ $message }}</div> @enderror
             </div>
 
             <div class="form-row">
