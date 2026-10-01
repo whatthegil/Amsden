@@ -225,6 +225,48 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * One chunk of the "Render pages" button: draws pages from ?from= onward
+     * and answers with how far it got. The admin's page calls this again with
+     * the next page until it says done - see PageRenderer for why it is done a
+     * few pages at a time rather than as one long request or a queued job.
+     */
+    public function bluebookRenderPages(Request $request, int $id)
+    {
+        $bluebook = Bluebook::find($id);
+        if (!$bluebook || !$bluebook->file_path) {
+            return response()->json(['error' => 'This bluebook has no file to render.'], 404);
+        }
+        if (\App\Services\Pdf\PageRenderer::tool() === null || !PageImages::canWatermark()) {
+            return response()->json(['error' => 'This server cannot draw or mark pages (see php artisan system:check).'], 503);
+        }
+
+        @set_time_limit(120);
+        $from     = max(1, (int) $request->input('from', 1));
+        $renderer = new \App\Services\Pdf\PageRenderer();
+
+        try {
+            $pages = $renderer->renderChunk($bluebook, $from);
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json(['error' => 'Rendering stopped at page ' . $from . ': ' . $e->getMessage()], 500);
+        }
+
+        $done = count($pages) < \App\Services\Pdf\PageRenderer::CHUNK;
+        $upTo = $pages ? max($pages) : $from - 1;
+
+        if ($done) {
+            if ($upTo < 1) {
+                return response()->json(['error' => 'No pages could be drawn from this PDF.'], 422);
+            }
+            $renderer->finish($bluebook, $upTo);
+            $user = session('user');
+            Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Rendered Pages', 'document' => $bluebook->title, 'bluebookId' => $bluebook->id]);
+        }
+
+        return response()->json(['done' => $done, 'rendered' => $upTo, 'next' => $upTo + 1]);
+    }
+
     /** A page as a reader is sent it, for the admin's preview - marked with the admin's email. */
     public function bluebookPage(int $id, int $n)
     {

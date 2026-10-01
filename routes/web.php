@@ -58,6 +58,7 @@ Route::prefix('admin')->middleware('role:Admin,Sub-Admin')->group(function () {
         Route::get('/bluebooks/new',               [AdminController::class, 'bluebookNewForm'])->name('admin.bluebooks.new');
         Route::post('/bluebooks/new',              [AdminController::class, 'bluebookStore'])->name('admin.bluebooks.store');
         Route::post('/bluebooks/{id}/reprocess-ocr', [AdminController::class, 'bluebookReprocessOcr'])->name('admin.bluebooks.reprocessOcr');
+        Route::post('/bluebooks/{id}/render-pages', [AdminController::class, 'bluebookRenderPages'])->whereNumber('id')->name('admin.bluebooks.renderPages');
         Route::post('/bluebooks/{id}/delete',       [AdminController::class, 'bluebookDelete'])->name('admin.bluebooks.delete');
     });
 

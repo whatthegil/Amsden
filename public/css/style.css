@@ -2118,6 +2118,15 @@ a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
 .cite-box .btn { flex-shrink: 0; }
 
 .cite-modal { max-width: 620px; }
+
+/* The admin's "Render pages" line under the waiver note. */
+.render-pages {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  margin: -0.25rem 0 0.75rem; padding: 0.6rem 0.9rem;
+  border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+  font-size: 0.85rem; color: var(--gray-600);
+}
+.render-pages .btn { flex-shrink: 0; }
 .cite-format {
   padding: 0.85rem 1rem;
   background: var(--cream); border: 1px solid var(--gray-200); border-radius: var(--radius-sm);

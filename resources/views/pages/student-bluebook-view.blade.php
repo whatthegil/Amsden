@@ -193,6 +193,80 @@
                 <a href="{{ route('admin.bluebooks.view', ['id' => $bluebook['id'], 'preview' => 'reader']) }}">Preview as a reader</a>
               @endif
             </div>
+            @if(\App\Models\User::allows($user, 'manage_bluebooks'))
+              @php
+                $pagesReady   = \App\Services\Pdf\PageImages::ready($bluebook);
+                $pagesStale   = !$pagesReady && ($bluebook['pageImagesCount'] ?? 0) > 0;
+                $canRender    = \App\Services\Pdf\PageRenderer::tool() !== null && \App\Services\Pdf\PageImages::canWatermark();
+              @endphp
+              {{-- Readers are sent watermarked page images once these exist, and
+                   the PDF until then. Drawn here a few pages per request, since
+                   no worker on the server takes the render queue. --}}
+              <div class="render-pages" id="render-pages"
+                   data-url="{{ route('admin.bluebooks.renderPages', $bluebook['id']) }}"
+                   data-estimate="{{ (int) $bluebook['pages'] }}">
+                <span class="render-pages-status">
+                  @if($pagesReady)
+                    <strong>Watermarked pages: ready</strong> ({{ $bluebook['pageImagesCount'] }} pages) &mdash; readers get marked page images, never the PDF.
+                  @elseif($pagesStale)
+                    <strong>Watermarked pages: out of date</strong> &mdash; the file was replaced, so readers get the PDF until the pages are drawn again.
+                  @else
+                    <strong>Watermarked pages: not rendered</strong> &mdash; readers get the PDF, which can be saved unmarked, until they are.
+                  @endif
+                </span>
+                @if($canRender)
+                  <button type="button" class="btn btn-outline btn-sm" data-render-pages>{{ $pagesReady ? 'Render again' : 'Render pages' }}</button>
+                @else
+                  <em>This server cannot draw pages (see <code>php artisan system:check</code>).</em>
+                @endif
+              </div>
+              <script>
+              (function () {
+                const box = document.getElementById('render-pages');
+                const btn = box && box.querySelector('[data-render-pages]');
+                if (!btn) return;
+                const status   = box.querySelector('.render-pages-status');
+                const estimate = Number(box.dataset.estimate) || 0;
+                const token    = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                // One request per few pages, each well inside a request's time
+                // limit, until the server says the document has run out.
+                async function run(from) {
+                  const body = new FormData();
+                  body.append('from', String(from));
+                  const res  = await fetch(box.dataset.url, {
+                    method: 'POST', body: body, credentials: 'same-origin',
+                    headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
+                  });
+                  const data = await res.json().catch(() => ({ error: 'The server gave no answer (' + res.status + ').' }));
+                  if (!res.ok || data.error) throw new Error(data.error || ('HTTP ' + res.status));
+                  return data;
+                }
+
+                btn.addEventListener('click', async function () {
+                  if (!confirm('Draw every page of this bluebook as a watermarked image? A long thesis takes a few minutes - keep this tab open until it finishes.')) return;
+                  btn.disabled = true;
+                  let from = 1;
+                  try {
+                    for (;;) {
+                      status.textContent = 'Rendering… ' + (from - 1) + (estimate ? ' of about ' + estimate : '') + ' pages done. Keep this tab open.';
+                      const r = await run(from);
+                      if (r.done) {
+                        status.innerHTML = '<strong>Watermarked pages: ready</strong> (' + r.rendered + ' pages) — readers get marked page images from now on.';
+                        btn.textContent = 'Render again';
+                        break;
+                      }
+                      from = r.next;
+                    }
+                  } catch (e) {
+                    status.textContent = 'Stopped: ' + e.message + ' Readers still get what they got before; you can try again.';
+                  } finally {
+                    btn.disabled = false;
+                  }
+                });
+              })();
+              </script>
+            @endif
           @elseif($granted)
             <div class="alert alert-info" style="margin-bottom:0.75rem;">
               The library has granted you access to the full text of this bluebook, for viewing here only. This does not
