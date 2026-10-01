@@ -240,6 +240,7 @@ class Store
             'watermarked_at'      => $bookData['watermarkedAt'] ?? null,
             'access_level'        => $bookData['accessLevel'] ?? Bluebook::ACCESS_PUBLIC,
             'access_parts'        => $bookData['accessParts'] ?? null,
+            'withheld_pages'      => $bookData['withheldPages'] ?? null,
             'waiver_requested_at' => $bookData['waiverRequestedAt'] ?? null,
             'waiver_recorded_at'  => $bookData['waiverRecordedAt'] ?? null,
         ]);
@@ -268,6 +269,9 @@ class Store
             $b->access_level = $fields['accessLevel'];
             $b->access_parts = $fields['accessParts'] ?? null;
             $b->waiver_recorded_at = now();
+        }
+        if (array_key_exists('withheldPages', $fields)) {
+            $b->withheld_pages = $fields['withheldPages'];
         }
         $b->save();
     }
@@ -486,6 +490,7 @@ class Store
             'pageImagesSource' => $b->page_images_source,
             'accessLevel'     => $b->access_level ?: Bluebook::ACCESS_PUBLIC,
             'accessParts'      => $b->access_parts ?? [],
+            'withheldPages'    => $b->withheld_pages,
             'waiverRecorded'   => $b->waiver_recorded_at !== null,
             'waiverRequested'  => $b->waiver_requested_at !== null,
             'rejectionReason'  => $b->rejection_reason,

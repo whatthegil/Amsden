@@ -43,6 +43,16 @@
       <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
       Rejected
     </a>
+    @if(\App\Models\User::allows($user, 'review_bluebooks'))
+      @php $openRequests = \App\Models\AccessRequest::where('status', \App\Models\AccessRequest::STATUS_PENDING)->count(); @endphp
+      <a href="{{ route('admin.access-requests') }}" class="nav-item {{ $active === 'access-requests' ? 'active' : '' }}">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+        Access Requests
+        @if($openRequests > 0)
+          <span class="badge badge-yellow" style="margin-left:auto;">{{ $openRequests }}<span class="sr-only"> waiting for a decision</span></span>
+        @endif
+      </a>
+    @endif
   </nav>
 
   @php

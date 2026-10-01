@@ -1,7 +1,9 @@
 {{-- The access permission waiver: which of the bluebook readers may see.
      $level is the chosen level (or null for none), $parts the saved page
-     ranges keyed by part, and the slot is the hint shown under the legend. --}}
-@props(['level' => null, 'parts' => [], 'checked' => []])
+     ranges keyed by part, and the slot is the hint shown under the legend.
+     $legacy offers "no waiver on file", for records the library added itself;
+     $withheld is the saved list of pages no reader is sent. --}}
+@props(['level' => null, 'parts' => [], 'checked' => [], 'legacy' => false, 'withheld' => ''])
 
 <fieldset class="access-waiver">
   <legend>Access Permission Waiver</legend>
@@ -11,9 +13,16 @@
     <label class="access-option">
       <input type="radio" name="access_level" value="{{ $value }}" required
              @checked($level === $value) onchange="toggleAccessParts()">
-      <span>{{ $label }}</span>
+      <span><strong>{{ \App\Models\Bluebook::accessName($value) }}</strong> &mdash; {{ $label }}</span>
     </label>
   @endforeach
+  @if($legacy)
+    <label class="access-option">
+      <input type="radio" name="access_level" value="{{ \App\Models\Bluebook::ACCESS_LEGACY }}" required
+             @checked($level === \App\Models\Bluebook::ACCESS_LEGACY) onchange="toggleAccessParts()">
+      <span><strong>{{ \App\Models\Bluebook::accessName(\App\Models\Bluebook::ACCESS_LEGACY) }}</strong> &mdash; no signed waiver is on record. Readers may view it in the watermarked viewer only; it is never treated as an open copy.</span>
+    </label>
+  @endif
 
   <div id="access-parts" class="access-parts" @if($level !== \App\Models\Bluebook::ACCESS_PARTIAL) hidden @endif>
     <p class="form-hint" style="margin:0 0 0.5rem;">Tick each part readers may see and give the PDF pages it covers. Pages you do not list are left out of what readers receive.</p>
@@ -37,6 +46,14 @@
         </span>
       </div>
     @endforeach
+  </div>
+
+  {{-- Library Manual 4.3.1.3: the CV, contact details, signatures and ID
+       numbers are never made publicly accessible, whatever the level. --}}
+  <div class="form-group" style="margin:1rem 0 0;">
+    <label for="withheld-pages">Withheld pages <span style="font-weight:400;color:var(--gray-400);">(optional)</span></label>
+    <input id="withheld-pages" type="text" name="withheld_pages" value="{{ $withheld }}" placeholder="e.g. 3, 148-152" maxlength="255">
+    <p class="form-hint" style="margin:0.35rem 0 0;">Pages holding the curriculum vitae, contact details, signatures, ID numbers or other sensitive personal information. No reader is sent these pages, under any access level or approved request.</p>
   </div>
 </fieldset>
 

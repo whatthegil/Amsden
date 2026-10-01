@@ -8,6 +8,12 @@
     On your first sign-in you will also be asked to accept the Acceptable Use Policy shown
     in the System. That acceptance is recorded against your account.
   </p>
+  <p>
+    These terms apply the policies on Unpublished Materials set out in the CSPC Library Manual
+    (rev. 2026), sections 4.3.1 and 5.2.1, administered by the Learning Resources and
+    Development Unit (&ldquo;LRDU&rdquo;). Where these terms and the Library Manual differ, the
+    Library Manual prevails.
+  </p>
 
   <h2>2. Who may use the System</h2>
   <p>
@@ -22,48 +28,117 @@
     activity carried out under your account.
   </p>
 
-  <h2>3. Permitted use of archived material</h2>
+  <h2>3. Access to and use of unpublished materials</h2>
   <p>
-    Bluebooks in the archive are undergraduate thesis and capstone documents that remain the
-    intellectual property of their authors and, where applicable, of CSPC. They are made
-    available for <strong>academic and educational purposes only</strong>.
+    The archive holds unpublished materials &mdash; undergraduate theses, capstone projects,
+    master&rsquo;s theses, and dissertations produced by CSPC students. Ownership of each work
+    remains with its author/s. By submitting it, the author/s granted the Library a
+    non-exclusive right to preserve, archive, catalog, digitize, and provide access to it
+    according to the permissions they gave.
   </p>
-  <p>You may read, search, and cite archived material with proper attribution. You may not:</p>
+
+  <h3>3.1 Purpose of use</h3>
+  <p>
+    Unpublished materials may be used <strong>exclusively for research, instruction, and
+    academic purposes</strong>. Proper citation and acknowledgment of the author/s are required.
+    Unauthorized reproduction or distribution is prohibited, and all use must comply with
+    copyright and fair use provisions.
+  </p>
+
+  <h3>3.2 Access levels</h3>
+  <p>
+    Each work is made available at the level its author/s chose in the Access Permission
+    Waiver, and the Library strictly observes that choice. The level is shown on every
+    bluebook&rsquo;s page.
+  </p>
   <ul>
-    <li>reproduce, redistribute, republish, or sell any document or extract from it;</li>
-    <li>present another author&rsquo;s work, in whole or in part, as your own;</li>
-    <li>remove, obscure, or alter any watermark, attribution, or notice;</li>
-    <li>use automated tools to bulk-download, scrape, or mirror the archive;</li>
-    <li>circumvent the System&rsquo;s access controls or share downloaded material outside CSPC.</li>
+    <li><strong>Open Access</strong> &mdash; the entire manuscript may be viewed.</li>
+    <li><strong>Restricted Access</strong> &mdash; the manuscript may be viewed only upon the written authorization of, or consultation with, the author/s.</li>
+    <li><strong>Partial Access</strong> &mdash; only the portions the author/s specified (such as the abstract or selected chapters) may be viewed.</li>
+    <li><strong>Legacy &ndash; No Access Permission on File</strong> &mdash; a work submitted before the waiver was introduced, or for which no waiver is on record. It may be viewed in the System&rsquo;s controlled viewer. The absence of a waiver is not the author&rsquo;s consent to reproduce or distribute it.</li>
+  </ul>
+  <p>
+    Curricula vitae, personal contact information, signatures, identification numbers, and
+    other sensitive personal information in a manuscript are withheld from every reader,
+    whatever its access level.
+  </p>
+
+  <h3>3.3 Requesting further access</h3>
+  <p>
+    You may ask the Library for the full text of a Restricted or Partial Access work through
+    the System&rsquo;s <em>Request Full-Text Access</em> form, stating your research or capstone
+    title, program, research adviser, and purpose of use. Each work is evaluated individually:
+    the number of works you request does not by itself decide the outcome, and approval for
+    one work is not approval for any other. A request is granted only where the authorization
+    prescribed by the author/s has been obtained.
+  </p>
+
+  <h3>3.4 Access is not a copy</h3>
+  <p>
+    Permission to view the full text of a work, whether by its access level or by an approved
+    request, <strong>does not permit you to reproduce, download, transmit, or distribute a
+    complete electronic copy</strong> of it. The System provides controlled viewing only. A
+    complete electronic copy may be provided by the LRDU only where the author/s have expressly
+    authorized full-text reproduction, and never through email, cloud or file-sharing
+    platforms, removable storage, or messaging applications without that authorization.
+    Limited reproduction for research follows the Library&rsquo;s Reprographic and Information
+    Digitization Services (RIDS) provisions and may not be used to get around an author&rsquo;s
+    restrictions.
+  </p>
+
+  <h3>3.5 Your responsibilities</h3>
+  <p>As a user granted access to unpublished materials, you shall:</p>
+  <ul>
+    <li>use the materials solely for legitimate academic, instructional, or research purposes;</li>
+    <li>observe the access and reproduction limits that apply to each work;</li>
+    <li>properly acknowledge and cite the author/s and the work in the prescribed citation style;</li>
+    <li>refrain from unauthorized reproduction, downloading, photographing, scanning, forwarding, uploading, posting, sharing, or redistribution of any work;</li>
+    <li>refrain from representing any portion of a work as your own, or using it in a way that constitutes plagiarism or other academic misconduct;</li>
+    <li>not remove, obscure, or alter any watermark, attribution, or notice;</li>
+    <li>not use automated tools to bulk-download, scrape, or mirror the archive, or circumvent the System&rsquo;s access controls; and</li>
+    <li>comply with copyright, intellectual property, data privacy, research ethics, and other applicable institutional policies.</li>
   </ul>
   <p>
     Plagiarism, misrepresentation of authorship, or fraudulent activity will result in
     immediate suspension of access and referral to the appropriate CSPC academic authority.
   </p>
 
-  <h2>4. Submitting your own work</h2>
+  <h2>4. Submitting unpublished materials</h2>
   <p>
-    Where your account has upload permission, you may submit documents for inclusion in the
-    archive. By submitting a document you confirm that:
+    Submission of the approved, unpublished manuscript is required before graduation and
+    clearance processing. Where your account has upload permission, you may submit it through
+    the System. By submitting you confirm that:
   </p>
   <ul>
+    <li>the manuscript is the final version approved by your college, Graduate School, or academic unit, with all required approval and certification pages;</li>
     <li>the work is original and authored by you, or you have the explicit permission of every author to submit it;</li>
-    <li>you have your adviser&rsquo;s or department&rsquo;s approval where that is required;</li>
-    <li>the metadata you provide (title, authors, year, department, abstract) is accurate;</li>
-    <li>the document contains no confidential or personal information that should not be archived.</li>
+    <li>the electronic copy is a complete, readable PDF that matches the final approved printed manuscript, is free from corruption, and carries no password, encryption, or editing restrictions;</li>
+    <li>the bibliographic details you provide (title, authors, adviser, program, year, abstract, keywords) are accurate; and</li>
+    <li>you will accomplish the Library&rsquo;s Access Permission Waiver and indicate the access level you permit.</li>
   </ul>
   <p>
-    Submissions are reviewed by a CSPC Library administrator before they appear in the
-    archive, and may be approved or rejected at the Library&rsquo;s discretion. You retain
-    ownership of your work and grant CSPC a non-exclusive licence to store, index, display,
-    and make it available to eligible System users for academic purposes.
+    The Library evaluates each submission for completeness, compliance, and technical
+    requirements within three (3) working days. A submission may be returned for, among other
+    grounds: missing pages or sections; incomplete approval signatures or certifications; a
+    corrupted, unreadable, or inaccessible file; a file that does not match the approved
+    manuscript; incomplete or missing forms; inaccurate or inconsistent metadata; an
+    unaccomplished Access Permission Waiver; a file containing malicious software; or
+    non-compliance with institutional repository requirements.
+  </p>
+  <p>
+    An accepted submission is posted once the Library receives your signed Access Permission
+    Waiver, and the Library issues the Acknowledgment Receipt for Unpublished Materials
+    (CSPC-F-LRD-06). The Library signs graduation clearance only after all required materials
+    are submitted and verified, the receipt is issued, and all library obligations are
+    settled. You retain ownership of your work.
   </p>
 
   <h2>5. Monitoring and logging</h2>
   <p>
     Activity in the System is logged for institutional compliance and audit purposes,
-    including sign-ins, searches, document views, uploads, and administrative actions. The
-    System also records attempts to capture or record on-screen content. See the
+    including sign-ins, searches, document views, uploads, access requests and their
+    decisions, and administrative actions. The System also records attempts to capture or
+    record on-screen content. See the
     <a href="{{ route('privacy') }}">Privacy Policy</a> for what is recorded and how long it is kept.
   </p>
 
@@ -81,7 +156,9 @@
     CSPC may modify, suspend, or revoke access at any time, without prior notice, where an
     account is used in breach of these terms, where access is no longer appropriate to the
     holder&rsquo;s standing at the College, or where required for the security or integrity of
-    the System.
+    the System. Access granted on request may likewise be revoked. Requests that raise
+    copyright, intellectual property, privacy, or ethical concerns are referred to the
+    appropriate institutional office.
   </p>
 
   <h2>8. Changes to these terms</h2>

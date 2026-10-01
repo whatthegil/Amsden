@@ -61,8 +61,9 @@ class PageImages
 
     /**
      * A short fingerprint of everything a served page depends on: the reader
-     * (their email is drawn in), the file, and the waiver (which decides which
-     * thesis page reader page n is). Put in the page address so a browser may
+     * (their email is drawn in), the file, and the waiver, withheld pages and
+     * any access granted to the reader (which decide which thesis page reader
+     * page n is). Put in the page address so a browser may
      * keep pages long, and a new reader on a shared computer, a replaced file or
      * an edited waiver all get fresh addresses instead of someone else's pages.
      */
@@ -74,44 +75,25 @@ class PageImages
             $bluebook['pageImagesCount'] ?? 0,
             $bluebook['accessLevel'] ?? '',
             json_encode($bluebook['accessParts'] ?? []),
+            $bluebook['withheldPages'] ?? '',
+            !empty($bluebook['granted']) ? 'granted' : '',
         ])), 0, 12);
     }
 
     /**
-     * The original page numbers a student may see, in order. Empty for a
-     * consultation-only paper, and for a partial one whose ranges name nothing
-     * usable - failing closed, as the document route does.
+     * The original page numbers a student may see, in order - see
+     * Bluebook::readerPages. Empty for a restricted paper the reader has not
+     * been granted, and for a partial one whose ranges name nothing usable:
+     * failing closed, as the document route does.
+     *
+     * $bluebook['granted'] is whether this reader holds an approved access
+     * request for it.
      *
      * @return int[]
      */
     public static function visiblePages(array $bluebook): array
     {
-        $count = (int) ($bluebook['pageImagesCount'] ?? 0);
-
-        return match ($bluebook['accessLevel'] ?? Bluebook::ACCESS_PUBLIC) {
-            Bluebook::ACCESS_CONSULTATION => [],
-            Bluebook::ACCESS_PARTIAL      => self::expand(Bluebook::visiblePageList($bluebook['accessParts'] ?? []), $count),
-            default                       => $count > 0 ? range(1, $count) : [],
-        };
-    }
-
-    /** "1-3,7" within 1..$count as [1, 2, 3, 7]. */
-    private static function expand(?string $list, int $count): array
-    {
-        if ($list === null || $count < 1) {
-            return [];
-        }
-
-        $pages = [];
-        foreach (explode(',', $list) as $part) {
-            [$from, $to] = array_pad(array_map('intval', explode('-', $part)), 2, null);
-            $to ??= $from;
-            for ($p = max(1, $from); $p <= min($count, $to); $p++) {
-                $pages[] = $p;
-            }
-        }
-
-        return $pages;
+        return Bluebook::readerPages($bluebook, (int) ($bluebook['pageImagesCount'] ?? 0), (bool) ($bluebook['granted'] ?? false));
     }
 
     /**

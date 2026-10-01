@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessBluebookOcr;
+use App\Models\AccessRequest;
 use App\Models\Bluebook;
 use App\Services\LiteratureReviewService;
 use App\Services\OcrService;
@@ -130,6 +131,7 @@ class StudentController extends Controller
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Viewed Bluebook', 'document' => $bluebook['title']]);
 
         $bluebook = Store::getBluebook($id);
+        $bluebook['granted'] = AccessRequest::granted($id, $user['email'] ?? null);
 
         // Fetched straight from storage where the disk can sign a link, so the
         // object does not travel through PHP on every read and the viewer can
@@ -147,16 +149,26 @@ class StudentController extends Controller
             : 0;
 
         $fileUrl = !$pageImages && $bluebook['hasFile'] && $bluebook['accessLevel'] === Bluebook::ACCESS_PUBLIC
+            && !Bluebook::isCutForReader($bluebook)
             ? Store::bluebookFileUrl($bluebook['filePath'])
             : null;
 
+        // Where the waiver holds back part of the paper, the reader may ask the
+        // library for the rest (Library Manual 4.3.1.4).
+        $canRequest = in_array($bluebook['accessLevel'], Bluebook::REQUESTABLE_LEVELS, true) && $bluebook['hasFile'];
+
         return view('pages.student-bluebook-view', [
-            'user'         => $user,
-            'active'       => 'bluebooks',
-            'bluebook'     => $bluebook,
-            'isBookmarked' => Store::isBookmarked($user['email'], $id),
-            'fileUrl'      => $fileUrl,
-            'pageImages'   => $pageImages,
+            'user'          => $user,
+            'active'        => 'bluebooks',
+            'bluebook'      => $bluebook,
+            'isBookmarked'  => Store::isBookmarked($user['email'], $id),
+            'fileUrl'       => $fileUrl,
+            'pageImages'    => $pageImages,
+            'canRequest'    => $canRequest,
+            'accessRequest' => $canRequest ? AccessRequest::current($id, $user['email']) : null,
+            // A researcher asking for several theses gives the same details for
+            // each, so the form starts from their last request.
+            'lastRequest'   => $canRequest ? AccessRequest::where('user_email', $user['email'])->latest('id')->first() : null,
         ]);
     }
 
@@ -193,25 +205,30 @@ class StudentController extends Controller
         // The author's access permission waiver. Enforced here, on the bytes,
         // rather than in the viewer - the viewer only asks for this route, and
         // anything it was told to hide would still be in what it was sent.
-        $accessLevel = $bluebook['accessLevel'];
+        // A reader the library has granted the full text gets it, less the
+        // withheld pages, which no reader is sent.
+        $granted = AccessRequest::granted($id, $user['email'] ?? null);
 
-        if ($accessLevel === Bluebook::ACCESS_CONSULTATION) {
-            abort(403, 'This bluebook is available only after consultation with the author.');
+        if ($bluebook['accessLevel'] === Bluebook::ACCESS_CONSULTATION && !$granted) {
+            abort(403, 'This bluebook is restricted. It is available only with the author\'s authorization.');
         }
 
         // The cut itself happens where the document is prepared, so it is done
         // once and kept rather than repeated on every read.
-        $partial = null;
-        if ($accessLevel === Bluebook::ACCESS_PARTIAL) {
-            $partial = Bluebook::visiblePageList($bluebook['accessParts']);
+        $cut = null;
+        if (Bluebook::isCutForReader($bluebook, $granted)) {
+            // The stored page count, or for a partial paper whose count was
+            // never filled in, as far as its ranges reach.
+            $count = max((int) $bluebook['pages'], 0, ...array_map(fn($r) => (int) ($r['to'] ?? 0), array_values($bluebook['accessParts'] ?: [])));
+            $cut   = Bluebook::compressPages(Bluebook::readerPages($bluebook, $count, $granted));
 
             // Failing closed: the only other thing to send is every page.
-            if ($partial === null) {
+            if ($cut === null) {
                 abort(503, 'The permitted parts of this bluebook could not be prepared. Please try again later.');
             }
         }
 
-        return $this->streamBluebookDocument($bluebook, $user, $disk, $partial);
+        return $this->streamBluebookDocument($bluebook, $user, $disk, $cut);
     }
 
     public function flagCaptureAttempt(Request $request, int $id)
@@ -306,7 +323,7 @@ class StudentController extends Controller
 
         try {
             $request->validate([
-                'file'       => ['required', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile], // 35MB, PDF only
+                'file'       => ['required', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile, new \App\Rules\PdfNotEncrypted], // 35MB, PDF only
                 'title'      => ['required', 'string'],
                 'authors'    => ['required', 'string'],
                 'department' => ['required', 'string', \Illuminate\Validation\Rule::in(array_keys(config('departments')))],
@@ -437,7 +454,7 @@ class StudentController extends Controller
 
         try {
             $request->validate([
-                'file' => ['required', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile], // 35MB, PDF only
+                'file' => ['required', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile, new \App\Rules\PdfNotEncrypted], // 35MB, PDF only
             ], [
                 'file.required' => 'Please choose the corrected PDF to upload.',
             ]);

@@ -220,6 +220,9 @@ class ImportBluebooks extends Command
                 'abstract'           => $meta['abstract'],
                 'adviser'            => '',
                 'status'             => 'Approved',
+                // No author's waiver comes with an imported paper: Legacy
+                // (Library Manual 4.3.1.4) until one is recorded.
+                'access_level'       => \App\Models\Bluebook::ACCESS_LEGACY,
                 'waiver_recorded_at' => now(),
                 'uploaded_by'        => 'library@cspc.edu.ph',
                 'uploaded_by_name'   => 'CSPC Library',

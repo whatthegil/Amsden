@@ -1,7 +1,8 @@
 <p>
     This policy explains what personal information C-BAMS collects, why it is collected, and
     how it is handled. It applies to the System operated by the Camarines Sur Polytechnic
-    Colleges (&ldquo;CSPC&rdquo;) Library.
+    Colleges (&ldquo;CSPC&rdquo;) Library, and follows the CSPC Library Manual (rev. 2026) and
+    the Data Privacy Act of 2012 (Republic Act No. 10173).
   </p>
 
   <h2>1. Information we collect</h2>
@@ -29,6 +30,7 @@
   <ul>
     <li>signing in and signing out;</li>
     <li>viewing, searching, bookmarking, and uploading bluebooks;</li>
+    <li>requesting full-text access to a restricted or partial bluebook, and the Library&rsquo;s decision;</li>
     <li>administrative actions such as approving, rejecting, or editing records;</li>
     <li>attempts to reach a page your role is not permitted to open;</li>
     <li>detected attempts to screenshot or screen-record a document page.</li>
@@ -37,14 +39,32 @@
   <h3>Content you submit</h3>
   <p>
     Where you upload a document, we store the file, the metadata you supply, and text
-    extracted from the document to make it searchable.
+    extracted from the document to make it searchable, together with the access level you
+    chose in your Access Permission Waiver.
+  </p>
+
+  <h3>Access requests</h3>
+  <p>
+    When you ask for full-text access to a Restricted or Partial Access bluebook, we store the
+    research or capstone title, program, research adviser, and purpose of use you give, with
+    the Library&rsquo;s decision, the authorization it rested on, and who made it. The Library
+    Manual requires these records to be kept for each request.
+  </p>
+
+  <h3>Personal information inside manuscripts</h3>
+  <p>
+    Manuscripts can contain their authors&rsquo; curricula vitae, contact details, signatures,
+    and identification numbers. These are kept in the Library&rsquo;s preservation copy but are
+    <strong>never shown to readers</strong>: the Library marks the pages that hold them, and the
+    System withholds those pages under every access level, including approved access requests.
   </p>
 
   <h2>2. Why we collect it</h2>
   <ul>
     <li><strong>To provide the System</strong> &mdash; authenticating you, applying the correct role, and showing your own uploads, history, and bookmarks.</li>
     <li><strong>To protect archived work</strong> &mdash; the audit log deters and evidences misuse of material that belongs to its authors.</li>
-    <li><strong>Institutional compliance</strong> &mdash; the Library must be able to account for who accessed which research material.</li>
+    <li><strong>Institutional compliance</strong> &mdash; the Library must be able to account for who accessed which research material, and on what authorization.</li>
+    <li><strong>To respect authors&rsquo; permissions</strong> &mdash; the access level each author chose, and any request decided under it, determine what each reader is shown.</li>
     <li><strong>To improve discovery</strong> &mdash; extracted text powers search, duplicate-title checking, and literature review results.</li>
   </ul>
 
@@ -53,14 +73,15 @@
     Uploaded PDFs are processed automatically to extract their text. Where the literature
     review feature is enabled, short extracts of a document&rsquo;s text and metadata may be
     sent to a third-party AI provider to generate summaries of search results. Only bluebook
-    content is sent for this purpose &mdash; never your account details or activity log. If
+    content is sent for this purpose &mdash; never your account details or activity log &mdash;
+    and a document&rsquo;s text is sent only when its author chose Open Access. If
     the feature is disabled, summaries are produced entirely within the System.
   </p>
 
   <h2>4. Who can see your information</h2>
   <ul>
     <li><strong>You</strong> may view your own profile, uploads, bookmarks, and activity history.</li>
-    <li><strong>Library administrators</strong> may view all accounts, all submissions, and the full audit log.</li>
+    <li><strong>Library administrators</strong> may view all accounts, all submissions, all access requests, and the full audit log.</li>
     <li><strong>Other users</strong> see only what is published in the archive: the bluebook record and, for documents you upload, your name as the uploader.</li>
   </ul>
   <p>
@@ -91,7 +112,9 @@
     Account records are kept while your account remains active. Audit log entries and archived
     bluebooks are retained as institutional records of the Library. Where an account is
     disabled, its activity records remain in the audit log so that the history of access to
-    archived work stays complete.
+    archived work stays complete. Access requests and their decisions are kept for the same
+    reason. Accepted manuscripts are kept as electronic preservation copies, as the Library
+    Manual requires of the Library as the official repository.
   </p>
 
   <h2>8. Your choices</h2>

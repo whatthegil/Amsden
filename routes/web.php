@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AccessRequestController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ProfileController;
@@ -76,6 +77,13 @@ Route::prefix('admin')->middleware('role:Admin,Sub-Admin')->group(function () {
     Route::middleware('permission:review_bluebooks')->group(function () {
         Route::post('/bluebooks/{id}/waiver-received', [AdminController::class, 'bluebookWaiverReceived'])->name('admin.bluebooks.waiverReceived');
         Route::post('/bluebooks/{id}/reject',      [AdminController::class, 'bluebookReject'])->name('admin.bluebooks.reject');
+
+        // Readers' requests for the full text of a restricted or partial
+        // bluebook, decided one title at a time (Library Manual 4.3.1.4).
+        Route::get('/access-requests',               [AccessRequestController::class, 'index'])->name('admin.access-requests');
+        Route::post('/access-requests/{id}/approve', [AccessRequestController::class, 'approve'])->whereNumber('id')->name('admin.access-requests.approve');
+        Route::post('/access-requests/{id}/deny',    [AccessRequestController::class, 'deny'])->whereNumber('id')->name('admin.access-requests.deny');
+        Route::post('/access-requests/{id}/revoke',  [AccessRequestController::class, 'revoke'])->whereNumber('id')->name('admin.access-requests.revoke');
     });
 
     Route::middleware('permission:manage_users')->group(function () {
@@ -107,6 +115,10 @@ Route::prefix('student')->middleware('role:Student,Faculty')->group(function () 
     Route::get('/bluebooks/{id}/file',         [StudentController::class, 'bluebookFile'])->middleware('throttle:bluebook-read')->name('student.bluebook.file');
     Route::get('/bluebooks/{id}/pages/{n}',    [StudentController::class, 'bluebookPage'])->whereNumber(['id', 'n'])->middleware('throttle:bluebook-page')->name('student.bluebook.page');
     Route::post('/bluebooks/{id}/flag-capture', [StudentController::class, 'flagCaptureAttempt'])->middleware('throttle:capture-flag')->name('student.bluebook.flag-capture');
+
+    // Asking the library for the full text of a restricted or partial bluebook.
+    Route::post('/bluebooks/{id}/request-access', [AccessRequestController::class, 'store'])->whereNumber('id')->middleware('throttle:6,1')->name('student.bluebook.request-access');
+    Route::get('/access-requests',             [AccessRequestController::class, 'mine'])->name('student.access-requests');
 
     Route::get('/history',                     [StudentController::class, 'history'])->name('student.history');
     Route::get('/bookmarks',                   [StudentController::class, 'bookmarks'])->name('student.bookmarks');

@@ -126,11 +126,18 @@ class AdminController extends Controller
 
     public function bluebookStore(Request $request)
     {
+        // The library adds papers it holds, often old ones with no signed
+        // waiver: those are Legacy unless a waiver is recorded here.
+        if (!$request->filled('access_level')) {
+            $request->merge(['access_level' => Bluebook::ACCESS_LEGACY]);
+        }
         $request->validate([
-            'file'       => ['nullable', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile], // 35MB, PDF only
+            'file'       => ['nullable', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile, new \App\Rules\PdfNotEncrypted], // 35MB, PDF only
             'department' => ['required', 'string', Rule::in(array_keys(config('departments')))],
             'program'    => ['required', 'string', new \App\Rules\ProgramInDepartment($request->input('department'))],
-        ]);
+        ] + $this->accessWaiverRules(true), $this->accessWaiverMessages());
+        $accessParts   = $this->accessPartsFrom($request);
+        $withheldPages = $this->withheldPagesFrom($request);
         $user = session('user');
 
         $fileData = [];
@@ -160,10 +167,14 @@ class AdminController extends Controller
             'keywords'       => array_map('trim', explode(',', $request->input('keywords'))),
             'abstract'       => $request->input('abstract'),
             'adviser'        => $request->input('adviser'),
-            // Added by the library itself, so public with no waiver step. An
+            // Added by the library itself, so no waiver step: the level is the
+            // one recorded here (Legacy when the library holds no waiver). An
             // Admin's addition is posted at once; a Sub-Admin's waits for the
             // Admin's approval, which only the Admin gives.
             'status'         => User::allows($user, 'approve_bluebooks') ? 'Approved' : 'Pending',
+            'accessLevel'    => $request->input('access_level'),
+            'accessParts'    => $accessParts,
+            'withheldPages'  => $withheldPages,
             'waiverRecordedAt' => now(),
             'uploadedBy'     => $user['email'],
             'uploadedByName' => $user['name'],
@@ -259,16 +270,17 @@ class AdminController extends Controller
         // carry can still be saved without changing it.
         $existing = Store::getBluebook($id);
         $request->validate([
-            'file'       => ['nullable', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile], // 35MB, PDF only
+            'file'       => ['nullable', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile, new \App\Rules\PdfNotEncrypted], // 35MB, PDF only
             'department' => ['required', 'string', Rule::in(array_merge(array_keys(config('departments')), [$existing['department'] ?? '']))],
             'program'    => ['required', 'string', new \App\Rules\ProgramInDepartment($request->input('department'), $existing['program'] ?? null)],
-        ] + $this->accessWaiverRules(), $this->accessWaiverMessages());
+        ] + $this->accessWaiverRules($existing && $this->addedByLibrary($existing)), $this->accessWaiverMessages());
         $accessParts = $this->accessPartsFrom($request);
         $user = session('user');
 
         $fields = [
             'accessLevel' => $request->input('access_level'),
             'accessParts' => $accessParts,
+            'withheldPages' => $this->withheldPagesFrom($request),
             'title'      => $request->input('title'),
             'authors'    => array_map('trim', explode(';', $request->input('authors'))),
             'year'       => (int)$request->input('year'),
@@ -281,7 +293,7 @@ class AdminController extends Controller
         ];
 
         if (!$canManage) {
-            $fields = array_intersect_key($fields, ['accessLevel' => 1, 'accessParts' => 1]);
+            $fields = array_intersect_key($fields, ['accessLevel' => 1, 'accessParts' => 1, 'withheldPages' => 1]);
         }
 
         if ($canManage && $request->hasFile('file')) {
@@ -346,8 +358,10 @@ class AdminController extends Controller
      */
     private function addedByLibrary(array $bluebook): bool
     {
+        // The import files its papers under the library's own account.
         return $bluebook['waiverRecorded']
-            && User::isStaff(User::where('email', $bluebook['uploadedBy'])->value('role'));
+            && ($bluebook['uploadedBy'] === 'library@cspc.edu.ph'
+                || User::isStaff(User::where('email', $bluebook['uploadedBy'])->value('role')));
     }
 
     private function reviewedFrom(Request $request): string
@@ -359,8 +373,12 @@ class AdminController extends Controller
         };
     }
 
-    /** A submission waiting longer than this is flagged as overdue. */
-    private const OVERDUE_DAYS = 7;
+    /**
+     * A submission waiting more working days than this is flagged as overdue:
+     * the Library Manual (5.2.1) gives the library three working days to
+     * evaluate a complete submission.
+     */
+    private const OVERDUE_DAYS = 3;
 
     /** A rejected author silent longer than this is flagged for a follow-up. */
     private const NO_REPLY_DAYS = 14;
@@ -386,6 +404,7 @@ class AdminController extends Controller
         $approved = Store::getApprovedBluebooks();
         foreach ($books as &$book) {
             $book['waitingDays'] = $this->daysSince($book['updatedAt']);
+            $book['workingDays'] = $this->workingDaysSince($book['updatedAt']);
             $book['duplicate']   = null;
             foreach ($approved as $posted) {
                 $score = SimilarityService::computeSimilarity($book['title'], $book['keywords'], (string) $book['abstract'], $posted);
@@ -407,7 +426,7 @@ class AdminController extends Controller
             'summary'      => [
                 'total'   => count($all),
                 'oldest'  => $ages ? max($ages) : 0,
-                'overdue' => count(array_filter($ages, fn($d) => $d > self::OVERDUE_DAYS)),
+                'overdue' => count(array_filter($all, fn($b) => $this->workingDaysSince($b['updatedAt']) > self::OVERDUE_DAYS)),
             ],
             'overdueDays'  => self::OVERDUE_DAYS,
             'pendingCount' => count($all),
@@ -465,6 +484,26 @@ class AdminController extends Controller
     private function daysSince(?string $at): int
     {
         return $at ? max(0, (int) floor((time() - strtotime($at)) / 86400)) : 0;
+    }
+
+    /** Weekdays (Monday to Friday) since a moment, not counting the day it fell on. */
+    private function workingDaysSince(?string $at): int
+    {
+        if (!$at) {
+            return 0;
+        }
+
+        $day   = \Carbon\Carbon::parse($at)->startOfDay()->addDay();
+        $today = now()->startOfDay();
+        $count = 0;
+        while ($day <= $today) {
+            if (!$day->isWeekend()) {
+                $count++;
+            }
+            $day->addDay();
+        }
+
+        return $count;
     }
 
     /** Approve several pending submissions at once, from the queue. */

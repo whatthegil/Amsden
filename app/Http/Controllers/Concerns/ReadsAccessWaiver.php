@@ -12,10 +12,21 @@ use Illuminate\Validation\ValidationException;
  */
 trait ReadsAccessWaiver
 {
-    private function accessWaiverRules(): array
+    /**
+     * $allowLegacy: whether "no waiver on file" may be recorded - only for a
+     * record the library added itself. A student's submission cannot be posted
+     * without its waiver (Library Manual 5.2.1, grounds for non-acceptance).
+     */
+    private function accessWaiverRules(bool $allowLegacy = false): array
     {
+        $levels = array_keys(Bluebook::ACCESS_LEVELS);
+        if ($allowLegacy) {
+            $levels[] = Bluebook::ACCESS_LEGACY;
+        }
+
         return [
-            'access_level'   => ['required', 'in:' . implode(',', array_keys(Bluebook::ACCESS_LEVELS))],
+            'access_level'   => ['required', 'in:' . implode(',', $levels)],
+            'withheld_pages' => ['nullable', 'string', 'max:255'],
             'access_parts'   => ['required_if:access_level,' . Bluebook::ACCESS_PARTIAL, 'array'],
             'access_parts.*' => ['in:' . implode(',', array_keys(Bluebook::ACCESS_PARTS))],
         ];
@@ -26,7 +37,35 @@ trait ReadsAccessWaiver
         return [
             'access_level.required'    => 'Please choose an access permission waiver.',
             'access_parts.required_if' => 'Please tick at least one part that readers may see.',
+            'access_level.in'          => 'A student submission needs the access level from the author\'s signed waiver.',
         ];
+    }
+
+    /**
+     * The pages no reader is sent - CV, contact details, signatures, ID
+     * numbers (Library Manual 4.3.1.3) - as a normalized page list, or null.
+     */
+    private function withheldPagesFrom(Request $request): ?string
+    {
+        $list = Bluebook::normalizePageList($request->input('withheld_pages'));
+        if ($list === false) {
+            throw ValidationException::withMessages([
+                'withheld_pages' => 'Write the withheld pages as page numbers and ranges, such as "3, 148-152".',
+            ]);
+        }
+
+        $pages = (int) $request->input('pages');
+        if ($list !== null && $pages > 0) {
+            foreach (explode(',', $list) as $part) {
+                if ((int) (explode('-', $part)[1] ?? $part) > $pages) {
+                    throw ValidationException::withMessages([
+                        'withheld_pages' => "The withheld pages must fall within pages 1 to {$pages}.",
+                    ]);
+                }
+            }
+        }
+
+        return $list;
     }
 
     /**

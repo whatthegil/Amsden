@@ -171,7 +171,7 @@ class BrowseBluebooksTest extends TestCase
         }
         $res->assertSee('CCS — College of Computer Studies');
         $res->assertSee('42 pages');
-        $res->assertSee('Full document');
+        $res->assertSee('Open Access');
         $res->assertSee('(Dela Cruz, 2024)');
         $res->assertSee("Dela Cruz, M. (2024).", false);
     }

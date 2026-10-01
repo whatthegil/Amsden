@@ -105,8 +105,14 @@
                   ];
                 }
               @endphp
+              @php
+                // Only a record the library added may stand without a waiver.
+                $libraryAdded = $bluebook['uploadedBy'] === 'library@cspc.edu.ph'
+                  || \App\Models\User::isStaff(\App\Models\User::where('email', $bluebook['uploadedBy'])->value('role'));
+              @endphp
               <x-access-waiver :level="old('access_level', $chosen ? $bluebook['accessLevel'] : null)" :parts="$parts"
-                               :checked="(array) old('access_parts', array_keys($savedParts))">
+                               :checked="(array) old('access_parts', array_keys($savedParts))"
+                               :legacy="$libraryAdded" :withheld="old('withheld_pages', $bluebook['withheldPages'] ?? '')">
                 @if($bluebook['waiverRecorded'])
                   Copy what the author ticked on the signed waiver.
                 @else
@@ -117,6 +123,18 @@
                   @endif
                   <strong>Not recorded yet</strong> &mdash; this bluebook cannot be posted until it is saved here.
                 @endif
+              </x-access-waiver>
+            @else
+              @php
+                $parts = [];
+                foreach (array_keys(\App\Models\Bluebook::ACCESS_PARTS) as $key) {
+                  $parts[$key] = ['from' => old("part_from.$key", ''), 'to' => old("part_to.$key", '')];
+                }
+              @endphp
+              <x-access-waiver :level="old('access_level', \App\Models\Bluebook::ACCESS_LEGACY)" :parts="$parts"
+                               :checked="(array) old('access_parts', [])" :legacy="true"
+                               :withheld="old('withheld_pages', '')">
+                If the library holds the author's signed waiver, copy what they ticked. Otherwise leave it as Legacy.
               </x-access-waiver>
             @endif
 

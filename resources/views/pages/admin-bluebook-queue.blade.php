@@ -22,21 +22,21 @@
   // The waiver the author asked for, in a word.
   $waiverLabel = function (array $b) {
     if (!$b['waiverRequested'] && !$b['waiverRecorded']) return '—';
-    return match ($b['accessLevel']) {
-      \App\Models\Bluebook::ACCESS_CONSULTATION => 'Consultation only',
-      \App\Models\Bluebook::ACCESS_PARTIAL      => 'Selected parts',
-      default                                   => 'Full document',
-    };
+    return \App\Models\Bluebook::accessName($b['accessLevel']);
   };
   $days = fn(int $d) => $d === 0 ? 'Today' : ($d === 1 ? '1 day' : $d . ' days');
 
   // One click to start a rejection from what is most often wrong; the text
   // can still be edited before it is sent.
+  // These are the Library Manual's grounds for non-acceptance (5.2.1).
   $reasons = [
-    'Missing chapters' => 'The PDF is missing one or more chapters. Please upload the complete manuscript.',
-    'Unreadable scan'  => 'Some pages of the scan are blurred or unreadable. Please upload a clearer copy.',
-    'Wrong file'       => 'The uploaded file is not the final bluebook. Please upload the approved final copy.',
-    'Details incomplete' => 'Some of the details (title, authors, adviser or abstract) do not match the document. Please correct them and re-upload.',
+    'Missing pages'      => 'Required pages or sections are missing (title page, approval sheet, abstract, table of contents or chapters). Please upload the complete manuscript.',
+    'Signatures'         => 'Approval signatures or certifications are incomplete. Please upload the copy with all approval and certification pages signed.',
+    'Unreadable file'    => 'The electronic file is corrupted, unreadable or has pages that are not properly scanned, oriented or legible. Please upload a clear, complete PDF.',
+    'Not the final copy' => 'The submitted file does not match the final approved manuscript. Please upload the exact final approved version.',
+    'Metadata'           => 'The details given (title, authors, adviser, program, year or abstract) are inaccurate or do not match the manuscript. Please correct them and re-upload.',
+    'Format'             => 'The manuscript does not follow the institutional thesis format (pagination, headings, table of contents, lists of tables and figures). Please correct it and re-upload.',
+    'Repository requirements' => 'The submission does not comply with institutional repository requirements. Please see the library for details.',
   ];
 @endphp
 @include('partials.head')
@@ -69,7 +69,7 @@
         @if($isPending)
           <div class="queue-stat"><span class="num">{{ $summary['total'] }}</span><span class="label">waiting</span></div>
           <div class="queue-stat"><span class="num">{{ $summary['total'] ? $days($summary['oldest']) : '—' }}</span><span class="label">oldest wait</span></div>
-          <div class="queue-stat {{ $summary['overdue'] ? 'is-alert' : '' }}"><span class="num">{{ $summary['overdue'] }}</span><span class="label">overdue (over {{ $overdueDays }} days)</span></div>
+          <div class="queue-stat {{ $summary['overdue'] ? 'is-alert' : '' }}"><span class="num">{{ $summary['overdue'] }}</span><span class="label">overdue (over {{ $overdueDays }} working days)</span></div>
         @else
           <div class="queue-stat"><span class="num">{{ $summary['total'] }}</span><span class="label">rejected</span></div>
           <div class="queue-stat {{ $summary['noReply'] ? 'is-alert' : '' }}"><span class="num">{{ $summary['noReply'] }}</span><span class="label">no re-upload in {{ $noReplyDays }}+ days</span></div>
@@ -159,7 +159,7 @@
                     @if($isPending)
                       <td style="font-size:0.83rem;white-space:nowrap;" title="Since {{ $b['updatedAt'] }}">
                         {{ $days($b['waitingDays']) }}
-                        @if($b['waitingDays'] > $overdueDays) <span class="badge badge-red">Overdue</span> @endif
+                        @if($b['workingDays'] > $overdueDays) <span class="badge badge-red">Overdue</span> @endif
                       </td>
                       <td style="font-size:0.83rem;white-space:nowrap;">{{ $waiverLabel($b) }}</td>
                       <td style="font-size:0.8rem;">

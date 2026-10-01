@@ -63,7 +63,7 @@ class ReviewQueuesTest extends TestCase
 
         $res = $this->withSession($this->staffSession())->get('/admin/pending');
 
-        $res->assertSee('overdue (over 7 days)');
+        $res->assertSee('overdue (over 3 working days)');
         $res->assertSee('10 days');
         $this->assertSame(1, substr_count($res->getContent(), '>Overdue</span>'));
     }

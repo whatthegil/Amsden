@@ -59,7 +59,7 @@ class AcceptPolicyTest extends TestCase
 
         // Section headings unique to each published document.
         $response->assertSee('Who may use the System');        // Terms, section 2
-        $response->assertSee('Submitting your own work');      // Terms, section 4
+        $response->assertSee('Submitting unpublished materials'); // Terms, section 4
         $response->assertSee('Information we collect');        // Privacy, section 1
         $response->assertSee('Screen-capture detection');      // Privacy, section 5
     }

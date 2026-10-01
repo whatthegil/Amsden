@@ -85,11 +85,8 @@
 
         @php
           $deptName = config('departments.' . $bluebook['department'] . '.name');
-          $access   = match ($bluebook['accessLevel']) {
-            \App\Models\Bluebook::ACCESS_CONSULTATION => 'By consultation with the author',
-            \App\Models\Bluebook::ACCESS_PARTIAL      => 'Selected parts only',
-            default                                   => 'Full document',
-          };
+          $granted  = !$asAdmin && ($bluebook['granted'] ?? false);
+          $access   = \App\Models\Bluebook::accessName($bluebook['accessLevel']) . ($granted ? ' — full text granted to you' : '');
           $citation = \App\Services\LiteratureReviewService::citation($bluebook);
         @endphp
         <div class="info-grid">
@@ -110,7 +107,7 @@
             <span class="val">{{ $bluebook['year'] }} &middot; {{ $bluebook['pages'] }} pages</span>
           </div>
           <div class="info-row">
-            <span class="key">Readers can see</span>
+            <span class="key">Access</span>
             <span class="val">{{ $access }}</span>
           </div>
         </div>
@@ -124,16 +121,57 @@
           <button type="button" class="btn btn-outline btn-sm" data-open-modal="cite-modal">Cite</button>
         </div>
 
+        @if($asAdmin && $bluebook['status'] === 'Pending')
+          {{-- The Library Manual's criteria for evaluating a submission (5.2.1),
+               to tick off while reading. A working aid only; nothing is saved. --}}
+          <details class="eval-checklist card" style="padding:0.9rem 1rem;" open>
+            <summary style="cursor:pointer;font-weight:700;">Evaluation checklist <span style="font-weight:400;color:var(--gray-400);font-size:0.82rem;">(Library Manual 5.2.1 &middot; to be completed within 3 working days &middot; not saved)</span></summary>
+            <ul>
+              @foreach([
+                'Approved by the appropriate academic unit/college',
+                'All required approval and certification pages are included',
+                'Conforms to the approved institutional thesis format',
+                'Pagination is complete, sequential and consistent',
+                'Headings, margins, spacing, fonts and numbering follow standards',
+                'Table of Contents matches the contents and page numbers',
+                'Lists of Tables, Figures and Appendices match the manuscript',
+                'All cited tables, figures and appendices are present and properly labelled',
+                'No pages, tables, figures or appendices are missing',
+                'Exact reproduction of the final approved printed manuscript, with signatures',
+                'PDF, readable, complete and free from corruption',
+                'No password protection, editing restrictions or encryption',
+                'All pages properly scanned, oriented and legible',
+                'File naming convention followed',
+                'Title, authors, adviser, program, year and abstract are complete and accurate',
+                'Keywords and subject information are identifiable',
+                'Access Permission Waiver accomplished, with the access level clearly indicated',
+                'Pages with sensitive personal information identified (set as withheld pages)',
+                'Suitable for long-term digital preservation',
+              ] as $i => $criterion)
+                <li><label><input type="checkbox" id="eval-{{ $i }}"> <span>{{ $criterion }}</span></label></li>
+              @endforeach
+            </ul>
+          </details>
+        @endif
+
         <h4 style="font-size:0.82rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--gray-400);margin-bottom:0.6rem;">Document</h4>
-        @if($bluebook['hasFile'] && $bluebook['accessLevel'] === 'consultation' && !$asAdmin)
-          <div class="alert alert-info" style="margin-bottom:0.5rem;">
-            The author has not permitted this bluebook for general use. It is accessible after consultation with the author.
+        @if(session('success'))
+          <div class="alert alert-success" style="margin-bottom:0.75rem;">{{ session('success') }}</div>
+        @endif
+        @if(session('error'))
+          <div class="alert alert-error" style="margin-bottom:0.75rem;">{{ session('error') }}</div>
+        @endif
+        @if($bluebook['hasFile'] && $bluebook['accessLevel'] === 'consultation' && !$asAdmin && !$granted)
+          <div class="alert alert-info" style="margin-bottom:0.75rem;">
+            <strong>Restricted Access.</strong> The author has not permitted this bluebook for general use. It may be viewed only with
+            the author's written authorization or after consultation with them, which the library arranges on request.
           </div>
-          <div style="font-size:0.78rem;color:var(--gray-400);">Access logged for: {{ $user['email'] }}</div>
+          @include('partials.access-request')
+          <div style="font-size:0.78rem;color:var(--gray-400);margin-top:0.5rem;">Access logged for: {{ $user['email'] }}</div>
         @elseif($asAdmin && ($preview ?? false) && ($pageImages ?? 0) === 0)
           <div class="alert alert-info" style="margin-bottom:0.5rem;">
             Previewing as a reader: <strong>readers are sent no pages of this bluebook</strong>
-            ({{ \App\Models\Bluebook::ACCESS_LEVELS[$bluebook['accessLevel']] ?? $bluebook['accessLevel'] }}).
+            ({{ \App\Models\Bluebook::accessName($bluebook['accessLevel']) }}).
             <a href="{{ route('admin.bluebooks.view', $bluebook['id']) }}">Show the whole document</a>
           </div>
         @elseif($bluebook['hasFile'])
@@ -146,21 +184,33 @@
           @elseif($asAdmin)
             <div class="alert alert-info" style="margin-bottom:0.75rem;">
               You are seeing the whole document. Readers get:
-              <strong>{{ \App\Models\Bluebook::ACCESS_LEVELS[$bluebook['accessLevel']] ?? $bluebook['accessLevel'] }}</strong>@if($bluebook['accessLevel'] === 'partial' && $bluebook['accessParts']) &mdash;
+              <strong>{{ \App\Models\Bluebook::accessName($bluebook['accessLevel']) }}</strong>@if($bluebook['accessLevel'] === 'partial' && $bluebook['accessParts']) &mdash;
                 @foreach($bluebook['accessParts'] as $key => $range){{ \App\Models\Bluebook::ACCESS_PART_LABELS[$key] ?? $key }} (pp. {{ $range['from'] }}–{{ $range['to'] }}){{ $loop->last ? '' : ', ' }}@endforeach
               @endif.
+              @if($bluebook['withheldPages']) Withheld from every reader: pp. {{ str_replace(',', ', ', $bluebook['withheldPages']) }}. @endif
               @unless($bluebook['waiverRecorded']) <em>(Not recorded yet.)</em> @endunless
               @if($canPreview ?? false)
                 <a href="{{ route('admin.bluebooks.view', ['id' => $bluebook['id'], 'preview' => 'reader']) }}">Preview as a reader</a>
               @endif
             </div>
+          @elseif($granted)
+            <div class="alert alert-info" style="margin-bottom:0.75rem;">
+              The library has granted you access to the full text of this bluebook, for viewing here only. This does not
+              permit you to download, reproduce or share it.
+            </div>
           @elseif($bluebook['accessLevel'] === 'partial')
             <div class="alert alert-info" style="margin-bottom:0.75rem;">
-              The author has permitted only certain parts of this bluebook to be viewed:
+              <strong>Partial Access.</strong> The author has permitted only certain parts of this bluebook to be viewed:
               @foreach($bluebook['accessParts'] as $key => $range)
                 <strong>{{ \App\Models\Bluebook::ACCESS_PART_LABELS[$key] ?? $key }}</strong>
                 (pp. {{ $range['from'] }}–{{ $range['to'] }}){{ $loop->last ? '.' : ',' }}
               @endforeach
+            </div>
+            @include('partials.access-request')
+          @elseif($bluebook['accessLevel'] === 'legacy')
+            <div class="alert alert-info" style="margin-bottom:0.75rem;">
+              <strong>Legacy &ndash; No Access Permission on File.</strong> This work predates the Access Permission Waiver.
+              It may be consulted here for academic purposes, but no copy of it may be made or shared.
             </div>
           @endif
           {{-- Rendered page by page to canvas by PDF.js rather than handed to
@@ -218,6 +268,14 @@
             <div class="pdf-pages" id="pdf-pages"></div>
           </div>
           <div style="font-size:0.78rem;color:var(--gray-400);margin-top:0.5rem;">Access logged for: {{ $user['email'] }}</div>
+          @unless($asAdmin)
+            {{-- Library Manual 4.3.1.2 and Responsibilities of Users. --}}
+            <p class="use-notice">
+              For research, instruction and academic purposes only. Cite the author/s properly. Reproducing, downloading,
+              photographing, scanning or sharing this work is prohibited. Some pages may be withheld to protect personal
+              information. See the <a href="{{ route('terms') }}" target="_blank" rel="noopener">Terms and Conditions</a>.
+            </p>
+          @endunless
         @else
           <div class="watermark-overlay" style="margin-top:0;">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" style="margin:0 auto 1rem;display:block;"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" fill="var(--gray-400)" fill-opacity="0.18"/><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" fill="none" stroke="var(--gray-400)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>

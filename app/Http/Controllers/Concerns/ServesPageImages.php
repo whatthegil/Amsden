@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Models\AccessRequest;
 use App\Models\Bluebook;
 use App\Services\Pdf\PageImages;
 
@@ -22,13 +23,14 @@ trait ServesPageImages
         // full record carries the paper's extracted text - a hundred kilobytes
         // or more, read and thrown away for every page of every reader.
         $row = Bluebook::query()
-            ->select(['id', 'status', 'file_path', 'access_level', 'access_parts', 'page_images_count', 'page_images_source'])
+            ->select(['id', 'status', 'file_path', 'access_level', 'access_parts', 'withheld_pages', 'page_images_count', 'page_images_source'])
             ->find($id);
         $bluebook = $row ? [
             'status'           => $row->status,
             'filePath'         => $row->file_path,
             'accessLevel'      => $row->access_level ?: Bluebook::ACCESS_PUBLIC,
             'accessParts'      => $row->access_parts ?? [],
+            'withheldPages'    => $row->withheld_pages,
             'pageImagesCount'  => (int) ($row->page_images_count ?? 0),
             'pageImagesSource' => $row->page_images_source,
         ] : null;
@@ -38,8 +40,13 @@ trait ServesPageImages
             abort(404);
         }
 
-        if ($bluebook['accessLevel'] === Bluebook::ACCESS_CONSULTATION) {
-            abort(403, 'This bluebook is available only after consultation with the author.');
+        // A reader the library has granted the full text sees every page but
+        // the withheld ones. The admin's preview shows what readers get
+        // without a grant.
+        $bluebook['granted'] = $onlyIfPosted && AccessRequest::granted($id, $email);
+
+        if ($bluebook['accessLevel'] === Bluebook::ACCESS_CONSULTATION && !$bluebook['granted']) {
+            abort(403, 'This bluebook is restricted. It is available only with the author\'s authorization.');
         }
 
         $pages = PageImages::visiblePages($bluebook);

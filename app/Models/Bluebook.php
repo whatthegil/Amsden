@@ -28,11 +28,36 @@ class Bluebook extends Model
     /** Only the parts listed in access_parts may be read. */
     public const ACCESS_PARTIAL = 'partial';
 
+    /**
+     * No waiver on file: added by the library, or submitted before the waiver
+     * existed (Library Manual 4.3.1.4). Readers view it in the watermarked
+     * viewer, but it is never treated as an open copy - the absence of a waiver
+     * is not the author's consent.
+     */
+    public const ACCESS_LEGACY = 'legacy';
+
+    /** The choices on the signed waiver form, in its own words. */
     public const ACCESS_LEVELS = [
         self::ACCESS_PUBLIC       => 'All parts of the unpublished material are accessible for public use',
         self::ACCESS_CONSULTATION => 'It is not permitted for general use but is accessible after consultation with the author',
         self::ACCESS_PARTIAL      => 'Only certain parts of the material',
     ];
+
+    /** Each level by the name the Library Manual gives it. */
+    public const ACCESS_NAMES = [
+        self::ACCESS_PUBLIC       => 'Open Access',
+        self::ACCESS_CONSULTATION => 'Restricted Access',
+        self::ACCESS_PARTIAL      => 'Partial Access',
+        self::ACCESS_LEGACY       => 'Legacy – No Access Permission on File',
+    ];
+
+    /** The levels under which a reader can ask the library for the full text. */
+    public const REQUESTABLE_LEVELS = [self::ACCESS_CONSULTATION, self::ACCESS_PARTIAL];
+
+    public static function accessName(?string $level): string
+    {
+        return self::ACCESS_NAMES[$level ?: self::ACCESS_PUBLIC] ?? (string) $level;
+    }
 
     /**
      * The parts an author can open to readers under ACCESS_PARTIAL. Preliminary
@@ -64,7 +89,7 @@ class Bluebook extends Model
         'ocr_status', 'ocr_text', 'ocr_error', 'ocr_engine', 'ocr_rasterizer', 'ocr_processed_at',
         'watermarked_at',
         'page_images_count', 'page_images_source', 'page_images_at',
-        'access_level', 'access_parts', 'waiver_requested_at', 'waiver_recorded_at', 'rejection_reason',
+        'access_level', 'access_parts', 'withheld_pages', 'waiver_requested_at', 'waiver_recorded_at', 'rejection_reason',
     ];
 
     protected $casts = [
@@ -116,6 +141,124 @@ class Bluebook extends Model
     public function bookmarks(): HasMany
     {
         return $this->hasMany(Bookmark::class);
+    }
+
+    public function accessRequests(): HasMany
+    {
+        return $this->hasMany(AccessRequest::class);
+    }
+
+    /**
+     * The original page numbers a reader may see, in order, out of $count.
+     *
+     * The waiver decides the base - every page, the partial ranges, or none -
+     * and an approved access request opens every page. Withheld pages (CV,
+     * signatures, ID numbers) then come out whatever the base, since the
+     * manual keeps them from public view under every level.
+     *
+     * @param array $bluebook a Store::bookToArray()-shaped array
+     * @return int[]
+     */
+    public static function readerPages(array $bluebook, int $count, bool $granted = false): array
+    {
+        if ($count < 1) {
+            return [];
+        }
+
+        $level = $bluebook['accessLevel'] ?? self::ACCESS_PUBLIC;
+        $pages = match (true) {
+            $granted                              => range(1, $count),
+            $level === self::ACCESS_CONSULTATION  => [],
+            $level === self::ACCESS_PARTIAL       => self::expandPageList(self::visiblePageList($bluebook['accessParts'] ?? []), $count),
+            default                               => range(1, $count),
+        };
+
+        $withheld = self::expandPageList(self::normalizePageList($bluebook['withheldPages'] ?? null), $count);
+
+        return array_values(array_diff($pages, $withheld));
+    }
+
+    /**
+     * Whether a reader is limited to less than the whole document - by the
+     * waiver or by withheld pages. When false, the whole file may be sent
+     * without knowing its page count.
+     */
+    public static function isCutForReader(array $bluebook, bool $granted = false): bool
+    {
+        $level = $bluebook['accessLevel'] ?? self::ACCESS_PUBLIC;
+
+        return self::normalizePageList($bluebook['withheldPages'] ?? null) !== null
+            || (!$granted && in_array($level, [self::ACCESS_CONSULTATION, self::ACCESS_PARTIAL], true));
+    }
+
+    /** [1, 2, 3, 7] as "1-3,7", the form MuPDF and Ghostscript take. */
+    public static function compressPages(array $pages): ?string
+    {
+        if (!$pages) {
+            return null;
+        }
+        sort($pages);
+
+        $ranges = [];
+        foreach ($pages as $p) {
+            $last = count($ranges) - 1;
+            if ($last >= 0 && $p === $ranges[$last][1] + 1) {
+                $ranges[$last][1] = $p;
+            } else {
+                $ranges[] = [$p, $p];
+            }
+        }
+
+        return implode(',', array_map(fn($r) => $r[0] === $r[1] ? (string) $r[0] : "{$r[0]}-{$r[1]}", $ranges));
+    }
+
+    /**
+     * A page list as an admin types it ("3, 148 - 152") in the form the rest
+     * of the code reads ("3,148-152"). Null when blank; false when it is not a
+     * page list at all, which callers validating input report as an error.
+     */
+    public static function normalizePageList(?string $list): string|null|false
+    {
+        $list = trim((string) $list);
+        if ($list === '') {
+            return null;
+        }
+
+        $parts = [];
+        foreach (preg_split('/\s*[,;]\s*/', $list) as $part) {
+            if ($part === '') continue;
+            if (!preg_match('/^(\d+)(?:\s*[-–]\s*(\d+))?$/u', $part, $m)) {
+                return false;
+            }
+            $from = (int) $m[1];
+            $to   = isset($m[2]) ? (int) $m[2] : $from;
+            if ($from < 1 || $to < $from) {
+                return false;
+            }
+            $parts[] = $from === $to ? (string) $from : "{$from}-{$to}";
+        }
+
+        return $parts ? implode(',', $parts) : null;
+    }
+
+    /** "1-3,7" within 1..$count as [1, 2, 3, 7]. */
+    public static function expandPageList(string|null|false $list, int $count): array
+    {
+        if (!$list || $count < 1) {
+            return [];
+        }
+
+        $pages = [];
+        foreach (explode(',', $list) as $part) {
+            [$from, $to] = array_pad(array_map('intval', explode('-', $part)), 2, null);
+            $to ??= $from;
+            for ($p = max(1, $from); $p <= min($count, $to); $p++) {
+                $pages[$p] = $p;
+            }
+        }
+        ksort($pages);
+
+        return array_values($pages);
     }
 
     /**

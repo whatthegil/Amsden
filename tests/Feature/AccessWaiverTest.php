@@ -129,12 +129,14 @@ class AccessWaiverTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/value="public" required\s+checked/', $res->getContent());
     }
 
-    public function test_admin_add_form_does_not_show_the_waiver(): void
+    public function test_admin_add_form_offers_the_waiver_defaulting_to_legacy(): void
     {
-        $this->withSession(['user' => $this->admin()])
-            ->get('/admin/bluebooks/new')
-            ->assertOk()
-            ->assertDontSee('Access Permission Waiver');
+        $res = $this->withSession(['user' => $this->admin()])->get('/admin/bluebooks/new');
+
+        $res->assertOk();
+        $res->assertSee('Access Permission Waiver');
+        $this->assertMatchesRegularExpression('/value="legacy" required\s+checked/', $res->getContent());
+        $res->assertSee('name="withheld_pages"', false);
     }
 
     public function test_admin_can_set_a_partial_waiver(): void
