@@ -230,12 +230,12 @@ class WaiverApprovalTest extends TestCase
             ->assertHeader('Content-Type', 'application/pdf');
     }
 
-    public function test_the_upload_page_links_the_blank_waiver(): void
+    public function test_the_upload_page_does_not_link_the_blank_waiver(): void
     {
         $this->withSession(['user' => $this->author()])->get('/student/upload')
             ->assertOk()
-            ->assertSee(route('student.waiver'), false)
-            ->assertSee('Download Waiver Form');
+            ->assertDontSee(route('student.waiver'), false)
+            ->assertDontSee('Download Waiver Form');
     }
 
     public function test_a_student_downloads_the_blank_waiver(): void

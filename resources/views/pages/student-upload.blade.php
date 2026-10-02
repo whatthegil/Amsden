@@ -26,18 +26,12 @@
         <div class="alert alert-success">{{ $success }}</div>
       @endif
 
-      {{-- The waiver is set by the admin from the signed paper copy, so the
-           form is offered here for the author to print and fill in. --}}
+      {{-- The waiver is set by the admin from the signed paper copy, which the
+           author downloads from My Uploads once the bluebook is sent in. --}}
       <div class="alert alert-info">
         <strong>Access permission waiver.</strong>
-        Print the library's waiver, fill it in and sign it, then hand it in to the CSPC Library.
+        After uploading, download the waiver from My Uploads, fill it in and sign it, then hand it in to the CSPC Library.
         Your bluebook is posted once the library receives it.
-        <div style="margin-top:0.6rem;">
-          <a href="{{ route('student.waiver') }}" class="btn btn-primary btn-sm">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
-            Download Waiver Form
-          </a>
-        </div>
       </div>
 
       <div class="form-card">
