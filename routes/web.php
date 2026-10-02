@@ -73,6 +73,8 @@ Route::prefix('admin')->middleware('role:Admin,Sub-Admin')->group(function () {
     Route::middleware('permission:approve_bluebooks')->group(function () {
         Route::post('/bluebooks/{id}/approve',     [AdminController::class, 'bluebookApprove'])->name('admin.bluebooks.approve');
         Route::post('/bluebooks/approve-selected', [AdminController::class, 'bluebookApproveSelected'])->name('admin.bluebooks.approveSelected');
+        // Undoing an approval is the approver's too.
+        Route::post('/bluebooks/{id}/recall',      [AdminController::class, 'bluebookRecall'])->whereNumber('id')->name('admin.bluebooks.recall');
     });
 
     Route::middleware('permission:review_bluebooks')->group(function () {

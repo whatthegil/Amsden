@@ -134,6 +134,16 @@
                             @csrf <button type="submit" class="btn btn-success btn-sm" title="The signed waiver was handed in; post this bluebook in Browse">Waiver Received</button>
                           </form>
                         @endif
+                        @if(\App\Models\User::allows($user, 'approve_bluebooks') && in_array($b['status'], ['Approved', \App\Models\Bluebook::STATUS_AWAITING_WAIVER], true))
+                          <details class="reject-box">
+                            <summary class="btn btn-warning btn-sm" title="Undo the approval and send it back to Pending">Recall</summary>
+                            <form method="POST" action="{{ route('admin.bluebooks.recall', $b['id']) }}">
+                              @csrf
+                              <span style="font-size:0.8rem;">Send this back to Pending? It is taken out of Browse until approved again.</span>
+                              <button type="submit" class="btn btn-warning btn-sm">Confirm Recall</button>
+                            </form>
+                          </details>
+                        @endif
                         @if($canManage && $b['status'] === 'Approved' && $b['hasFile'] && $b['ocrStatus'] !== 'processing')
                           <form method="POST" action="{{ route('admin.bluebooks.reprocessOcr', $b['id']) }}" style="display:inline;">
                             @csrf <button type="submit" class="btn btn-outline btn-sm">Reprocess OCR</button>

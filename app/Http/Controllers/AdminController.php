@@ -393,6 +393,26 @@ class AdminController extends Controller
         return redirect($this->reviewedFrom($request))->with('success', 'Bluebook approved. It will be posted once the author hands in the signed waiver.');
     }
 
+    /**
+     * Undo an approval: a posted or awaiting-waiver bluebook goes back to
+     * Pending, out of Browse, to be corrected and checked again before it is
+     * re-approved. Its waiver, views and bookmarks are kept.
+     */
+    public function bluebookRecall(int $id)
+    {
+        $user     = session('user');
+        $bluebook = Store::getBluebook($id);
+        if (!$bluebook || !in_array($bluebook['status'], ['Approved', Bluebook::STATUS_AWAITING_WAIVER], true)) {
+            return redirect()->route('admin.bluebooks');
+        }
+
+        Store::setBluebookStatus($id, 'Pending');
+        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Recalled Bluebook', 'document' => $bluebook['title'], 'bluebookId' => $id]);
+
+        return redirect()->route('admin.bluebooks.view', $id)->with('success',
+            'Recalled to Pending. It is hidden from Browse until it is approved again. Edit it, or use the checklist to tell the author what to fix.');
+    }
+
     /** Back to the page the action was taken from: Pending, Rejected, or the list. */
     /**
      * Whether the library added this bluebook itself (through Add Bluebook,

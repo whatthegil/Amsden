@@ -23,6 +23,17 @@
           @if(\App\Models\User::allows($user, 'manage_bluebooks') || \App\Models\User::allows($user, 'review_bluebooks'))
             <a href="{{ route('admin.bluebooks.edit', $bluebook['id']) }}" class="btn btn-outline btn-sm">{{ \App\Models\User::allows($user, 'manage_bluebooks') ? 'Edit' : 'Record waiver' }}</a>
           @endif
+          @if(\App\Models\User::allows($user, 'approve_bluebooks') && in_array($bluebook['status'], ['Approved', \App\Models\Bluebook::STATUS_AWAITING_WAIVER], true))
+            {{-- Undo an approval made by mistake, or to correct the record. --}}
+            <details class="reject-box">
+              <summary class="btn btn-warning btn-sm">Recall to Pending</summary>
+              <form method="POST" action="{{ route('admin.bluebooks.recall', $bluebook['id']) }}">
+                @csrf
+                <span style="font-size:0.8rem;">Undo the approval? It is taken out of Browse until approved again; its waiver, views and bookmarks are kept.</span>
+                <button type="submit" class="btn btn-warning btn-sm">Confirm Recall</button>
+              </form>
+            </details>
+          @endif
         @else
           <a href="{{ route('student.bluebooks') }}" class="btn btn-outline btn-sm">← Back to Browse</a>
         @endif
