@@ -80,7 +80,8 @@ class ProcessBluebookOcr implements ShouldQueue
                 [$path, $temp] = self::localCopy($bluebook->file_path);
             }
 
-            $text = \App\Services\PdfTextExtractor::extract($path, (int) config('ocr.max_text_length', 500000));
+            $text      = \App\Services\PdfTextExtractor::extract($path, (int) config('ocr.max_text_length', 500000));
+            $encrypted = \App\Services\BluebookEvaluation::isEncrypted($path);
         } finally {
             if ($temp !== null) {
                 @unlink($temp);
@@ -90,6 +91,9 @@ class ProcessBluebookOcr implements ShouldQueue
         // Letters, not bytes: a scan can still carry a line of page numbers.
         $letters = preg_match_all('/\p{L}/u', $text);
         if ($letters < (int) config('ocr.text_layer_min_letters', 1500)) {
+            // Still worth knowing for the evaluation checklist, which cannot
+            // tell encryption from the text OCR will read.
+            $bluebook->forceFill(['pdf_encrypted' => $encrypted])->save();
             return false;
         }
 
@@ -100,6 +104,7 @@ class ProcessBluebookOcr implements ShouldQueue
             'ocr_engine'       => 'text layer',
             'ocr_rasterizer'   => null,
             'ocr_processed_at' => now(),
+            'pdf_encrypted'    => $encrypted,
         ])->save();
 
         return true;
@@ -175,6 +180,7 @@ class ProcessBluebookOcr implements ShouldQueue
         try {
             [$absolutePath, $tempPdf] = self::localCopy($bluebook->file_path);
 
+            $bluebook->pdf_encrypted = \App\Services\BluebookEvaluation::isEncrypted($absolutePath);
             $result = OcrService::extractText($absolutePath);
         } finally {
             if ($tempPdf !== null && is_file($tempPdf)) {

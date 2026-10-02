@@ -90,6 +90,7 @@ class Bluebook extends Model
         'watermarked_at',
         'page_images_count', 'page_images_source', 'page_images_at',
         'access_level', 'access_parts', 'withheld_pages', 'waiver_requested_at', 'waiver_recorded_at', 'rejection_reason',
+        'evaluation', 'evaluated_at', 'pdf_encrypted',
     ];
 
     protected $casts = [
@@ -105,6 +106,9 @@ class Bluebook extends Model
         'access_parts'     => 'array',
         'waiver_requested_at' => 'datetime',
         'waiver_recorded_at' => 'datetime',
+        'evaluation'       => 'array',
+        'evaluated_at'     => 'datetime',
+        'pdf_encrypted'    => 'boolean',
     ];
 
     /**

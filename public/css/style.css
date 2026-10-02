@@ -2205,6 +2205,21 @@ a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
   max-width: 640px;
 }
 .eval-checklist { margin: 0 0 1rem; }
-.eval-checklist ul { list-style: none; margin: 0.5rem 0 0; padding: 0; columns: 2 280px; column-gap: 1.5rem; }
-.eval-checklist li { break-inside: avoid; margin-bottom: 0.35rem; font-size: 0.82rem; }
-.eval-checklist label { display: flex; gap: 0.45rem; align-items: flex-start; cursor: pointer; }
+.eval-checklist ul { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+.eval-checklist li {
+  margin-bottom: 0.5rem; padding: 0.55rem 0.7rem; font-size: 0.82rem;
+  border-left: 3px solid var(--gray-200); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.eval-checklist li.is-ok { border-left-color: var(--green); }
+.eval-checklist li.is-issue { border-left-color: var(--red); background: var(--red-light); }
+.eval-checklist .eval-label { font-weight: 600; color: var(--gray-800); }
+.eval-checklist .eval-note { margin-top: 0.2rem; color: var(--gray-600); }
+.eval-checklist .eval-note .badge { margin-right: 0.3rem; }
+.eval-checklist .eval-choice { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; margin-top: 0.4rem; }
+.eval-checklist .eval-choice label { display: flex; gap: 0.35rem; align-items: center; cursor: pointer; }
+.eval-checklist .eval-comment { margin-top: 0.4rem; }
+.eval-checklist .eval-comment textarea { width: 100%; font: inherit; padding: 0.4rem 0.55rem; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--white); resize: vertical; }
+.eval-issues-box { white-space: normal; }
+.eval-issues { margin: 0.5rem 0 0; padding-left: 1.1rem; }
+.eval-issues li { margin-bottom: 0.3rem; }
+.eval-issues .eval-issue-comment { display: block; color: var(--gray-800); white-space: pre-line; }

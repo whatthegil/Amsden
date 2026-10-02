@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\ProcessBluebookOcr;
 use App\Models\Bluebook;
 use App\Models\User;
+use App\Services\BluebookEvaluation;
 use App\Services\Pdf\PageImages;
 use App\Services\SearchService;
 use App\Services\SimilarityService;
@@ -605,6 +606,30 @@ class AdminController extends Controller
         Store::updateBluebook($id, ['status' => 'Rejected', 'rejectionReason' => $reason]);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Rejected Bluebook', 'document' => $bluebook['title']]);
         return redirect($this->reviewedFrom($request))->with('success', 'Bluebook rejected. The author can see your reason and re-upload.');
+    }
+
+    /**
+     * Save the evaluation checklist: each criterion okay or not, and a comment
+     * to the author on those that are not. The author sees the not-okay ones
+     * in My Uploads.
+     */
+    public function bluebookEvaluate(Request $request, int $id)
+    {
+        $user     = session('user');
+        $bluebook = Bluebook::find($id);
+        if (!$bluebook || !in_array($bluebook->status, ['Pending', 'Rejected'], true)) {
+            return redirect()->route('admin.bluebooks');
+        }
+
+        $evaluation = BluebookEvaluation::fromInput((array) $request->input('status', []), (array) $request->input('comment', []));
+        $bluebook->forceFill(['evaluation' => $evaluation, 'evaluated_at' => now()])->save();
+
+        $issues = count(array_filter($evaluation, fn($e) => $e['status'] === BluebookEvaluation::ISSUE));
+        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Evaluated Bluebook', 'document' => $bluebook->title, 'bluebookId' => $bluebook->id]);
+
+        return redirect()->route('admin.bluebooks.view', $id)->with('success', $issues
+            ? 'Evaluation saved. The author can see the ' . $issues . ' ' . Str::plural('item', $issues) . ' marked not okay, with your comments.'
+            : 'Evaluation saved. Every item marked is okay.');
     }
 
     public function bluebookDelete(Request $request, int $id)

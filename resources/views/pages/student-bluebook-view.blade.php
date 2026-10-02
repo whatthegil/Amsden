@@ -121,37 +121,74 @@
           <button type="button" class="btn btn-outline btn-sm" data-open-modal="cite-modal">Cite</button>
         </div>
 
-        @if($asAdmin && $bluebook['status'] === 'Pending')
+        @if($asAdmin && in_array($bluebook['status'], ['Pending', 'Rejected'], true))
           {{-- The Library Manual's criteria for evaluating a submission (5.2.1),
-               to tick off while reading. A working aid only; nothing is saved. --}}
+               pre-filled from the OCR text and the record. The admin confirms or
+               corrects each one; a comment box opens on those marked not okay,
+               and that is what the author is shown. --}}
+          @php
+            $evalItems   = \App\Services\BluebookEvaluation::items($bluebook);
+            $canEvaluate = \App\Models\User::allows($user, 'review_bluebooks');
+            $evalIssues  = count(array_filter($evalItems, fn($i) => $i['status'] === 'issue'));
+          @endphp
           <details class="eval-checklist card" style="padding:0.9rem 1rem;" open>
-            <summary style="cursor:pointer;font-weight:700;">Evaluation checklist <span style="font-weight:400;color:var(--gray-400);font-size:0.82rem;">(Library Manual 5.2.1 &middot; to be completed within 3 working days &middot; not saved)</span></summary>
-            <ul>
-              @foreach([
-                'Approved by the appropriate academic unit/college',
-                'All required approval and certification pages are included',
-                'Conforms to the approved institutional thesis format',
-                'Pagination is complete, sequential and consistent',
-                'Headings, margins, spacing, fonts and numbering follow standards',
-                'Table of Contents matches the contents and page numbers',
-                'Lists of Tables, Figures and Appendices match the manuscript',
-                'All cited tables, figures and appendices are present and properly labelled',
-                'No pages, tables, figures or appendices are missing',
-                'Exact reproduction of the final approved printed manuscript, with signatures',
-                'PDF, readable, complete and free from corruption',
-                'No password protection, editing restrictions or encryption',
-                'All pages properly scanned, oriented and legible',
-                'File naming convention followed',
-                'Title, authors, adviser, program, year and abstract are complete and accurate',
-                'Keywords and subject information are identifiable',
-                'Access Permission Waiver accomplished, with the access level clearly indicated',
-                'Pages with sensitive personal information identified (set as withheld pages)',
-                'Suitable for long-term digital preservation',
-              ] as $i => $criterion)
-                <li><label><input type="checkbox" id="eval-{{ $i }}"> <span>{{ $criterion }}</span></label></li>
-              @endforeach
-            </ul>
+            <summary style="cursor:pointer;font-weight:700;">Evaluation checklist
+              <span style="font-weight:400;color:var(--gray-400);font-size:0.82rem;">(Library Manual 5.2.1 &middot; to be completed within 3 working days &middot;
+                {{ $bluebook['evaluatedAt'] ? 'saved ' . $bluebook['evaluatedAt'] : 'checked automatically from the text, not yet saved' }})</span>
+            </summary>
+            <form method="POST" action="{{ route('admin.bluebooks.evaluate', $bluebook['id']) }}">
+              @csrf
+              <fieldset @disabled(!$canEvaluate) style="border:0;padding:0;margin:0;min-width:0;">
+              <ul>
+                @foreach($evalItems as $key => $item)
+                  <li class="eval-item is-{{ $item['status'] }}" data-eval-item>
+                    <div class="eval-label">{{ $item['label'] }}</div>
+                    <div class="eval-note">
+                      @if($item['auto'] === 'ok') <span class="badge badge-green">Auto: okay</span>
+                      @elseif($item['auto'] === 'issue') <span class="badge badge-red">Auto: not okay</span>
+                      @else <span class="badge badge-gray">Check manually</span>
+                      @endif
+                      {{ $item['note'] }}
+                    </div>
+                    <div class="eval-choice" role="radiogroup" aria-label="{{ $item['label'] }}">
+                      <label><input type="radio" name="status[{{ $key }}]" value="ok" @checked($item['status'] === 'ok')> Okay</label>
+                      <label><input type="radio" name="status[{{ $key }}]" value="issue" @checked($item['status'] === 'issue')> Not okay / missing</label>
+                    </div>
+                    <div class="eval-comment" @if($item['status'] !== 'issue') hidden @endif>
+                      <label class="sr-only" for="eval-comment-{{ $key }}">What is the problem with: {{ $item['label'] }}</label>
+                      <textarea id="eval-comment-{{ $key }}" name="comment[{{ $key }}]" rows="2" maxlength="{{ \App\Services\BluebookEvaluation::COMMENT_MAX }}"
+                                placeholder="Tell the uploader what is wrong or missing">{{ $item['comment'] }}</textarea>
+                    </div>
+                  </li>
+                @endforeach
+              </ul>
+              @if($canEvaluate)
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <button type="submit" class="btn btn-primary btn-sm">Save evaluation</button>
+                  <span style="font-size:0.82rem;color:var(--gray-600);">{{ $evalIssues }} not okay. The uploader sees those items and your comments in My Uploads.</span>
+                </div>
+              @endif
+              </fieldset>
+            </form>
           </details>
+          <script>
+          (function () {
+            // The comment box belongs to "Not okay" only, and goes with it.
+            document.querySelectorAll('[data-eval-item]').forEach(function (item) {
+              const box = item.querySelector('.eval-comment');
+              item.querySelectorAll('input[type=radio]').forEach(function (radio) {
+                radio.addEventListener('change', function () {
+                  const issue = radio.value === 'issue';
+                  box.hidden = !issue;
+                  item.classList.toggle('is-issue', issue);
+                  item.classList.toggle('is-ok', !issue);
+                  item.classList.remove('is-unchecked');
+                  if (issue) box.querySelector('textarea').focus();
+                });
+              });
+            });
+          })();
+          </script>
         @endif
 
         <h4 style="font-size:0.82rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--gray-400);margin-bottom:0.6rem;">Document</h4>

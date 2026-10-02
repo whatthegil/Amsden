@@ -264,6 +264,10 @@ class Store
             // and a replacement that could not be stamped must not inherit the
             // old file's claim to have been.
             $b->watermarked_at     = $fields['watermarkedAt'] ?? null;
+            // So does the evaluation: a corrected file is evaluated afresh.
+            $b->evaluation         = null;
+            $b->evaluated_at       = null;
+            $b->pdf_encrypted      = null;
         }
         if (array_key_exists('accessLevel', $fields)) {
             $b->access_level = $fields['accessLevel'];
@@ -494,6 +498,9 @@ class Store
             'waiverRecorded'   => $b->waiver_recorded_at !== null,
             'waiverRequested'  => $b->waiver_requested_at !== null,
             'rejectionReason'  => $b->rejection_reason,
+            'evaluation'       => $b->evaluation ?? [],
+            'evaluatedAt'      => $b->evaluated_at ? $b->evaluated_at->copy()->timezone('Asia/Manila')->format('M j, Y · g:i A') : null,
+            'pdfEncrypted'     => $b->pdf_encrypted,
         ];
     }
 

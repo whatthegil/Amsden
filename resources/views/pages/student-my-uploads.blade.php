@@ -115,6 +115,7 @@
                   </div>
                 @elseif($b['status'] === 'Pending')
                   Waiting for an administrator to review it. You can print and fill in the access permission waiver now, ready to hand in to the CSPC Library.
+                  @include('partials.evaluation-issues')
                   <div style="margin-top:0.6rem;">
                     <a href="{{ route('student.my-uploads.waiver', $b['id']) }}" class="btn btn-outline btn-sm">
                       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
@@ -126,6 +127,7 @@
                   @if(!empty($b['rejectionReason']))
                     <div class="rejection-reason"><strong>Reason:</strong> {{ $b['rejectionReason'] }}</div>
                   @endif
+                  @include('partials.evaluation-issues')
                   <form method="POST" action="{{ route('student.my-uploads.reupload', $b['id']) }}" enctype="multipart/form-data" class="reupload-form">
                     @csrf
                     <label class="sr-only" for="reupload-file-{{ $b['id'] }}">Corrected PDF for {{ $b['title'] }}</label>
