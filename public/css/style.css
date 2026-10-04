@@ -2193,17 +2193,6 @@ a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
   line-height: 1.5;
   color: var(--gray-600);
 }
-.access-request { margin: 0 0 0.75rem; }
-.access-request > summary { list-style: none; cursor: pointer; display: inline-flex; }
-.access-request > summary::-webkit-details-marker { display: none; }
-.access-request-form {
-  margin-top: 0.75rem;
-  padding: 1rem;
-  border: 1px solid var(--gray-200, #e5e7eb);
-  border-radius: 10px;
-  background: var(--white, #fff);
-  max-width: 640px;
-}
 .eval-checklist { margin: 0 0 1rem; }
 .eval-checklist ul { list-style: none; margin: 0.5rem 0 0; padding: 0; }
 .eval-checklist li {

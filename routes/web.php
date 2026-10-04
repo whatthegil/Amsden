@@ -120,10 +120,6 @@ Route::prefix('student')->middleware('role:Student,Faculty')->group(function () 
     Route::get('/bluebooks/{id}/pages/{n}',    [StudentController::class, 'bluebookPage'])->whereNumber(['id', 'n'])->middleware('throttle:bluebook-page')->name('student.bluebook.page');
     Route::post('/bluebooks/{id}/flag-capture', [StudentController::class, 'flagCaptureAttempt'])->middleware('throttle:capture-flag')->name('student.bluebook.flag-capture');
 
-    // Asking the library for the full text of a restricted or partial bluebook.
-    Route::post('/bluebooks/{id}/request-access', [AccessRequestController::class, 'store'])->whereNumber('id')->middleware('throttle:6,1')->name('student.bluebook.request-access');
-    Route::get('/access-requests',             [AccessRequestController::class, 'mine'])->name('student.access-requests');
-
     Route::get('/history',                     [StudentController::class, 'history'])->name('student.history');
     Route::get('/bookmarks',                   [StudentController::class, 'bookmarks'])->name('student.bookmarks');
 

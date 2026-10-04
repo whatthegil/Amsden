@@ -159,52 +159,27 @@ class UnpublishedMaterialsPolicyTest extends TestCase
 
     // ── Access requests ─────────────────────────────────────────────────────
 
-    public function test_a_restricted_bluebook_offers_a_request_and_sends_no_pages(): void
+    public function test_a_restricted_bluebook_offers_no_request_and_sends_no_pages(): void
     {
         $b = $this->bluebook(['access_level' => 'consultation']);
 
         $res = $this->withSession(['user' => $this->reader()])->get("/student/bluebooks/{$b->id}");
         $res->assertSee('Restricted Access');
-        $res->assertSee('Request full-text access');
+        $res->assertDontSee('Request full-text access');
 
         $this->withSession(['user' => $this->reader()])->get("/student/bluebooks/{$b->id}/pages/1")->assertForbidden();
     }
 
-    public function test_an_open_bluebook_takes_no_request(): void
+    public function test_readers_cannot_file_access_requests(): void
     {
-        $b = $this->bluebook(['access_level' => 'public']);
+        $b = $this->bluebook(['access_level' => 'consultation']);
 
         $this->withSession(['user' => $this->reader()])
             ->post("/student/bluebooks/{$b->id}/request-access", $this->requestPayload())
-            ->assertRedirect();
+            ->assertNotFound();
+        $this->withSession(['user' => $this->reader()])->get('/student/access-requests')->assertNotFound();
 
         $this->assertSame(0, AccessRequest::count());
-    }
-
-    public function test_a_request_needs_the_research_details_and_the_undertaking(): void
-    {
-        $b = $this->bluebook(['access_level' => 'consultation']);
-
-        $this->withSession(['user' => $this->reader()])
-            ->post("/student/bluebooks/{$b->id}/request-access", $this->requestPayload(['adviser' => '', 'agree' => null]))
-            ->assertSessionHasErrors(['adviser', 'agree']);
-
-        $this->assertSame(0, AccessRequest::count());
-    }
-
-    public function test_a_request_is_recorded_once_and_logged(): void
-    {
-        $b = $this->bluebook(['access_level' => 'consultation']);
-
-        $this->withSession(['user' => $this->reader()])->post("/student/bluebooks/{$b->id}/request-access", $this->requestPayload());
-        $this->withSession(['user' => $this->reader()])->post("/student/bluebooks/{$b->id}/request-access", $this->requestPayload());
-
-        $this->assertSame(1, AccessRequest::count());
-        $this->assertDatabaseHas('access_requests', ['bluebook_id' => $b->id, 'user_email' => self::READER, 'status' => 'Pending', 'adviser' => 'Dr. Santos']);
-        $this->assertDatabaseHas('logs', ['email' => self::READER, 'action' => 'Requested Access']);
-
-        $this->withSession(['user' => $this->reader()])->get('/student/access-requests')
-            ->assertOk()->assertSee('A Restricted Paper')->assertSee('Pending');
     }
 
     public function test_approval_needs_the_authorization_it_rests_on(): void
@@ -265,10 +240,6 @@ class UnpublishedMaterialsPolicyTest extends TestCase
 
         $this->assertSame('Revoked', $req->fresh()->status);
         $this->withSession(['user' => $this->reader()])->get("/student/bluebooks/{$b->id}/pages/1")->assertForbidden();
-
-        // Once the request is no longer live the reader may ask again.
-        $this->withSession(['user' => $this->reader()])->post("/student/bluebooks/{$b->id}/request-access", $this->requestPayload());
-        $this->assertSame(2, AccessRequest::count());
     }
 
     public function test_the_staff_list_shows_waiting_requests(): void

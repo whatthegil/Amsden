@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\AccessRequest;
-use App\Models\Bluebook;
 use App\Services\Store;
 use Illuminate\Http\Request;
 
@@ -12,8 +11,8 @@ use Illuminate\Http\Request;
  * (Library Manual 4.3.1.4, "Full-Text Access" and "Requests for Multiple
  * Unpublished Materials").
  *
- * A reader asks for one bluebook at a time, giving their research title,
- * program, adviser and purpose. The library decides each request on its own,
+ * Readers can no longer file requests from the System; the library staff
+ * still decide, and can revoke, the ones on record. The library decides each request on its own,
  * and approves only on the authorization the author's waiver prescribes - the
  * author's written consent, or a consultation with them - which the approver
  * records. An approval lets that reader view the full text in the watermarked
@@ -21,68 +20,6 @@ use Illuminate\Http\Request;
  */
 class AccessRequestController extends Controller
 {
-    // ── Readers ──────────────────────────────────────────────────────────────
-
-    public function store(Request $request, int $id)
-    {
-        $user     = session('user');
-        $bluebook = Store::getBluebook($id);
-        if (!$bluebook || $bluebook['status'] !== 'Approved') {
-            return redirect()->route('student.bluebooks');
-        }
-
-        if (!in_array($bluebook['accessLevel'], Bluebook::REQUESTABLE_LEVELS, true)) {
-            return redirect()->route('student.bluebook', $id)
-                ->with('error', 'This bluebook does not need a request: everything readers may see is already shown.');
-        }
-
-        if (AccessRequest::current($id, $user['email'])) {
-            return redirect()->route('student.bluebook', $id)
-                ->with('error', 'You have already requested access to this bluebook.');
-        }
-
-        $data = $request->validate([
-            'research_title' => ['required', 'string', 'max:500'],
-            'program'        => ['required', 'string', 'max:255'],
-            'adviser'        => ['required', 'string', 'max:255'],
-            'purpose'        => ['required', 'string', 'max:2000'],
-            'agree'          => ['accepted'],
-        ], [
-            'agree.accepted' => 'Please confirm that you will use the material only for academic purposes and will not reproduce or share it.',
-        ]);
-
-        AccessRequest::create([
-            'bluebook_id'    => $id,
-            'user_email'     => $user['email'],
-            'user_name'      => $user['name'],
-            'research_title' => trim($data['research_title']),
-            'program'        => trim($data['program']),
-            'adviser'        => trim($data['adviser']),
-            'purpose'        => trim($data['purpose']),
-            'status'         => AccessRequest::STATUS_PENDING,
-        ]);
-        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Requested Access', 'document' => $bluebook['title'], 'bluebookId' => $id]);
-
-        return redirect()->route('student.bluebook', $id)
-            ->with('success', 'Your request has been sent to the library. You will see its decision here and under Access Requests.');
-    }
-
-    public function mine()
-    {
-        $user = session('user');
-
-        return view('pages.student-access-requests', [
-            'user'     => $user,
-            'active'   => 'access-requests',
-            'requests' => AccessRequest::with('bluebook:id,title,access_level')
-                ->where('user_email', $user['email'])
-                ->latest('id')
-                ->get(),
-        ]);
-    }
-
-    // ── Library staff ────────────────────────────────────────────────────────
-
     public function index(Request $request)
     {
         $status = $request->query('status', AccessRequest::STATUS_PENDING);

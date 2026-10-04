@@ -153,22 +153,13 @@ class StudentController extends Controller
             ? Store::bluebookFileUrl($bluebook['filePath'])
             : null;
 
-        // Where the waiver holds back part of the paper, the reader may ask the
-        // library for the rest (Library Manual 4.3.1.4).
-        $canRequest = in_array($bluebook['accessLevel'], Bluebook::REQUESTABLE_LEVELS, true) && $bluebook['hasFile'];
-
         return view('pages.student-bluebook-view', [
-            'user'          => $user,
-            'active'        => 'bluebooks',
-            'bluebook'      => $bluebook,
-            'isBookmarked'  => Store::isBookmarked($user['email'], $id),
-            'fileUrl'       => $fileUrl,
-            'pageImages'    => $pageImages,
-            'canRequest'    => $canRequest,
-            'accessRequest' => $canRequest ? AccessRequest::current($id, $user['email']) : null,
-            // A researcher asking for several theses gives the same details for
-            // each, so the form starts from their last request.
-            'lastRequest'   => $canRequest ? AccessRequest::where('user_email', $user['email'])->latest('id')->first() : null,
+            'user'         => $user,
+            'active'       => 'bluebooks',
+            'bluebook'     => $bluebook,
+            'isBookmarked' => Store::isBookmarked($user['email'], $id),
+            'fileUrl'      => $fileUrl,
+            'pageImages'   => $pageImages,
         ]);
     }
 

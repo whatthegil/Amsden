@@ -214,7 +214,6 @@
             <strong>Restricted Access.</strong> The author has not permitted this bluebook for general use. It may be viewed only with
             the author's written authorization or after consultation with them, which the library arranges on request.
           </div>
-          @include('partials.access-request')
           <div style="font-size:0.78rem;color:var(--gray-400);margin-top:0.5rem;">Access logged for: {{ $user['email'] }}</div>
         @elseif($asAdmin && ($preview ?? false) && ($pageImages ?? 0) === 0)
           <div class="alert alert-info" style="margin-bottom:0.5rem;">
@@ -328,7 +327,6 @@
                 (pp. {{ $range['from'] }}–{{ $range['to'] }}){{ $loop->last ? '.' : ',' }}
               @endforeach
             </div>
-            @include('partials.access-request')
           @elseif($bluebook['accessLevel'] === 'legacy')
             <div class="alert alert-info" style="margin-bottom:0.75rem;">
               <strong>Legacy &ndash; No Access Permission on File.</strong> This work predates the Access Permission Waiver.
