@@ -61,9 +61,8 @@ class PageImages
 
     /**
      * A short fingerprint of everything a served page depends on: the reader
-     * (their email is drawn in), the file, and the waiver, withheld pages and
-     * any access granted to the reader (which decide which thesis page reader
-     * page n is). Put in the page address so a browser may
+     * (their email is drawn in), the file, and the waiver and withheld pages
+     * (which decide which thesis page reader page n is). Put in the page address so a browser may
      * keep pages long, and a new reader on a shared computer, a replaced file or
      * an edited waiver all get fresh addresses instead of someone else's pages.
      */
@@ -76,24 +75,20 @@ class PageImages
             $bluebook['accessLevel'] ?? '',
             json_encode($bluebook['accessParts'] ?? []),
             $bluebook['withheldPages'] ?? '',
-            !empty($bluebook['granted']) ? 'granted' : '',
         ])), 0, 12);
     }
 
     /**
      * The original page numbers a student may see, in order - see
-     * Bluebook::readerPages. Empty for a restricted paper the reader has not
-     * been granted, and for a partial one whose ranges name nothing usable:
-     * failing closed, as the document route does.
-     *
-     * $bluebook['granted'] is whether this reader holds an approved access
-     * request for it.
+     * Bluebook::readerPages. Empty for a restricted paper, and for a partial
+     * one whose ranges name nothing usable: failing closed, as the document
+     * route does.
      *
      * @return int[]
      */
     public static function visiblePages(array $bluebook): array
     {
-        return Bluebook::readerPages($bluebook, (int) ($bluebook['pageImagesCount'] ?? 0), (bool) ($bluebook['granted'] ?? false));
+        return Bluebook::readerPages($bluebook, (int) ($bluebook['pageImagesCount'] ?? 0));
     }
 
     /**

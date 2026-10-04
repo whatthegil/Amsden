@@ -96,8 +96,7 @@
 
         @php
           $deptName = config('departments.' . $bluebook['department'] . '.name');
-          $granted  = !$asAdmin && ($bluebook['granted'] ?? false);
-          $access   = \App\Models\Bluebook::accessName($bluebook['accessLevel']) . ($granted ? ' — full text granted to you' : '');
+          $access   = \App\Models\Bluebook::accessName($bluebook['accessLevel']);
           $citation = \App\Services\LiteratureReviewService::citation($bluebook);
         @endphp
         <div class="info-grid">
@@ -209,7 +208,7 @@
         @if(session('error'))
           <div class="alert alert-error" style="margin-bottom:0.75rem;">{{ session('error') }}</div>
         @endif
-        @if($bluebook['hasFile'] && $bluebook['accessLevel'] === 'consultation' && !$asAdmin && !$granted)
+        @if($bluebook['hasFile'] && $bluebook['accessLevel'] === 'consultation' && !$asAdmin)
           <div class="alert alert-info" style="margin-bottom:0.75rem;">
             <strong>Restricted Access.</strong> The author has not permitted this bluebook for general use. It may be viewed only with
             the author's written authorization or after consultation with them, which the library arranges on request.
@@ -314,11 +313,6 @@
               })();
               </script>
             @endif
-          @elseif($granted)
-            <div class="alert alert-info" style="margin-bottom:0.75rem;">
-              The library has granted you access to the full text of this bluebook, for viewing here only. This does not
-              permit you to download, reproduce or share it.
-            </div>
           @elseif($bluebook['accessLevel'] === 'partial')
             <div class="alert alert-info" style="margin-bottom:0.75rem;">
               <strong>Partial Access.</strong> The author has permitted only certain parts of this bluebook to be viewed:

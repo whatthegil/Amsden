@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\AccessRequest;
 use App\Models\Bluebook;
 use App\Models\User;
 use App\Rules\PdfNotEncrypted;
@@ -77,17 +76,6 @@ class UnpublishedMaterialsPolicyTest extends TestCase
         return imagesx(imagecreatefromstring($res->getContent())) - 400;
     }
 
-    private function requestPayload(array $overrides = []): array
-    {
-        return array_merge([
-            'research_title' => 'Attendance Monitoring With RFID',
-            'program'        => 'BSIT',
-            'adviser'        => 'Dr. Santos',
-            'purpose'        => 'Review of related systems for Chapter 2.',
-            'agree'          => '1',
-        ], $overrides);
-    }
-
     // ── Page selection ──────────────────────────────────────────────────────
 
     public function test_withheld_pages_are_left_out_under_every_level(): void
@@ -100,7 +88,6 @@ class UnpublishedMaterialsPolicyTest extends TestCase
 
         $restricted = ['accessLevel' => 'consultation', 'withheldPages' => '6'];
         $this->assertSame([], Bluebook::readerPages($restricted, 6));
-        $this->assertSame([1, 2, 3, 4, 5], Bluebook::readerPages($restricted, 6, true));
     }
 
     public function test_page_lists_are_read_leniently_and_rejected_when_not_page_lists(): void
@@ -157,7 +144,7 @@ class UnpublishedMaterialsPolicyTest extends TestCase
         $this->assertSame(1, $this->pageServed($b->id, 1));
     }
 
-    // ── Access requests ─────────────────────────────────────────────────────
+    // ── Restricted access ───────────────────────────────────────────────────
 
     public function test_a_restricted_bluebook_offers_no_request_and_sends_no_pages(): void
     {
@@ -170,99 +157,14 @@ class UnpublishedMaterialsPolicyTest extends TestCase
         $this->withSession(['user' => $this->reader()])->get("/student/bluebooks/{$b->id}/pages/1")->assertForbidden();
     }
 
-    public function test_readers_cannot_file_access_requests(): void
+    public function test_there_are_no_access_requests(): void
     {
         $b = $this->bluebook(['access_level' => 'consultation']);
 
-        $this->withSession(['user' => $this->reader()])
-            ->post("/student/bluebooks/{$b->id}/request-access", $this->requestPayload())
-            ->assertNotFound();
+        $this->withSession(['user' => $this->reader()])->post("/student/bluebooks/{$b->id}/request-access")->assertNotFound();
         $this->withSession(['user' => $this->reader()])->get('/student/access-requests')->assertNotFound();
-
-        $this->assertSame(0, AccessRequest::count());
-    }
-
-    public function test_approval_needs_the_authorization_it_rests_on(): void
-    {
-        $b   = $this->bluebook(['access_level' => 'consultation']);
-        $req = AccessRequest::create($this->requestPayload(['bluebook_id' => $b->id, 'user_email' => self::READER, 'user_name' => 'R D']) + ['status' => 'Pending']);
-
-        $this->withSession(['user' => $this->admin()])
-            ->post("/admin/access-requests/{$req->id}/approve", ['authorization' => ''])
-            ->assertSessionHasErrors('authorization');
-
-        $this->assertSame('Pending', $req->fresh()->status);
-    }
-
-    public function test_an_approved_reader_sees_the_full_text_less_withheld_pages(): void
-    {
-        $b   = $this->bluebook(['access_level' => 'consultation', 'withheld_pages' => '6']);
-        $req = AccessRequest::create($this->requestPayload(['bluebook_id' => $b->id, 'user_email' => self::READER, 'user_name' => 'R D']) + ['status' => 'Pending']);
-
-        $this->withSession(['user' => $this->admin()])
-            ->post("/admin/access-requests/{$req->id}/approve", ['authorization' => 'Written consent of the author dated Sept 30, 2026'])
-            ->assertRedirect();
-
-        $this->assertSame('Approved', $req->fresh()->status);
-        $this->assertSame('adm@cspc.edu.ph', $req->fresh()->decided_by);
-        $this->assertDatabaseHas('logs', ['action' => 'Approved Access Request']);
-
-        $view = $this->withSession(['user' => $this->reader()])->get("/student/bluebooks/{$b->id}");
-        $view->assertSee('granted you access to the full text');
-        $view->assertSee('data-page-count="5"', false);
-
-        $this->assertSame(1, $this->pageServed($b->id, 1));
-        $this->assertSame(5, $this->pageServed($b->id, 5));
-        $this->withSession(['user' => $this->reader()])->get("/student/bluebooks/{$b->id}/pages/6")->assertNotFound();
-    }
-
-    public function test_a_grant_opens_only_the_bluebook_it_names_and_only_for_its_reader(): void
-    {
-        $granted = $this->bluebook(['access_level' => 'consultation']);
-        $other   = $this->bluebook(['access_level' => 'consultation', 'title' => 'Another Restricted Paper']);
-        AccessRequest::create($this->requestPayload(['bluebook_id' => $granted->id, 'user_email' => self::READER, 'user_name' => 'R D']) + ['status' => 'Approved']);
-
-        $this->withSession(['user' => $this->reader()])->get("/student/bluebooks/{$granted->id}/pages/1")->assertOk();
-        $this->withSession(['user' => $this->reader()])->get("/student/bluebooks/{$other->id}/pages/1")->assertForbidden();
-
-        $someoneElse = ['id' => 9, 'name' => 'O', 'email' => 'other@my.cspc.edu.ph', 'role' => 'Student', 'canUpload' => false];
-        $this->withSession(['user' => $someoneElse])->get("/student/bluebooks/{$granted->id}/pages/1")->assertForbidden();
-    }
-
-    public function test_a_denied_or_revoked_request_opens_nothing(): void
-    {
-        $b   = $this->bluebook(['access_level' => 'consultation']);
-        $req = AccessRequest::create($this->requestPayload(['bluebook_id' => $b->id, 'user_email' => self::READER, 'user_name' => 'R D']) + ['status' => 'Approved']);
-
-        $this->withSession(['user' => $this->admin()])
-            ->post("/admin/access-requests/{$req->id}/revoke", ['reason' => 'Author withdrew consent.'])
-            ->assertRedirect();
-
-        $this->assertSame('Revoked', $req->fresh()->status);
-        $this->withSession(['user' => $this->reader()])->get("/student/bluebooks/{$b->id}/pages/1")->assertForbidden();
-    }
-
-    public function test_the_staff_list_shows_waiting_requests(): void
-    {
-        $b = $this->bluebook(['access_level' => 'partial', 'access_parts' => ['abstract' => ['from' => 1, 'to' => 1]]]);
-        AccessRequest::create($this->requestPayload(['bluebook_id' => $b->id, 'user_email' => self::READER, 'user_name' => 'R D']) + ['status' => 'Pending']);
-
-        $this->withSession(['user' => $this->admin()])->get('/admin/access-requests')
-            ->assertOk()
-            ->assertSee('A Restricted Paper')
-            ->assertSee('Attendance Monitoring With RFID')
-            ->assertSee('Partial Access');
-    }
-
-    public function test_students_cannot_decide_requests(): void
-    {
-        $b   = $this->bluebook(['access_level' => 'consultation']);
-        $req = AccessRequest::create($this->requestPayload(['bluebook_id' => $b->id, 'user_email' => self::READER, 'user_name' => 'R D']) + ['status' => 'Pending']);
-
-        $this->withSession(['user' => $this->reader()])
-            ->post("/admin/access-requests/{$req->id}/approve", ['authorization' => 'me']);
-
-        $this->assertSame('Pending', $req->fresh()->status);
+        $this->withSession(['user' => $this->admin()])->get('/admin/access-requests')->assertNotFound();
+        $this->withSession(['user' => $this->admin()])->get('/admin/bluebooks')->assertDontSee('Access Requests');
     }
 
     // ── Submission ──────────────────────────────────────────────────────────
@@ -286,7 +188,7 @@ class UnpublishedMaterialsPolicyTest extends TestCase
             ->assertSee('three (3) working days');
 
         $this->get('/privacy')->assertOk()
-            ->assertSee('Access requests')
+            ->assertDontSee('Access requests')
             ->assertSee('Personal information inside manuscripts');
     }
 }

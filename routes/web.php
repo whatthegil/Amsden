@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AccessRequestController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ProfileController;
@@ -81,13 +80,6 @@ Route::prefix('admin')->middleware('role:Admin,Sub-Admin')->group(function () {
         Route::post('/bluebooks/{id}/waiver-received', [AdminController::class, 'bluebookWaiverReceived'])->name('admin.bluebooks.waiverReceived');
         Route::post('/bluebooks/{id}/reject',      [AdminController::class, 'bluebookReject'])->name('admin.bluebooks.reject');
         Route::post('/bluebooks/{id}/evaluate',    [AdminController::class, 'bluebookEvaluate'])->whereNumber('id')->name('admin.bluebooks.evaluate');
-
-        // Readers' requests for the full text of a restricted or partial
-        // bluebook, decided one title at a time (Library Manual 4.3.1.4).
-        Route::get('/access-requests',               [AccessRequestController::class, 'index'])->name('admin.access-requests');
-        Route::post('/access-requests/{id}/approve', [AccessRequestController::class, 'approve'])->whereNumber('id')->name('admin.access-requests.approve');
-        Route::post('/access-requests/{id}/deny',    [AccessRequestController::class, 'deny'])->whereNumber('id')->name('admin.access-requests.deny');
-        Route::post('/access-requests/{id}/revoke',  [AccessRequestController::class, 'revoke'])->whereNumber('id')->name('admin.access-requests.revoke');
     });
 
     Route::middleware('permission:manage_users')->group(function () {

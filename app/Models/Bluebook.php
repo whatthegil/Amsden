@@ -51,9 +51,6 @@ class Bluebook extends Model
         self::ACCESS_LEGACY       => 'Legacy – No Access Permission on File',
     ];
 
-    /** The levels under which a reader can ask the library for the full text. */
-    public const REQUESTABLE_LEVELS = [self::ACCESS_CONSULTATION, self::ACCESS_PARTIAL];
-
     public static function accessName(?string $level): string
     {
         return self::ACCESS_NAMES[$level ?: self::ACCESS_PUBLIC] ?? (string) $level;
@@ -147,23 +144,18 @@ class Bluebook extends Model
         return $this->hasMany(Bookmark::class);
     }
 
-    public function accessRequests(): HasMany
-    {
-        return $this->hasMany(AccessRequest::class);
-    }
-
     /**
      * The original page numbers a reader may see, in order, out of $count.
      *
-     * The waiver decides the base - every page, the partial ranges, or none -
-     * and an approved access request opens every page. Withheld pages (CV,
+     * The waiver decides the base - every page, the partial ranges, or none.
+     * Withheld pages (CV,
      * signatures, ID numbers) then come out whatever the base, since the
      * manual keeps them from public view under every level.
      *
      * @param array $bluebook a Store::bookToArray()-shaped array
      * @return int[]
      */
-    public static function readerPages(array $bluebook, int $count, bool $granted = false): array
+    public static function readerPages(array $bluebook, int $count): array
     {
         if ($count < 1) {
             return [];
@@ -171,7 +163,6 @@ class Bluebook extends Model
 
         $level = $bluebook['accessLevel'] ?? self::ACCESS_PUBLIC;
         $pages = match (true) {
-            $granted                              => range(1, $count),
             $level === self::ACCESS_CONSULTATION  => [],
             $level === self::ACCESS_PARTIAL       => self::expandPageList(self::visiblePageList($bluebook['accessParts'] ?? []), $count),
             default                               => range(1, $count),
@@ -187,12 +178,12 @@ class Bluebook extends Model
      * waiver or by withheld pages. When false, the whole file may be sent
      * without knowing its page count.
      */
-    public static function isCutForReader(array $bluebook, bool $granted = false): bool
+    public static function isCutForReader(array $bluebook): bool
     {
         $level = $bluebook['accessLevel'] ?? self::ACCESS_PUBLIC;
 
         return self::normalizePageList($bluebook['withheldPages'] ?? null) !== null
-            || (!$granted && in_array($level, [self::ACCESS_CONSULTATION, self::ACCESS_PARTIAL], true));
+            || in_array($level, [self::ACCESS_CONSULTATION, self::ACCESS_PARTIAL], true);
     }
 
     /** [1, 2, 3, 7] as "1-3,7", the form MuPDF and Ghostscript take. */

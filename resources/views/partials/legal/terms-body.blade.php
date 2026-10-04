@@ -65,18 +65,15 @@
 
   <h3>3.3 Requesting further access</h3>
   <p>
-    You may ask the Library for the full text of a Restricted or Partial Access work through
-    the System&rsquo;s <em>Request Full-Text Access</em> form, stating your research or capstone
-    title, program, research adviser, and purpose of use. Each work is evaluated individually:
-    the number of works you request does not by itself decide the outcome, and approval for
-    one work is not approval for any other. A request is granted only where the authorization
-    prescribed by the author/s has been obtained.
+    The System does not take requests for further access. The full text of a Restricted or
+    Partial Access work is available only by arrangement with the Library, and only where the
+    authorization prescribed by the author/s has been obtained.
   </p>
 
   <h3>3.4 Access is not a copy</h3>
   <p>
-    Permission to view the full text of a work, whether by its access level or by an approved
-    request, <strong>does not permit you to reproduce, download, transmit, or distribute a
+    Permission to view the full text of a work, under its access level,
+    <strong>does not permit you to reproduce, download, transmit, or distribute a
     complete electronic copy</strong> of it. The System provides controlled viewing only. A
     complete electronic copy may be provided by the LRDU only where the author/s have expressly
     authorized full-text reproduction, and never through email, cloud or file-sharing
@@ -136,8 +133,7 @@
   <h2>5. Monitoring and logging</h2>
   <p>
     Activity in the System is logged for institutional compliance and audit purposes,
-    including sign-ins, searches, document views, uploads, access requests and their
-    decisions, and administrative actions. The System also records attempts to capture or
+    including sign-ins, searches, document views, uploads, and administrative actions. The System also records attempts to capture or
     record on-screen content. See the
     <a href="{{ route('privacy') }}">Privacy Policy</a> for what is recorded and how long it is kept.
   </p>
@@ -156,7 +152,7 @@
     CSPC may modify, suspend, or revoke access at any time, without prior notice, where an
     account is used in breach of these terms, where access is no longer appropriate to the
     holder&rsquo;s standing at the College, or where required for the security or integrity of
-    the System. Access granted on request may likewise be revoked. Requests that raise
+    the System. Requests that raise
     copyright, intellectual property, privacy, or ethical concerns are referred to the
     appropriate institutional office.
   </p>

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Concerns;
 
-use App\Models\AccessRequest;
 use App\Models\Bluebook;
 use App\Services\Pdf\PageImages;
 
@@ -40,12 +39,7 @@ trait ServesPageImages
             abort(404);
         }
 
-        // A reader the library has granted the full text sees every page but
-        // the withheld ones. The admin's preview shows what readers get
-        // without a grant.
-        $bluebook['granted'] = $onlyIfPosted && AccessRequest::granted($id, $email);
-
-        if ($bluebook['accessLevel'] === Bluebook::ACCESS_CONSULTATION && !$bluebook['granted']) {
+        if ($bluebook['accessLevel'] === Bluebook::ACCESS_CONSULTATION) {
             abort(403, 'This bluebook is restricted. It is available only with the author\'s authorization.');
         }
 

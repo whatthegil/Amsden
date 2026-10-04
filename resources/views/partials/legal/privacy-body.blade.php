@@ -43,20 +43,12 @@
     chose in your Access Permission Waiver.
   </p>
 
-  <h3>Access requests</h3>
-  <p>
-    When you ask for full-text access to a Restricted or Partial Access bluebook, we store the
-    research or capstone title, program, research adviser, and purpose of use you give, with
-    the Library&rsquo;s decision, the authorization it rested on, and who made it. The Library
-    Manual requires these records to be kept for each request.
-  </p>
-
   <h3>Personal information inside manuscripts</h3>
   <p>
     Manuscripts can contain their authors&rsquo; curricula vitae, contact details, signatures,
     and identification numbers. These are kept in the Library&rsquo;s preservation copy but are
     <strong>never shown to readers</strong>: the Library marks the pages that hold them, and the
-    System withholds those pages under every access level, including approved access requests.
+    System withholds those pages under every access level.
   </p>
 
   <h2>2. Why we collect it</h2>
@@ -81,7 +73,7 @@
   <h2>4. Who can see your information</h2>
   <ul>
     <li><strong>You</strong> may view your own profile, uploads, bookmarks, and activity history.</li>
-    <li><strong>Library administrators</strong> may view all accounts, all submissions, all access requests, and the full audit log.</li>
+    <li><strong>Library administrators</strong> may view all accounts, all submissions, and the full audit log.</li>
     <li><strong>Other users</strong> see only what is published in the archive: the bluebook record and, for documents you upload, your name as the uploader.</li>
   </ul>
   <p>
@@ -112,8 +104,7 @@
     Account records are kept while your account remains active. Audit log entries and archived
     bluebooks are retained as institutional records of the Library. Where an account is
     disabled, its activity records remain in the audit log so that the history of access to
-    archived work stays complete. Access requests and their decisions are kept for the same
-    reason. Accepted manuscripts are kept as electronic preservation copies, as the Library
+    archived work stays complete. Accepted manuscripts are kept as electronic preservation copies, as the Library
     Manual requires of the Library as the official repository.
   </p>
 
