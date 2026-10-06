@@ -511,9 +511,10 @@ class StudentController extends Controller
     {
         $user = session('user');
 
-        $results  = null;
-        $proposed = null;
-        $error    = null;
+        $results    = null;
+        $proposed   = null;
+        $error      = null;
+        $department = $this->departmentFilter($request);
 
         if ($request->isMethod('post') && UsageLimit::exhausted($user['id'], UsageLimit::SIMILARITY_CHECK)) {
             $error = UsageLimit::message(UsageLimit::SIMILARITY_CHECK);
@@ -536,7 +537,7 @@ class StudentController extends Controller
             if ($error === null && $proposed !== null && !UsageLimit::record($user['id'], UsageLimit::SIMILARITY_CHECK)) {
                 $error = UsageLimit::message(UsageLimit::SIMILARITY_CHECK);
             } elseif ($error === null && $proposed !== null) {
-                $results = $this->runSimilarityCheck($proposed, $mode);
+                $results = $this->runSimilarityCheck($proposed, $mode, $department);
 
                 Store::addLog([
                     'userName' => $user['name'],
@@ -551,9 +552,10 @@ class StudentController extends Controller
             'user'     => $user,
             'active'   => 'similarity',
             'results'  => $results,
-            'proposed' => $proposed,
-            'error'    => $error,
-            'usage'    => UsageLimit::status($user['id'], UsageLimit::SIMILARITY_CHECK),
+            'proposed'   => $proposed,
+            'department' => $department,
+            'error'      => $error,
+            'usage'      => UsageLimit::status($user['id'], UsageLimit::SIMILARITY_CHECK),
         ]);
     }
 
@@ -561,13 +563,15 @@ class StudentController extends Controller
      * Score a proposed capstone against every approved bluebook and keep the
      * matches above the display threshold, highest first. `$mode` picks the
      * scorer: 'text' compares the typed title/keywords/abstract fields;
-     * 'file' compares the whole extracted pre-proposal text.
+     * 'file' compares the whole extracted pre-proposal text. A `$department`
+     * narrows the comparison to that college's bluebooks, so only those are
+     * loaded (with their full text) and scored.
      */
-    private function runSimilarityCheck(array $proposed, string $mode): array
+    private function runSimilarityCheck(array $proposed, string $mode, ?string $department = null): array
     {
         $results = [];
 
-        foreach (Store::getApprovedBluebooks() as $book) {
+        foreach (Store::getApprovedBluebooks(null, $department) as $book) {
             $score = $mode === 'file'
                 ? SimilarityService::computeSimilarityFromText($proposed['proposalText'] ?? '', $book)
                 : SimilarityService::computeSimilarity(
@@ -693,6 +697,17 @@ class StudentController extends Controller
         return pathinfo($sourceName, PATHINFO_FILENAME) ?: 'Uploaded pre-proposal';
     }
 
+    /**
+     * The department a student narrowed a check or search to, or null for the
+     * whole archive. Anything not in config/departments.php counts as none.
+     */
+    private function departmentFilter(Request $request): ?string
+    {
+        $code = (string) $request->input('department', '');
+
+        return array_key_exists($code, config('departments')) ? $code : null;
+    }
+
     public function literatureReview(Request $request)
     {
         $user = session('user');
@@ -702,6 +717,7 @@ class StudentController extends Controller
         $topic    = null;
         $within   = in_array((int) $request->input('within'), [5, 10], true) ? (int) $request->input('within') : null;
         $sort     = $request->input('sort') === 'newest' ? 'newest' : 'relevance';
+        $department = $this->departmentFilter($request);
 
         $error = null;
 
@@ -711,7 +727,7 @@ class StudentController extends Controller
             if ($topic !== '' && !UsageLimit::record($user['id'], UsageLimit::LITERATURE_REVIEW)) {
                 $error = UsageLimit::message(UsageLimit::LITERATURE_REVIEW);
             } elseif ($topic !== '') {
-                $found    = LiteratureReviewService::search($topic, $within, $sort);
+                $found    = LiteratureReviewService::search($topic, $within, $sort, $department);
                 $results  = $found['results'];
                 $overview = $found['overview'];
             } else {
@@ -736,6 +752,7 @@ class StudentController extends Controller
             'topic'    => $topic,
             'within'   => $within,
             'sort'     => $sort,
+            'department' => $department,
             'error'    => $error,
             'usage'    => UsageLimit::status($user['id'], UsageLimit::LITERATURE_REVIEW),
         ]);

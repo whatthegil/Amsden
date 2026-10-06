@@ -77,6 +77,15 @@ class LiteratureReviewTest extends TestCase
             $this->titles(LiteratureReviewService::search('crop disease', null, 'newest')));
     }
 
+    public function test_one_department_only_when_asked(): void
+    {
+        $this->paper(['title' => 'Crop Disease Detection']);
+        $this->paper(['title' => 'Crop Disease Survey', 'department' => 'CEA']);
+
+        $this->assertCount(2, LiteratureReviewService::search('crop disease')['results']);
+        $this->assertSame(['Crop Disease Survey'], $this->titles(LiteratureReviewService::search('crop disease', null, 'relevance', 'CEA')));
+    }
+
     public function test_unposted_papers_are_never_included(): void
     {
         $this->paper(['title' => 'Crop Disease Detection', 'status' => 'Pending']);

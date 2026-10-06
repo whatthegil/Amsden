@@ -60,6 +60,8 @@
               </div>
             </div>
 
+            @include('partials.department-filter', ['id' => 'litrev-department'])
+
             <div style="background:var(--primary-light);border:1px solid var(--primary-pale);border-radius:var(--radius-sm);padding:0.875rem 1rem;margin-bottom:1.25rem;font-size:0.85rem;color:var(--primary-dark);">
               <strong>What you get:</strong> the related bluebooks in the archive, each with a summary of how it bears on your topic and an APA 7th edition citation to copy into your references, plus a draft synthesis paragraph you can adapt for your Review of Related Literature. Summaries and the synthesis are written by AI from each paper's own text; check them against the papers before using them.
             </div>

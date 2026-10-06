@@ -45,6 +45,8 @@
             <input type="file" id="sim-file" name="file" accept=".pdf,application/pdf" required class="sr-only" onchange="simShowFile(this)" aria-describedby="sim-file-info">
             <div id="sim-file-info" style="display:none;padding:0.75rem 1rem;background:var(--green-light);border-radius:var(--radius-sm);border:1px solid var(--green);font-size:0.88rem;color:var(--green);margin-bottom:1rem;" role="status"></div>
 
+            @include('partials.department-filter', ['id' => 'sim-file-department'])
+
             <div style="background:var(--primary-light);border:1px solid var(--primary-pale);border-radius:var(--radius-sm);padding:0.875rem 1rem;margin-bottom:1.25rem;font-size:0.85rem;color:var(--primary-dark);">
               <strong>How this works:</strong> we extract the text from your PDF and compare its wording against the title, keywords, abstract, and full text of every approved bluebook. Scanned documents without a selectable text layer may not be readable — type your title instead if so.
             </div>
@@ -97,6 +99,8 @@
               <textarea id="sim-abstract" name="abstract" rows="4" placeholder="Brief description of your proposed research…">{{ $proposed['abstract'] ?? '' }}</textarea>
             </div>
 
+            @include('partials.department-filter', ['id' => 'sim-text-department'])
+
             <div style="background:var(--primary-light);border:1px solid var(--primary-pale);border-radius:var(--radius-sm);padding:0.875rem 1rem;margin-bottom:1.25rem;font-size:0.85rem;color:var(--primary-dark);">
               <strong>How scoring works:</strong> Title match accounts for 50% of the score, keywords 20%, abstract 10%, and overlap with existing documents' full text 20%. Results with at least 8% similarity are shown.
             </div>
@@ -132,7 +136,7 @@
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" style="flex-shrink:0;"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" fill="currentColor" fill-opacity="0.18"/><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <div>
               <strong>No similar titles found.</strong><br>
-              <span style="font-size:0.88rem;">Your proposed title shows no notable similarity to any existing bluebook in the archive. You may proceed with confidence.</span>
+              <span style="font-size:0.88rem;">@if(!empty($department))Your proposed title shows no notable similarity to any {{ $department }} bluebook. Only {{ $department }} was checked — choose "All departments" to compare against the whole archive.@else Your proposed title shows no notable similarity to any existing bluebook in the archive. You may proceed with confidence.@endif</span>
             </div>
           </div>
         @else

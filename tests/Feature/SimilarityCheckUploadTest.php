@@ -90,4 +90,30 @@ class SimilarityCheckUploadTest extends TestCase
         $response->assertOk();
         $response->assertSee('Automated Student Attendance System', false);
     }
+
+    public function test_a_department_narrows_the_comparison(): void
+    {
+        Bluebook::create([
+            'title' => 'An Automated Student Attendance System Using RFID Technology',
+            'authors' => ['Dela Cruz, Maria'],
+            'year' => 2024, 'department' => 'CCS', 'program' => 'BSIT',
+            'keywords' => ['RFID', 'Attendance'],
+            'abstract' => 'An automated attendance monitoring system using RFID cards.',
+            'adviser' => 'Prof. A', 'status' => 'Approved',
+            'uploaded_by' => 's@my.cspc.edu.ph', 'uploaded_by_name' => 'S',
+            'pages' => 70, 'views' => 0, 'date_added' => '2024-03-20',
+        ]);
+
+        $post = fn(array $extra) => $this->withSession(['user' => $this->student()])
+            ->post('/student/similarity-check', ['title' => 'Automated Student Attendance System Using RFID'] + $extra);
+
+        $post(['department' => 'CCS'])->assertSee('An Automated Student Attendance System Using RFID Technology', false);
+
+        $other = $post(['department' => 'CEA']);
+        $other->assertDontSee('An Automated Student Attendance System Using RFID Technology', false);
+        $other->assertSee('Only CEA was checked', false);
+
+        // An unknown code is ignored, not an empty archive.
+        $post(['department' => 'NOPE'])->assertSee('An Automated Student Attendance System Using RFID Technology', false);
+    }
 }

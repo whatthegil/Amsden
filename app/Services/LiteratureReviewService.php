@@ -36,7 +36,7 @@ class LiteratureReviewService
      * extractive summary, so search() never errors or loses results because of
      * the AI layer.
      */
-    public static function search(string $topic, ?int $withinYears = null, string $sort = 'relevance'): array
+    public static function search(string $topic, ?int $withinYears = null, string $sort = 'relevance', ?string $department = null): array
     {
         $empty = ['results' => [], 'overview' => null];
         $terms = SearchService::terms($topic);
@@ -50,6 +50,11 @@ class LiteratureReviewService
         // A review of related literature usually has to cite recent work.
         if ($withinYears !== null && $withinYears > 0) {
             $pool->where('year', '>=', (int) date('Y') - $withinYears + 1);
+        }
+
+        // One college's papers only, when the student narrows it down.
+        if ($department !== null && $department !== '') {
+            $pool->where('department', $department);
         }
 
         $matches = SearchService::match($topic, $pool);
