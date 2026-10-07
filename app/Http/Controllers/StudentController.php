@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessBluebookOcr;
+use App\Mail\BluebookStatusMail;
 use App\Models\Bluebook;
 use App\Services\LiteratureReviewService;
 use App\Services\OcrService;
@@ -364,6 +365,7 @@ class StudentController extends Controller
             Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Uploaded Bluebook', 'document' => $title]);
             // Its text now if it has a text layer; OCR queued only for a scan.
             ProcessBluebookOcr::readNowOrQueue($bluebook['id'], $file->getRealPath() ?: null);
+            BluebookStatusMail::notify($bluebook, BluebookStatusMail::RECEIVED);
         } catch (\Throwable $e) {
             report($e);
             return view('pages.student-upload', [
@@ -475,6 +477,7 @@ class StudentController extends Controller
 
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Resubmitted Bluebook', 'document' => $bluebook['title']]);
         ProcessBluebookOcr::readNowOrQueue($id, isset($file) ? ($file->getRealPath() ?: null) : null);
+        BluebookStatusMail::notify($bluebook, BluebookStatusMail::RECEIVED);
 
         return redirect()->route('student.my-uploads')->with('success', 'Your corrected bluebook was resubmitted and is waiting for review again.');
     }

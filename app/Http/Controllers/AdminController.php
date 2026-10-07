@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessBluebookOcr;
+use App\Mail\BluebookStatusMail;
 use App\Models\Bluebook;
 use App\Models\User;
 use App\Services\BluebookEvaluation;
@@ -390,6 +391,7 @@ class AdminController extends Controller
         // Approval is not posting: the author must first hand in the printed,
         // signed waiver, which the admin records with waiverReceived().
         Store::setBluebookStatus($id, Bluebook::STATUS_AWAITING_WAIVER);
+        BluebookStatusMail::notify($bluebook, BluebookStatusMail::APPROVED);
         return redirect($this->reviewedFrom($request))->with('success', 'Bluebook approved. It will be posted once the author hands in the signed waiver.');
     }
 
@@ -408,6 +410,7 @@ class AdminController extends Controller
 
         Store::setBluebookStatus($id, 'Pending');
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Recalled Bluebook', 'document' => $bluebook['title'], 'bluebookId' => $id]);
+        BluebookStatusMail::notify($bluebook, BluebookStatusMail::RECALLED);
 
         return redirect()->route('admin.bluebooks.view', $id)->with('success',
             'Recalled to Pending. It is hidden from Browse until it is approved again. Edit it, or use the checklist to tell the author what to fix.');
@@ -579,8 +582,12 @@ class AdminController extends Controller
             $bluebook = Store::getBluebook($id);
             if (!$bluebook || $bluebook['status'] !== 'Pending') continue;
 
-            Store::setBluebookStatus($id, $this->addedByLibrary($bluebook) ? 'Approved' : Bluebook::STATUS_AWAITING_WAIVER);
+            $library = $this->addedByLibrary($bluebook);
+            Store::setBluebookStatus($id, $library ? 'Approved' : Bluebook::STATUS_AWAITING_WAIVER);
             Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Approved Bluebook', 'document' => $bluebook['title']]);
+            if (!$library) {
+                BluebookStatusMail::notify($bluebook, BluebookStatusMail::APPROVED);
+            }
             $approved++;
         }
 
@@ -604,6 +611,7 @@ class AdminController extends Controller
         }
         Store::setBluebookStatus($id, 'Approved');
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Received Waiver', 'document' => $bluebook['title']]);
+        BluebookStatusMail::notify($bluebook, BluebookStatusMail::POSTED);
         return redirect()->route('admin.bluebooks')->with('success', 'Waiver received. The bluebook is now posted in Browse.');
     }
 
@@ -625,6 +633,7 @@ class AdminController extends Controller
 
         Store::updateBluebook($id, ['status' => 'Rejected', 'rejectionReason' => $reason]);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Rejected Bluebook', 'document' => $bluebook['title']]);
+        BluebookStatusMail::notify($bluebook, BluebookStatusMail::REJECTED, $reason);
         return redirect($this->reviewedFrom($request))->with('success', 'Bluebook rejected. The author can see your reason and re-upload.');
     }
 
@@ -646,6 +655,10 @@ class AdminController extends Controller
 
         $issues = count(array_filter($evaluation, fn($e) => $e['status'] === BluebookEvaluation::ISSUE));
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Evaluated Bluebook', 'document' => $bluebook->title, 'bluebookId' => $bluebook->id]);
+        // Only when there is something to fix; an all-okay checklist is not news.
+        if ($issues > 0) {
+            BluebookStatusMail::notify(Store::getBluebook($id), BluebookStatusMail::EVALUATED, null, $issues);
+        }
 
         return redirect()->route('admin.bluebooks.view', $id)->with('success', $issues
             ? 'Evaluation saved. The author can see the ' . $issues . ' ' . Str::plural('item', $issues) . ' marked not okay, with your comments.'
