@@ -116,6 +116,7 @@ class BluebookStatusMailTest extends TestCase
         \Illuminate\Support\Facades\Storage::fake(\App\Services\Store::bluebookDisk());
         \Illuminate\Support\Facades\Queue::fake();
         $b = $this->makeBluebook('Rejected', self::AUTHOR, ['rejection_reason' => 'Fix it.']);
+        $this->admin();
 
         $pdf = \Illuminate\Http\UploadedFile::fake()->createWithContent('fixed.pdf',
             "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
@@ -126,6 +127,48 @@ class BluebookStatusMailTest extends TestCase
             ->assertSessionHas('success');
 
         $this->assertMailed(BluebookStatusMail::RECEIVED);
+        Mail::assertQueued(\App\Mail\NewSubmissionMail::class, fn($m) => $m->resubmitted && $m->bluebookId === $b->id);
+    }
+
+    public function test_a_new_upload_tells_every_admin_and_no_one_else(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake(\App\Services\Store::bluebookDisk());
+        \Illuminate\Support\Facades\Queue::fake();
+        $this->admin();
+        User::create(['name' => 'Adm Two', 'email' => 'adm2@cspc.edu.ph', 'password' => Hash::make('x'), 'role' => User::ROLE_ADMIN]);
+        User::create(['name' => 'Sub', 'email' => 'sub@cspc.edu.ph', 'password' => Hash::make('x'), 'role' => User::ROLE_SUB_ADMIN]);
+        User::create(['name' => 'Library', 'email' => 'library@cspc.edu.ph', 'password' => Hash::make('x'), 'role' => User::ROLE_ADMIN]);
+
+        $this->withSession(['user' => ['email' => self::AUTHOR, 'name' => 'Maria', 'role' => 'Student', 'canUpload' => true]])
+            ->post('/student/upload', [
+                'title' => 'Mail Flow Paper', 'authors' => 'Cruz, J',
+                'department' => 'CCS', 'program' => 'Bachelor of Science in Information Technology',
+                'year' => 2025, 'adviser' => 'Prof X', 'pages' => 50,
+                'keywords' => 'k', 'abstract' => 'A.',
+                'file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('b.pdf', "%PDF-1.4\n%%EOF"),
+            ])->assertOk();
+
+        $this->assertDatabaseHas('bluebooks', ['title' => 'Mail Flow Paper']);
+        $this->assertMailed(BluebookStatusMail::RECEIVED);
+
+        Mail::assertQueued(\App\Mail\NewSubmissionMail::class, 2);
+        foreach (['adm@cspc.edu.ph', 'adm2@cspc.edu.ph'] as $admin) {
+            Mail::assertQueued(\App\Mail\NewSubmissionMail::class, fn($m) =>
+                $m->hasTo($admin) && !$m->resubmitted && $m->title === 'Mail Flow Paper' && $m->uploaderEmail === self::AUTHOR);
+        }
+        foreach (['sub@cspc.edu.ph', 'library@cspc.edu.ph', self::AUTHOR] as $other) {
+            Mail::assertNotQueued(\App\Mail\NewSubmissionMail::class, fn($m) => $m->hasTo($other));
+        }
+    }
+
+    public function test_the_admin_message_renders_and_links_to_the_bluebook(): void
+    {
+        $html = (new \App\Mail\NewSubmissionMail(7, 'A <b>Title</b>', 'Maria', self::AUTHOR, 'CCS'))->render();
+
+        $this->assertStringContainsString('A &lt;b&gt;Title&lt;/b&gt;', $html);
+        $this->assertStringContainsString(route('admin.bluebooks.view', 7), $html);
+        $this->assertStringContainsString(self::AUTHOR, $html);
+        $this->assertStringContainsString('A new bluebook was submitted', $html);
     }
 
     public function test_nothing_is_sent_for_a_bluebook_the_library_added(): void
