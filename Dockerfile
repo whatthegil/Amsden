@@ -13,11 +13,16 @@ RUN apt-get update \
  && install-php-extensions pdo_mysql gd intl zip bcmath exif opcache \
  && rm -rf /var/lib/apt/lists/*
 
+# The last three lines: no Apache or PHP version in any header or error
+# page, and no TRACE.
 RUN a2enmod rewrite headers \
  && sed -ri 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf \
  && sed -ri 's!AllowOverride None!AllowOverride All!g' /etc/apache2/apache2.conf \
  && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
- && printf 'upload_max_filesize=64M\npost_max_size=64M\nmemory_limit=512M\n' > "$PHP_INI_DIR/conf.d/app.ini"
+ && printf 'upload_max_filesize=64M\npost_max_size=64M\nmemory_limit=512M\n' > "$PHP_INI_DIR/conf.d/app.ini" \
+ && printf 'expose_php=Off\nsession.use_strict_mode=1\n' > "$PHP_INI_DIR/conf.d/security.ini" \
+ && printf 'ServerTokens Prod\nServerSignature Off\nTraceEnable Off\nHeader always unset X-Powered-By\n' > /etc/apache2/conf-available/hardening.conf \
+ && a2enconf hardening
 
 WORKDIR /var/www/html
 

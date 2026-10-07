@@ -3,6 +3,6 @@
 @php($initial = strtoupper(substr($user['name'] ?? '?', 0, 1)))
 @if(!empty($user['avatar']))
   <img src="{{ $user['avatar'] }}" alt="" class="user-chip-avatar user-chip-photo" referrerpolicy="no-referrer"
-       onerror="this.hidden = true; this.nextElementSibling.hidden = false;">
+       data-avatar-fallback>
 @endif
 <div class="user-chip-avatar" aria-hidden="true" @if(!empty($user['avatar'])) hidden @endif>{{ $initial }}</div>

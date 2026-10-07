@@ -12,14 +12,14 @@
   @foreach(\App\Models\Bluebook::ACCESS_LEVELS as $value => $label)
     <label class="access-option">
       <input type="radio" name="access_level" value="{{ $value }}" required
-             @checked($level === $value) onchange="toggleAccessParts()">
+             @checked($level === $value)>
       <span><strong>{{ \App\Models\Bluebook::accessName($value) }}</strong> &mdash; {{ $label }}</span>
     </label>
   @endforeach
   @if($legacy)
     <label class="access-option">
       <input type="radio" name="access_level" value="{{ \App\Models\Bluebook::ACCESS_LEGACY }}" required
-             @checked($level === \App\Models\Bluebook::ACCESS_LEGACY) onchange="toggleAccessParts()">
+             @checked($level === \App\Models\Bluebook::ACCESS_LEGACY)>
       <span><strong>{{ \App\Models\Bluebook::accessName(\App\Models\Bluebook::ACCESS_LEGACY) }}</strong> &mdash; no signed waiver is on record. Readers may view it in the watermarked viewer only; it is never treated as an open copy.</span>
     </label>
   @endif
@@ -27,14 +27,14 @@
   <div id="access-parts" class="access-parts" @if($level !== \App\Models\Bluebook::ACCESS_PARTIAL) hidden @endif>
     <p class="form-hint" style="margin:0 0 0.5rem;">Tick each part readers may see and give the PDF pages it covers. Pages you do not list are left out of what readers receive.</p>
     <label class="access-option access-parts-all">
-      <input type="checkbox" id="access-parts-all" onchange="checkAllAccessParts(this.checked)">
+      <input type="checkbox" id="access-parts-all">
       <span>Select all parts</span>
     </label>
     @foreach(\App\Models\Bluebook::ACCESS_PARTS as $key => $label)
       <div class="access-part">
         <label class="access-option">
           <input type="checkbox" name="access_parts[]" value="{{ $key }}"
-                 @checked(in_array($key, $checked, true)) onchange="toggleAccessParts()">
+                 @checked(in_array($key, $checked, true))>
           <span>{{ $label }}</span>
         </label>
         <span class="access-range">
@@ -57,7 +57,7 @@
   </div>
 </fieldset>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 // The part list only applies to a partial waiver, and a part's page range only
 // once it is ticked - then the range is required, since it is what decides
 // which pages readers are sent.
@@ -93,5 +93,11 @@ function checkAllAccessParts(on) {
   });
   toggleAccessParts();
 }
+document.querySelectorAll('input[name="access_level"], .access-part input[type="checkbox"]').forEach(function (input) {
+  input.addEventListener('change', toggleAccessParts);
+});
+document.getElementById('access-parts-all').addEventListener('change', function () {
+  checkAllAccessParts(this.checked);
+});
 toggleAccessParts();
 </script>

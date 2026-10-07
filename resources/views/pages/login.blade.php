@@ -74,7 +74,7 @@
 </div>
 
 <script src="/js/main.js?v={{ filemtime(public_path('js/main.js')) }}"></script>
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
   (function () {
     document.querySelectorAll('[data-toggle-password]').forEach(function (btn) {
       var input = document.getElementById(btn.getAttribute('data-toggle-password'));

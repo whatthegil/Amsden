@@ -15,7 +15,9 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    // No cross-origin callers: there is no API, and every page and fetch is
+    // same-origin. An empty list means no CORS headers are ever sent.
+    'paths' => [],
 
     'allowed_methods' => ['*'],
 

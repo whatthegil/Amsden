@@ -38,11 +38,9 @@
             <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/></svg>
             <label for="litSearch" class="sr-only">Search the archive</label>
             <input type="text" id="litSearch" autocomplete="off"
-                   placeholder="Search titles, authors, keywords, abstracts…"
-                   oninput="searchLiterature()">
+                   placeholder="Search titles, authors, keywords, abstracts…">
           </div>
-          <button type="button" class="btn btn-sm btn-on-hero"
-                  onclick="document.getElementById('litSearch').value='';searchLiterature();">Clear</button>
+          <button type="button" class="btn btn-sm btn-on-hero" id="litSearchClear">Clear</button>
         </div>
         <div class="hero-hint">Searches every approved paper, including the text inside the documents.</div>
       </div>
@@ -170,7 +168,7 @@
   </main>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 // Asks the server, which runs the same search as Browse: every word is matched
 // on its own, in any order, across titles, authors, keywords, abstracts and the
 // text inside the documents, and results come back ranked by relevance.
@@ -229,5 +227,10 @@ function runSearch() {
       list.innerHTML = '<p style="color:var(--gray-400);font-size:0.88rem;text-align:center;padding:1rem;">Search is unavailable right now. Please try again.</p>';
     });
 }
+document.getElementById('litSearch').addEventListener('input', searchLiterature);
+document.getElementById('litSearchClear').addEventListener('click', function () {
+  document.getElementById('litSearch').value = '';
+  searchLiterature();
+});
 </script>
 @include('partials.footer')

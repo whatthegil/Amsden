@@ -42,7 +42,7 @@
               <div style="font-weight:600;color:var(--primary-dark);margin-bottom:0.25rem;">Click or drag your pre-proposal PDF here</div>
               <div style="font-size:0.83rem;color:var(--gray-400);">Accepted: .pdf, up to 25 MB. The file is only read for this check — it is not saved or submitted to the archive.</div>
             </label>
-            <input type="file" id="sim-file" name="file" accept=".pdf,application/pdf" required class="sr-only" onchange="simShowFile(this)" aria-describedby="sim-file-info">
+            <input type="file" id="sim-file" name="file" accept=".pdf,application/pdf" required class="sr-only" aria-describedby="sim-file-info">
             <div id="sim-file-info" style="display:none;padding:0.75rem 1rem;background:var(--green-light);border-radius:var(--radius-sm);border:1px solid var(--green);font-size:0.88rem;color:var(--green);margin-bottom:1rem;" role="status"></div>
 
             @include('partials.department-filter', ['id' => 'sim-file-department'])
@@ -275,7 +275,7 @@
   </main>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 (function () {
   var tabs   = document.querySelectorAll('.sim-tab');
   var panels = document.querySelectorAll('.sim-panel');
@@ -295,6 +295,7 @@ function simShowFile(input) {
   info.style.display = 'block';
   info.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
 }
+document.getElementById('sim-file').addEventListener('change', function () { simShowFile(this); });
 </script>
 
 <style>

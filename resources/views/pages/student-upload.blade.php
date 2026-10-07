@@ -49,7 +49,7 @@
               <div style="font-weight:600;color:var(--primary-dark);margin-bottom:0.25rem;">Click or drag your PDF here</div>
               <div style="font-size:0.83rem;color:var(--gray-400);">Accepted: .pdf, up to 25 MB</div>
             </label>
-            <input type="file" id="fileInput" name="file" accept=".pdf,application/pdf" required class="sr-only" onchange="handleFile(this)" aria-describedby="fileInfo">
+            <input type="file" id="fileInput" name="file" accept=".pdf,application/pdf" required class="sr-only" aria-describedby="fileInfo">
             <div id="fileInfo" style="display:none;padding:0.75rem 1rem;background:var(--green-light);border-radius:var(--radius-sm);border:1px solid var(--green);font-size:0.88rem;color:var(--green);margin-bottom:1rem;" role="status"></div>
 
             <div class="form-group">
@@ -105,7 +105,7 @@
   </main>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 function handleFile(input) {
   const file = input.files[0];
   if (file) {
@@ -114,6 +114,7 @@ function handleFile(input) {
     info.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
   }
 }
+document.getElementById('fileInput').addEventListener('change', function () { handleFile(this); });
 </script>
 
 @include('partials.footer')

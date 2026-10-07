@@ -19,3 +19,17 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+Options -Indexes
+
+# Static files (css, js, images, the PDF.js bundle) are served by Apache and
+# never reach SecurityHeaders, so they get the headers that apply to them here.
+# setifempty leaves alone what the app already set on its own responses.
+<IfModule mod_headers.c>
+    Header setifempty X-Content-Type-Options "nosniff"
+    Header setifempty X-Frame-Options "SAMEORIGIN"
+    Header setifempty Referrer-Policy "same-origin"
+    Header setifempty Cross-Origin-Resource-Policy "same-origin"
+    Header setifempty Strict-Transport-Security "max-age=31536000; includeSubDomains" "expr=%{HTTP:X-Forwarded-Proto} == 'https' || %{HTTPS} == 'on'"
+    Header always unset X-Powered-By
+</IfModule>

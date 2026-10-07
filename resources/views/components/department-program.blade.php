@@ -58,7 +58,7 @@
 </div>
 
 @once
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 // Narrow each Program list to the chosen department. The full, grouped list is
 // kept aside and the matching options copied back in, since hiding an
 // <optgroup> is not honoured by every browser (Safari on iOS among them).

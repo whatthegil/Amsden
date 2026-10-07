@@ -21,6 +21,9 @@ class Kernel extends HttpKernel
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        // Global, not in the web group, so a 404 that matched no route still
+        // goes out with the CSP and the rest.
+        \App\Http\Middleware\SecurityHeaders::class,
     ];
 
     /**
@@ -37,7 +40,6 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
-            \App\Http\Middleware\SecurityHeaders::class,
             \App\Http\Middleware\ExpireIdleSession::class,
         ],
 

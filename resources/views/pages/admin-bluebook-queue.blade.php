@@ -249,7 +249,7 @@
   </main>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 // Approve selected: enabled once something is ticked; "Select all" ticks the lot.
 (function () {
   const all  = document.getElementById('select-all');

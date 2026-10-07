@@ -181,7 +181,7 @@
               </fieldset>
             </form>
           </details>
-          <script>
+          <script nonce="{{ $cspNonce ?? '' }}">
           (function () {
             // The comment box belongs to "Not okay" only, and goes with it.
             document.querySelectorAll('[data-eval-item]').forEach(function (item) {
@@ -266,7 +266,7 @@
                   <em>This server cannot draw pages (see <code>php artisan system:check</code>).</em>
                 @endif
               </div>
-              <script>
+              <script nonce="{{ $cspNonce ?? '' }}">
               (function () {
                 const box = document.getElementById('render-pages');
                 const btn = box && box.querySelector('[data-render-pages]');
