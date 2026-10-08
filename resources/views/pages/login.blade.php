@@ -20,10 +20,10 @@
 
       <div aria-live="polite">
         @if($error ?? session('error'))
-          <div class="alert alert-error" role="alert">{{ $error ?? session('error') }}</div>
+          <div class="alert alert-error" role="alert">{!! htmlspecialchars((string) ($error ?? session('error')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') !!}</div>
         @endif
         @if($success ?? session('success'))
-          <div class="alert alert-success" role="alert">{{ $success ?? session('success') }}</div>
+          <div class="alert alert-success" role="alert">{!! htmlspecialchars((string) ($success ?? session('success')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') !!}</div>
         @endif
       </div>
 
@@ -31,7 +31,7 @@
         @csrf
         <div class="input-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <input id="login-email" type="email" name="email" value="{{ $email ?? old('email') }}" placeholder="Username / email" autocomplete="username" required autofocus>
+          <input id="login-email" type="email" name="email" value="{!! htmlspecialchars((string) ($email ?? old('email')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') !!}" placeholder="Username / email" autocomplete="username" required autofocus>
         </div>
 
         <div class="input-icon input-icon--pw">
