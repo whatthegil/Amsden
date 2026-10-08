@@ -354,7 +354,7 @@
                  data-pages-url="{{ route($asAdmin ? 'admin.bluebooks.page' : 'student.bluebook.page', [$bluebook['id'], '__N__', 'v' => \App\Services\Pdf\PageImages::version($bluebook, $user['email'] ?? '')]) }}"
                  data-page-count="{{ $pageImages }}"
                @endif
-               data-worker-url="/vendor/pdfjs/pdf.worker.min.js">
+               data-worker-url="/vendor/pdfjs/pdf.worker.min.js?v={{ filemtime(public_path('vendor/pdfjs/pdf.worker.min.js')) }}">
             {{-- Reading controls; pdf-viewer.js enables them once the document is open. --}}
             <div class="pdf-toolbar" id="pdf-toolbar" role="toolbar" aria-label="Document controls">
               <div class="pdf-tool-group">
@@ -413,10 +413,16 @@
     <link rel="preload" as="image" href="{{ route($asAdmin ? 'admin.bluebooks.page' : 'student.bluebook.page', [$bluebook['id'], 1, 'v' => \App\Services\Pdf\PageImages::version($bluebook, $user['email'] ?? '')]) }}">
   @endif
   {{-- The page-image viewer draws pictures, so it needs no PDF engine. --}}
+  {{-- pdf.js ships only as an ES module, so it is imported here and handed to
+       the viewer as the pdfjsLib global. Module and deferred scripts run in
+       document order, so the viewer, deferred, runs after it. --}}
   @if(($pageImages ?? 0) === 0)
-    <script src="/vendor/pdfjs/pdf.min.js"></script>
+    <script type="module" nonce="{{ $cspNonce ?? '' }}">
+      import * as pdfjsLib from '/vendor/pdfjs/pdf.min.js?v={{ filemtime(public_path('vendor/pdfjs/pdf.min.js')) }}';
+      window.pdfjsLib = pdfjsLib;
+    </script>
   @endif
-  <script src="/js/pdf-viewer.js?v={{ filemtime(public_path('js/pdf-viewer.js')) }}"></script>
+  <script src="/js/pdf-viewer.js?v={{ filemtime(public_path('js/pdf-viewer.js')) }}" defer></script>
 @endif
 {{-- The same paper in each style a student may be asked for. --}}
 <x-cite-modal id="cite-modal" :styles="\App\Services\CitationFormats::all($bluebook)" />
