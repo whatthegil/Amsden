@@ -69,6 +69,17 @@ class AuthController extends Controller
 
     // ─── Email / Password Auth ─────────────────────────────────────────────────
 
+    // Accounts first created through Google sign-in were given a random
+    // password nobody knows, so the one message also points those owners to
+    // the Google button.
+    private const BAD_LOGIN = 'Invalid email or password. If you first signed in with Google, use the CSPC Mail button below, then set a password on your Profile page.';
+
+    private static function dummyHash(): string
+    {
+        static $hash;
+        return $hash ??= Hash::make(\Illuminate\Support\Str::random(40));
+    }
+
     public function loginForm()
     {
         if (session('user')) {
@@ -84,8 +95,19 @@ class AuthController extends Controller
     {
         // Phone keyboards capitalise the first letter and autocomplete often
         // leaves a trailing space; neither should make a valid account fail.
-        $email    = strtolower(trim((string) $request->input('email')));
-        $password = (string) $request->input('password');
+        // Only plain strings: email[]=x would otherwise be cast to "Array" with
+        // a warning, which Laravel turns into a 500. Lengths are capped so a
+        // megabyte "password" is not hashed; no real address or password is
+        // anywhere near them.
+        $rawEmail    = $request->input('email');
+        $rawPassword = $request->input('password');
+        $email       = is_string($rawEmail) ? strtolower(trim($rawEmail)) : '';
+        $password    = is_string($rawPassword) ? $rawPassword : '';
+
+        if (mb_strlen($email) > 254 || strlen($password) > 1024) {
+            $this->logFailedLogin(mb_substr($email, 0, 190), null, 'Oversized input');
+            return view('pages.login', ['error' => self::BAD_LOGIN, 'success' => null, 'email' => null]);
+        }
 
         if (!$this->isAllowedEmail($email)) {
             $this->logFailedLogin($email, null, 'Not a CSPC address');
@@ -93,16 +115,19 @@ class AuthController extends Controller
         }
 
         $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
-        if ($user && !$user->hasKnownPassword()) {
-            $this->logFailedLogin($email, $user, 'No password set yet');
-            // Accounts first created through Google sign-in were given a
-            // random password nobody knows, so a manual login can never work
-            // until the owner sets one on their profile.
-            return view('pages.login', ['error' => 'This account was created with Google and has no password yet. Sign in with Google once, then set a password on your Profile page to log in with your email.', 'success' => null, 'email' => $email]);
-        }
-        if (!$user || !Hash::check($password, $user->password)) {
-            $this->logFailedLogin($email, $user, $user ? 'Wrong password' : 'No such account');
-            return view('pages.login', ['error' => 'Invalid email or password. Please try again.', 'success' => null, 'email' => $email]);
+
+        // A password is always checked, against a throwaway hash when there is
+        // no account, so a missing account does not answer measurably faster
+        // than a wrong password. Every failure gets the same message: telling
+        // "no such account" or "Google-only account" apart from "wrong password"
+        // would let anyone find out which CSPC addresses have accounts here.
+        // The log keeps the real reason for the administrator.
+        $valid = Hash::check($password, $user?->password ?? self::dummyHash());
+
+        if (!$user || !$valid || !$user->hasKnownPassword()) {
+            $reason = !$user ? 'No such account' : (!$user->hasKnownPassword() ? 'No password set yet' : 'Wrong password');
+            $this->logFailedLogin($email, $user, $reason);
+            return view('pages.login', ['error' => self::BAD_LOGIN, 'success' => null, 'email' => $email]);
         }
 
         Store::addLog(['userName' => $user->name, 'email' => $user->email, 'action' => 'Login', 'document' => '—']);
@@ -183,20 +208,33 @@ class AuthController extends Controller
         // Google redirects here with ?error=... (and no ?code=) when it declines
         // the sign-in. Socialite would just choke on the missing code and raise
         // an opaque exception, so handle that case first.
-        if ($error = $request->query('error')) {
+        if ($request->has('error')) {
+            // Anyone can put anything in ?error=, so it is never shown back:
+            // only the codes above get their own message, and the log keeps a
+            // trimmed copy of the rest.
+            $error = $request->query('error');
+            $error = is_string($error) ? $error : '';
+            $desc  = $request->query('error_description');
             Log::warning('Google sign-in refused by Google', [
-                'error'       => $error,
-                'description' => $request->query('error_description'),
+                'error'       => mb_substr($error, 0, 100),
+                'description' => is_string($desc) ? mb_substr($desc, 0, 300) : null,
             ]);
 
             return redirect()->route('login')->with(
                 'error',
-                self::GOOGLE_ERRORS[$error] ?? ('Google sign-in failed (' . $error . '). Please try again.')
+                self::GOOGLE_ERRORS[$error] ?? 'Google sign-in failed. Please try again.'
             );
         }
 
         try {
-            $googleUser = $this->google()->stateless()->user();
+            // Not stateless: Socialite checks the state it put in the session
+            // on the way out, so a callback URL started by someone else (login
+            // CSRF - signing the victim into the attacker's account) fails.
+            $googleUser = $this->google()->user();
+        } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
+            Log::warning('Google sign-in callback with a missing or wrong state');
+
+            return redirect()->route('login')->with('error', 'Your Google sign-in expired or was started elsewhere. Please try again.');
         } catch (\Exception $e) {
             // Previously swallowed silently, which made every Google failure
             // undiagnosable. Record it so storage/logs/laravel.log says why.

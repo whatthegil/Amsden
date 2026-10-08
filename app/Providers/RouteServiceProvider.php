@@ -63,7 +63,16 @@ class RouteServiceProvider extends ServiceProvider
         // Brute-force protection. This app doesn't use Laravel's auth guards
         // (see AuthController) so there's no failed-login lockout otherwise.
         RateLimiter::for('login', function (Request $request) {
-            return Limit::perMinute(6)->by($request->ip());
+            // Per address as well as per IP: many IPs taking turns at one
+            // account would each stay under the IP limit. The hourly cap is
+            // what makes that slow; Google sign-in stays open if it is hit.
+            $email = $request->input('email');
+            $email = is_string($email) ? strtolower(trim($email)) : '';
+            return [
+                Limit::perMinute(6)->by('ip:' . $request->ip()),
+                Limit::perMinute(5)->by('email:' . sha1($email)),
+                Limit::perHour(20)->by('email-hour:' . sha1($email)),
+            ];
         });
 
         // The archive is meant to be read a document at a time, and every
