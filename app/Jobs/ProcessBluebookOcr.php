@@ -106,6 +106,7 @@ class ProcessBluebookOcr implements ShouldQueue
             'ocr_processed_at' => now(),
             'pdf_encrypted'    => $encrypted,
         ])->save();
+        \App\Services\BluebookDetails::fillMissing($bluebook);
 
         return true;
     }
@@ -202,6 +203,9 @@ class ProcessBluebookOcr implements ShouldQueue
         $bluebook->ocr_rasterizer = $result['rasterizer'];
         $bluebook->ocr_processed_at = now();
         $bluebook->save();
+
+        // A scan's details could not be read on upload; they can be now.
+        \App\Services\BluebookDetails::fillMissing($bluebook);
     }
 
     public function failed(Throwable $exception): void

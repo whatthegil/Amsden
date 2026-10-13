@@ -8,6 +8,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\ThesisPdf;
 use Tests\TestCase;
 
 class DepartmentOptionsTest extends TestCase
@@ -52,20 +53,6 @@ class DepartmentOptionsTest extends TestCase
         ], $depts['CAS']['programs']);
     }
 
-    public function test_upload_form_lists_new_departments_and_programs(): void
-    {
-        $res = $this->withSession(['user' => $this->uploader()])->get('/student/upload');
-        $res->assertOk();
-        $res->assertSee('CCS — College of Computer Studies', false);
-        $res->assertSee('CSPC Buhi', false);
-        $res->assertSee('Bachelor of Science in Office Administration', false);
-        $res->assertSee('Bachelor of Early Childhood Education', false);
-        $res->assertSee('Bachelor of Science in Midwifery', false);
-        $res->assertSee('Bachelor of Arts in English Language Studies', false);
-        $res->assertDontSee('Computing Studies', false);
-        $res->assertDontSee('Bachelor of Arts in Communication', false); // old CAS program removed
-    }
-
     public function test_admin_bluebook_form_lists_new_departments_and_programs(): void
     {
         User::create(['name' => 'Adm', 'email' => 'adm@cspc.edu.ph', 'password' => Hash::make('x'), 'role' => 'Admin']);
@@ -74,8 +61,11 @@ class DepartmentOptionsTest extends TestCase
         $res->assertSee('CSPC Buhi', false);
         $res->assertSee('College of Computer Studies', false);
         $res->assertSee('Bachelor of Science in Office Administration', false);
+        $res->assertSee('Bachelor of Early Childhood Education', false);
         $res->assertSee('Bachelor of Science in Midwifery', false);
+        $res->assertSee('Bachelor of Arts in English Language Studies', false);
         $res->assertDontSee('Computing Studies', false);
+        $res->assertDontSee('Bachelor of Arts in Communication', false); // old CAS program removed
     }
 
     public function test_browse_filter_lists_cspc_buhi(): void
@@ -90,20 +80,19 @@ class DepartmentOptionsTest extends TestCase
         Storage::fake('local');
         Queue::fake();
 
-        $pdf = UploadedFile::fake()->createWithContent('b.pdf', "%PDF-1.4\n%%EOF");
+        // Office Administration is offered by CTHMBM too; the title page
+        // naming the Buhi campus settles which.
+        $pdf = UploadedFile::fake()->createWithContent('b.pdf',
+            ThesisPdf::bytes(ThesisPdf::pages('CSPC Buhi', 'Bachelor of Science in Office Administration')));
 
         $res = $this->withSession(['user' => $this->uploader()])->post('/student/upload', [
-            'title' => 'A CSPC Buhi Campus Study', 'authors' => 'Cruz, J',
-            'department' => 'CSPC Buhi', 'program' => 'Bachelor of Science in Office Administration',
-            'year' => 2025, 'adviser' => 'Prof X', 'pages' => 50,
-            'keywords' => 'buhi, campus', 'abstract' => 'A study conducted at the CSPC Buhi campus.',
-            'access_level' => 'public',
+            'year' => 2025,
             'file' => $pdf,
         ]);
 
         $res->assertOk();
         $this->assertDatabaseHas('bluebooks', [
-            'title' => 'A CSPC Buhi Campus Study',
+            'title' => ThesisPdf::TITLE,
             'department' => 'CSPC Buhi',
             'program' => 'Bachelor of Science in Office Administration',
         ]);
@@ -120,36 +109,12 @@ class DepartmentOptionsTest extends TestCase
         ], $overrides);
     }
 
-    public function test_upload_rejects_a_program_from_another_department(): void
-    {
-        Storage::fake('local');
-        Queue::fake();
-
-        $this->withSession(['user' => $this->uploader()])
-            ->post('/student/upload', $this->uploadPayload(['program' => 'Bachelor of Science in Nursing']))
-            ->assertOk()
-            ->assertSee('Please choose a program offered by the selected department.');
-
-        $this->assertDatabaseMissing('bluebooks', ['title' => 'A Mismatched Paper']);
-    }
-
-    public function test_upload_rejects_an_unknown_department(): void
-    {
-        Storage::fake('local');
-        Queue::fake();
-
-        $this->withSession(['user' => $this->uploader()])
-            ->post('/student/upload', $this->uploadPayload(['department' => 'XYZ']))
-            ->assertOk();
-
-        $this->assertDatabaseMissing('bluebooks', ['title' => 'A Mismatched Paper']);
-    }
-
     public function test_programs_are_tagged_with_their_department_for_the_picker(): void
     {
-        $res = $this->withSession(['user' => $this->uploader()])->get('/student/upload');
+        User::create(['name' => 'Adm', 'email' => 'adm@cspc.edu.ph', 'password' => Hash::make('x'), 'role' => 'Admin']);
+        $res = $this->withSession(['user' => $this->admin()])->get('/admin/bluebooks/new');
 
-        $res->assertSee('data-department-picker="upload-program"', false);
+        $res->assertSee('data-department-picker="bb-form-program"', false);
         $res->assertSee('data-department="CHS"', false);
     }
 

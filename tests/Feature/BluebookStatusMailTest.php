@@ -139,13 +139,13 @@ class BluebookStatusMailTest extends TestCase
         User::create(['name' => 'Sub', 'email' => 'sub@cspc.edu.ph', 'password' => Hash::make('x'), 'role' => User::ROLE_SUB_ADMIN]);
         User::create(['name' => 'Library', 'email' => 'library@cspc.edu.ph', 'password' => Hash::make('x'), 'role' => User::ROLE_ADMIN]);
 
+        $pages = \Tests\Support\ThesisPdf::pages();
+        [$pages[0][0], $pages[0][1]] = ['MAIL FLOW', 'PAPER'];
+
         $this->withSession(['user' => ['email' => self::AUTHOR, 'name' => 'Maria', 'role' => 'Student', 'canUpload' => true]])
             ->post('/student/upload', [
-                'title' => 'Mail Flow Paper', 'authors' => 'Cruz, J',
-                'department' => 'CCS', 'program' => 'Bachelor of Science in Information Technology',
-                'year' => 2025, 'adviser' => 'Prof X', 'pages' => 50,
-                'keywords' => 'k', 'abstract' => 'A.',
-                'file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('b.pdf', "%PDF-1.4\n%%EOF"),
+                'year' => 2025,
+                'file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('b.pdf', \Tests\Support\ThesisPdf::bytes($pages)),
             ])->assertOk();
 
         $this->assertDatabaseHas('bluebooks', ['title' => 'Mail Flow Paper']);

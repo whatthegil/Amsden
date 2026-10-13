@@ -92,7 +92,8 @@ class AccessWaiverTest extends TestCase
             ->assertOk()
             ->assertSee('pending admin approval');
 
-        $bluebook = Bluebook::where('title', 'Uploaded Waiver Paper')->firstOrFail();
+        // A blank PDF: filed under its file name.
+        $bluebook = Bluebook::where('title', 'w')->firstOrFail();
         $this->assertSame(Bluebook::ACCESS_PUBLIC, $bluebook->access_level);
         $this->assertNull($bluebook->access_parts);
         $this->assertNull($bluebook->waiver_requested_at);

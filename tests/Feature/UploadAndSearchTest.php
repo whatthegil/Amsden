@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\ThesisPdf;
 use Tests\TestCase;
 
 /**
@@ -31,18 +32,8 @@ class UploadAndSearchTest extends TestCase
 
     private function validUploadFields(): array
     {
-        return [
-            'title'      => 'A Web-Based Inventory System for Campus Laboratories',
-            'authors'    => 'Dela Cruz, Juan; Santos, Maria',
-            'department' => 'CCS',
-            'program'   => 'Bachelor of Science in Information Technology',
-            'year'       => 2025,
-            'adviser'    => 'Prof. Reyes',
-            'pages'      => 80,
-            'keywords'   => 'inventory, web-based, laboratory',
-            'abstract'   => 'This study designed and built a web-based inventory system for campus laboratories.',
-            'access_level' => 'public',
-        ];
+        // The year is all the form asks; the rest is read from the PDF.
+        return ['year' => 2025];
     }
 
     /** Minimal but structurally real PDF bytes (starts with the %PDF- signature). */
@@ -65,21 +56,102 @@ class UploadAndSearchTest extends TestCase
 
         $response = $this->withSession(['user' => $this->uploader()])
             ->post('/student/upload', $this->validUploadFields() + [
-                'file' => $this->fakePdf(),
+                'file' => UploadedFile::fake()->createWithContent('capstone.pdf', ThesisPdf::bytes()),
             ]);
 
         $response->assertOk();
         $response->assertSee('Bluebook uploaded successfully', false);
+        $response->assertSee('Details read from your PDF', false);
 
         $this->assertDatabaseHas('bluebooks', [
-            'title'       => 'A Web-Based Inventory System for Campus Laboratories',
+            'title'       => ThesisPdf::TITLE,
+            'department'  => 'CCS',
+            'program'     => 'Bachelor of Science in Information Technology',
+            'adviser'     => ThesisPdf::ADVISER,
+            'abstract'    => ThesisPdf::ABSTRACT,
+            'pages'       => 3,
+            'year'        => 2025,
             'status'      => 'Pending',
             'uploaded_by' => 'tester@my.cspc.edu.ph',
         ]);
 
         $book = Bluebook::first();
+        $this->assertSame(ThesisPdf::AUTHORS, $book->authors);
+        $this->assertSame(ThesisPdf::KEYWORDS, $book->keywords);
         Storage::disk('local')->assertExists($book->file_path);
         Queue::assertPushed(ProcessBluebookOcr::class);
+    }
+
+    public function test_the_form_asks_only_for_the_file_and_the_year(): void
+    {
+        $res = $this->withSession(['user' => $this->uploader()])->get('/student/upload');
+
+        $res->assertOk();
+        $res->assertSee('name="file"', false);
+        $res->assertSee('name="year"', false);
+        foreach (['title', 'authors', 'adviser', 'keywords', 'abstract', 'department', 'program', 'pages'] as $field) {
+            $res->assertDontSee('name="' . $field . '"', false);
+        }
+    }
+
+    public function test_details_posted_with_the_form_are_ignored(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+
+        $this->withSession(['user' => $this->uploader()])
+            ->post('/student/upload', $this->validUploadFields() + [
+                'title' => 'Typed Title', 'adviser' => 'Typed, Adviser', 'pages' => 999,
+                'file'  => UploadedFile::fake()->createWithContent('capstone.pdf', ThesisPdf::bytes()),
+            ])->assertOk();
+
+        $this->assertDatabaseHas('bluebooks', ['title' => ThesisPdf::TITLE, 'adviser' => ThesisPdf::ADVISER, 'pages' => 3]);
+    }
+
+    public function test_a_scans_details_are_filled_in_once_its_text_is_read(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+
+        // No text to read: filed under its file name, everything else blank.
+        $this->withSession(['user' => $this->uploader()])
+            ->post('/student/upload', $this->validUploadFields() + ['file' => $this->fakePdf('my_capstone.pdf')])
+            ->assertOk()
+            ->assertSee('scan', false);
+
+        $book = Bluebook::first();
+        $this->assertSame('my capstone', $book->title);
+        $this->assertSame('', $book->adviser);
+
+        // What OCR hands back for it later.
+        $book->forceFill(['ocr_text' => ThesisPdf::text(), 'adviser' => ''])->save();
+        \App\Services\BluebookDetails::fillMissing($book);
+
+        $book->refresh();
+        $this->assertSame(ThesisPdf::TITLE, $book->title);
+        $this->assertSame(ThesisPdf::AUTHORS, $book->authors);
+        $this->assertSame(ThesisPdf::ADVISER, $book->adviser);
+        $this->assertSame('Bachelor of Science in Information Technology', $book->program);
+        // The file's own count, set on upload, is kept over the abstract page's.
+        $this->assertSame(1, $book->pages);
+    }
+
+    public function test_reading_text_later_never_overwrites_a_reviewers_details(): void
+    {
+        $book = Bluebook::create([
+            'title' => 'Corrected By The Library', 'authors' => ['Cruz, J.'], 'year' => 2025, 'department' => 'CEA',
+            'program' => 'Bachelor of Science in Civil Engineering', 'keywords' => ['k'], 'abstract' => 'Set by a reviewer.',
+            'adviser' => 'Reyes, A.', 'status' => 'Pending', 'uploaded_by' => 'tester@my.cspc.edu.ph',
+            'uploaded_by_name' => 'T', 'pages' => 10, 'views' => 0, 'date_added' => '2025-01-01',
+            'file_original_name' => 'x.pdf', 'ocr_text' => ThesisPdf::text(),
+        ]);
+
+        \App\Services\BluebookDetails::fillMissing($book);
+
+        $book->refresh();
+        $this->assertSame('Corrected By The Library', $book->title);
+        $this->assertSame('CEA', $book->department);
+        $this->assertSame('Reyes, A.', $book->adviser);
     }
 
     public function test_upload_rejects_a_non_pdf_file(): void

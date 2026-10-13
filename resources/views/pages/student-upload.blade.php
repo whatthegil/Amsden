@@ -26,6 +26,45 @@
         <div class="alert alert-success">{{ $success }}</div>
       @endif
 
+      @if(!empty($uploaded))
+        @php $deptName = config('departments.' . $uploaded['department'] . '.name'); @endphp
+        <div class="form-card" style="margin-bottom:1.25rem;">
+          <div class="form-card-header">
+            <h2>Details read from your PDF</h2>
+          </div>
+          <div class="form-card-body" style="font-size:0.9rem;">
+            @if(!empty($missing))
+              <div class="alert alert-info" style="margin-bottom:1rem;">
+                @if(empty($uploaded['ocrText']) && count($missing) >= 6)
+                  Your PDF looks like a scan with no selectable text, so its details will be read once its text has been scanned (OCR).
+                @else
+                  We couldn't find the {{ implode(', ', $missing) }} in your PDF.
+                @endif
+                The library will complete anything still missing when it reviews your submission.
+              </div>
+            @endif
+            <dl class="upload-details">
+              <dt>Title</dt><dd>{{ in_array('title', $missing) ? '—' : $uploaded['title'] }}</dd>
+              <dt>Authors</dt><dd>{{ implode('; ', array_filter($uploaded['authors'])) ?: '—' }}</dd>
+              <dt>Adviser</dt><dd>{{ $uploaded['adviser'] ?: '—' }}</dd>
+              <dt>College</dt><dd>{{ $deptName ?: '—' }}</dd>
+              <dt>Program</dt><dd>{{ $uploaded['program'] ?: '—' }}</dd>
+              <dt>Academic Year</dt><dd>{{ $uploaded['year'] }}</dd>
+              <dt>Number of Pages</dt><dd>{{ $uploaded['pages'] ?: '—' }}</dd>
+              <dt>Keywords</dt><dd>{{ implode(', ', array_filter($uploaded['keywords'])) ?: '—' }}</dd>
+              <dt>Abstract</dt><dd style="max-height:10rem;overflow-y:auto;">{{ $uploaded['abstract'] ?: '—' }}</dd>
+            </dl>
+            <p style="margin-top:0.75rem;color:var(--gray-400);font-size:0.82rem;">Something wrong? The library corrects the details while it reviews your submission. You don't need to upload again.</p>
+          </div>
+        </div>
+        <style>
+          .upload-details { display: grid; grid-template-columns: 9rem 1fr; gap: 0.4rem 1rem; margin: 0; }
+          .upload-details dt { font-weight: 600; color: var(--gray-600); }
+          .upload-details dd { margin: 0; color: var(--gray-800); }
+          @media (max-width: 560px) { .upload-details { grid-template-columns: 1fr; } .upload-details dd { margin-bottom: 0.4rem; } }
+        </style>
+      @endif
+
       {{-- The waiver is set by the admin from the signed paper copy, which the
            author downloads from My Uploads once the bluebook is sent in. --}}
       <div class="alert alert-info">
@@ -37,7 +76,7 @@
       <div class="form-card">
         <div class="form-card-header">
           <span class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" fill="currentColor" fill-opacity="0.18"/><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <h2>Bluebook Details</h2>
+          <h2>Your Bluebook</h2>
         </div>
         <div class="form-card-body">
           <form method="POST" action="{{ route('student.upload.store') }}" enctype="multipart/form-data">
@@ -53,41 +92,15 @@
             <div id="fileInfo" style="display:none;padding:0.75rem 1rem;background:var(--green-light);border-radius:var(--radius-sm);border:1px solid var(--green);font-size:0.88rem;color:var(--green);margin-bottom:1rem;" role="status"></div>
 
             <div class="form-group">
-              <label for="upload-title">Research Paper Title</label>
-              <input id="upload-title" type="text" name="title" required placeholder="Full title of your capstone research paper" value="{{ $old['title'] ?? '' }}">
+              <label for="upload-year">Academic Year</label>
+              <input id="upload-year" type="number" name="year" required min="2000" max="{{ date('Y') + 1 }}" value="{{ $old['year'] ?? date('Y') }}">
             </div>
 
-            <div class="form-group">
-              <label for="upload-authors">Authors <span style="font-weight:400;color:var(--gray-400);">(separate with semicolons: Last, First; Last, First)</span></label>
-              <input id="upload-authors" type="text" name="authors" required placeholder="e.g. Dela Cruz, Juan; Santos, Maria" value="{{ $old['authors'] ?? '' }}">
-            </div>
-
-            <x-department-program prefix="upload" :department="$old['department'] ?? ''" :program="$old['program'] ?? ''" />
-
-            <div class="form-group">
-              <label for="upload-adviser">Adviser <span style="font-weight:400;color:var(--gray-400);">(Last, First M.I.)</span></label>
-              <input id="upload-adviser" type="text" name="adviser" required placeholder="e.g. Dela Cruz, Juan P." value="{{ $old['adviser'] ?? '' }}">
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="upload-year">Academic Year</label>
-                <input id="upload-year" type="number" name="year" required min="2000" max="{{ date('Y') + 1 }}" value="{{ $old['year'] ?? date('Y') }}">
-              </div>
-              <div class="form-group">
-                <label for="upload-pages">Number of Pages</label>
-                <input id="upload-pages" type="number" name="pages" required min="1" placeholder="e.g. 120" value="{{ $old['pages'] ?? '' }}">
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="upload-keywords">Keywords <span style="font-weight:400;color:var(--gray-400);">(comma-separated)</span></label>
-              <input id="upload-keywords" type="text" name="keywords" required placeholder="e.g. Machine Learning, IoT, Agriculture" value="{{ $old['keywords'] ?? '' }}">
-            </div>
-
-            <div class="form-group">
-              <label for="upload-abstract">Abstract</label>
-              <textarea id="upload-abstract" name="abstract" rows="5" required placeholder="Brief description of your research paper…">{{ $old['abstract'] ?? '' }}</textarea>
+            <div style="background:var(--primary-light);border:1px solid var(--primary-pale);border-radius:var(--radius-sm);padding:0.875rem 1rem;margin-bottom:1.25rem;font-size:0.85rem;color:var(--primary-dark);">
+              <strong>No need to type your paper's details.</strong>
+              The title, authors, adviser, college, program, keywords, abstract and number of pages are read from your PDF's
+              title page, abstract page and acknowledgements. Use the final manuscript in the standard CSPC format.
+              Anything that can't be read is completed by the library when it reviews your submission.
             </div>
 
             <div class="form-actions">

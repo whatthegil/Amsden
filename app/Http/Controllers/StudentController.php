@@ -6,6 +6,7 @@ use App\Jobs\ProcessBluebookOcr;
 use App\Mail\BluebookStatusMail;
 use App\Mail\NewSubmissionMail;
 use App\Models\Bluebook;
+use App\Services\BluebookDetails;
 use App\Services\LiteratureReviewService;
 use App\Services\OcrService;
 use App\Services\Pdf\PageImages;
@@ -309,17 +310,11 @@ class StudentController extends Controller
         }
 
         try {
+            // Only the file and the year are asked for: the rest is read from
+            // the paper's title page and abstract, so it cannot be mistyped.
             $request->validate([
                 'file'       => ['required', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile, new \App\Rules\PdfNotEncrypted], // 35MB, PDF only
-                'title'      => ['required', 'string'],
-                'authors'    => ['required', 'string'],
-                'department' => ['required', 'string', \Illuminate\Validation\Rule::in(array_keys(config('departments')))],
-                'program'    => ['required', 'string', new \App\Rules\ProgramInDepartment($request->input('department'))],
-                'year'       => ['required', 'integer'],
-                'adviser'    => ['required', 'string'],
-                'pages'      => ['required', 'integer', 'min:1'],
-                'keywords'   => ['required', 'string'],
-                'abstract'   => ['required', 'string'],
+                'year'       => ['required', 'integer', 'min:2000', 'max:' . (date('Y') + 1)],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return view('pages.student-upload', [
@@ -332,9 +327,12 @@ class StudentController extends Controller
         }
 
         try {
-            $title = $request->input('title');
-            $file  = $request->file('file');
-            $path  = $file->store('bluebooks', Store::bluebookDisk());
+            $file    = $request->file('file');
+            $details = BluebookDetails::fromPdf($file->getRealPath());
+            // A scan has no text to read yet; its details are filled in when
+            // OCR reads it, and until then it is filed under its file name.
+            $title   = $details['title'] ?: BluebookDetails::placeholderTitle($file->getClientOriginalName());
+            $path    = $file->store('bluebooks', Store::bluebookDisk());
 
             // Stamped before the record exists, so there is no window in which
             // the archive holds a document nobody has marked.
@@ -345,17 +343,17 @@ class StudentController extends Controller
 
             $bluebook = Store::addBluebook([
                 'title'          => $title,
-                'authors'        => array_map('trim', explode(';', $request->input('authors'))),
+                'authors'        => $details['authors'],
                 'year'           => (int)$request->input('year'),
-                'department'     => $request->input('department'),
-                'program'        => $request->input('program'),
-                'keywords'       => array_map('trim', explode(',', $request->input('keywords'))),
-                'abstract'       => $request->input('abstract'),
-                'adviser'        => $request->input('adviser'),
+                'department'     => $details['department'],
+                'program'        => $details['program'],
+                'keywords'       => $details['keywords'],
+                'abstract'       => $details['abstract'],
+                'adviser'        => $details['adviser'],
                 'status'         => 'Pending',
                 'uploadedBy'     => $user['email'],
                 'uploadedByName' => $user['name'],
-                'pages'          => (int)$request->input('pages'),
+                'pages'          => $details['pages'],
                 'filePath'         => $path,
                 'fileOriginalName' => $file->getClientOriginalName(),
                 'fileSize'         => $file->getSize(),
@@ -380,11 +378,14 @@ class StudentController extends Controller
         }
 
         return view('pages.student-upload', [
-            'user'    => $user,
-            'active'  => 'upload',
-            'error'   => null,
-            'success' => 'Bluebook uploaded successfully! It is now pending admin approval.',
-            'old'     => [],
+            'user'     => $user,
+            'active'   => 'upload',
+            'error'    => null,
+            'success'  => 'Bluebook uploaded successfully! It is now pending admin approval.',
+            'old'      => [],
+            'uploaded' => $uploaded = Store::getBluebook($bluebook['id']),
+            // As stored: reading the text on upload may have filled some in.
+            'missing'  => BluebookDetails::missing(['title' => $uploaded['title'] === BluebookDetails::placeholderTitle($uploaded['fileOriginalName'] ?? '') ? '' : $uploaded['title']] + $uploaded),
         ]);
     }
 
@@ -462,6 +463,8 @@ class StudentController extends Controller
             Store::updateBluebook($id, [
                 'status'           => 'Pending',
                 'rejectionReason'  => null,
+                // The corrected file's own count, not the old one's.
+                'pages'            => BluebookDetails::pageCount($file->getRealPath()) ?? $bluebook['pages'],
                 'filePath'         => $path,
                 'fileOriginalName' => $file->getClientOriginalName(),
                 'fileSize'         => $file->getSize(),
