@@ -244,12 +244,94 @@
                       <td style="color:var(--gray-600);font-size:0.88rem;">{{ $result['bluebook']['year'] }}</td>
                       <td style="text-align:center;">
                         <div style="display:flex;flex-direction:column;align-items:center;gap:0.3rem;">
-                          <span style="background:{{ $badgeBg }};color:{{ $badgeColor }};padding:0.2rem 0.6rem;border-radius:999px;font-size:0.78rem;font-weight:600;white-space:nowrap;">
+                          <button type="button" class="sim-why-toggle" aria-expanded="false" aria-controls="sim-why-{{ $i }}"
+                                  title="Show why this bluebook is similar"
+                                  style="background:{{ $badgeBg }};color:{{ $badgeColor }};">
                             {{ $pct }}% &mdash; {{ $label }}
-                          </span>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" class="sim-why-caret"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                          </button>
                           <div style="width:80px;height:5px;background:var(--gray-200);border-radius:99px;overflow:hidden;">
                             <div style="height:100%;width:{{ min($pct, 100) }}%;background:{{ $barColor }};border-radius:99px;transition:width 0.4s;"></div>
                           </div>
+                        </div>
+                      </td>
+                    </tr>
+                    @php $why = $result['explanation']; @endphp
+                    <tr id="sim-why-{{ $i }}" class="sim-why-row" hidden>
+                      <td colspan="6">
+                        <div class="sim-why">
+                          <div class="sim-why-heading">Why this scored {{ $pct }}%</div>
+
+                          <table class="sim-why-fields">
+                            <thead>
+                              <tr><th>Compared</th><th>Match</th><th>Weight</th><th>Adds</th><th>Matching words</th></tr>
+                            </thead>
+                            <tbody>
+                              @foreach($why['fields'] as $field)
+                                <tr>
+                                  <td>{{ $field['label'] }}</td>
+                                  @if($field['compared'])
+                                    <td>{{ $field['score'] }}%</td>
+                                    <td>{{ $field['weight'] }}%</td>
+                                    <td><strong>+{{ $field['points'] }}</strong></td>
+                                    <td>
+                                      @forelse($field['words'] as $word)
+                                        <span class="sim-why-word">{{ $word }}</span>
+                                      @empty
+                                        <span class="sim-why-muted">none</span>
+                                      @endforelse
+                                    </td>
+                                  @else
+                                    <td colspan="4" class="sim-why-muted">Not compared — {{ $field['label'] === 'Full text' ? 'no document text available' : 'missing on one side' }}</td>
+                                  @endif
+                                </tr>
+                              @endforeach
+                            </tbody>
+                          </table>
+
+                          <div class="sim-why-cols">
+                            @if(!empty($why['proposal']))
+                              <div class="sim-why-col">
+                                <div class="sim-why-sub">Your proposal</div>
+                                <div class="sim-why-label">Title</div>
+                                <p>{!! $why['proposal']['title'] !!}</p>
+                                @if($why['proposal']['abstract'])
+                                  <div class="sim-why-label">Abstract</div>
+                                  <p class="sim-why-scroll">{!! $why['proposal']['abstract'] !!}</p>
+                                @endif
+                              </div>
+                            @endif
+                            @if(!empty($why['proposalExcerpts']))
+                              <div class="sim-why-col">
+                                <div class="sim-why-sub">Passages from your pre-proposal</div>
+                                @foreach($why['proposalExcerpts'] as $excerpt)
+                                  <blockquote>&hellip; {!! $excerpt !!} &hellip;</blockquote>
+                                @endforeach
+                              </div>
+                            @endif
+
+                            <div class="sim-why-col">
+                              <div class="sim-why-sub">Existing bluebook</div>
+                              <div class="sim-why-label">Title</div>
+                              <p>{!! $why['book']['title'] !!}</p>
+                              @if(!empty($why['book']['keywords']))
+                                <div class="sim-why-label">Keywords</div>
+                                <p>{!! implode(', ', $why['book']['keywords']) !!}</p>
+                              @endif
+                              @if($why['book']['abstract'])
+                                <div class="sim-why-label">Abstract</div>
+                                <p class="sim-why-scroll">{!! $why['book']['abstract'] !!}</p>
+                              @endif
+                              @if(!empty($why['excerpts']))
+                                <div class="sim-why-label">Passages from the document</div>
+                                @foreach($why['excerpts'] as $excerpt)
+                                  <blockquote>&hellip; {!! $excerpt !!} &hellip;</blockquote>
+                                @endforeach
+                              @endif
+                            </div>
+                          </div>
+
+                          <div class="sim-why-muted" style="margin-top:0.5rem;">Highlighted words appear in both. Words are matched by their root and as parts of longer words, so "attend" matches "attendance".</div>
                         </div>
                       </td>
                     </tr>
@@ -296,6 +378,15 @@ function simShowFile(input) {
   info.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
 }
 document.getElementById('sim-file').addEventListener('change', function () { simShowFile(this); });
+
+document.querySelectorAll('.sim-why-toggle').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var row  = document.getElementById(btn.getAttribute('aria-controls'));
+    var open = btn.getAttribute('aria-expanded') !== 'true';
+    btn.setAttribute('aria-expanded', String(open));
+    row.hidden = !open;
+  });
+});
 </script>
 
 <style>
@@ -304,6 +395,32 @@ document.getElementById('sim-file').addEventListener('change', function () { sim
     border-color: var(--primary-mid);
     color: var(--primary-dark);
   }
+  .sim-why-toggle {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.2rem 0.6rem; border: 0; border-radius: 999px;
+    font: inherit; font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+    cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px;
+  }
+  .sim-why-toggle:hover { filter: brightness(0.95); }
+  .sim-why-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .sim-why-caret { transition: transform 0.2s; }
+  .sim-why-toggle[aria-expanded="true"] .sim-why-caret { transform: rotate(180deg); }
+  .sim-why-row > td { background: var(--gray-50, #f9fafb); }
+  .sim-why { padding: 0.5rem 0.25rem; font-size: 0.85rem; color: var(--gray-800); white-space: normal; }
+  .sim-why-heading { font-weight: 700; margin-bottom: 0.5rem; }
+  .sim-why-fields { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; }
+  .sim-why-fields th, .sim-why-fields td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--gray-200); vertical-align: top; }
+  .sim-why-fields th { font-size: 0.75rem; color: var(--gray-400); font-weight: 600; }
+  .sim-why-word { display: inline-block; margin: 0 0.2rem 0.2rem 0; padding: 0.05rem 0.4rem; border-radius: 999px; background: #fff3a3; color: #5c4a00; font-size: 0.75rem; }
+  .sim-why-muted { color: var(--gray-400); font-size: 0.8rem; }
+  .sim-why-cols { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .sim-why-col { flex: 1; min-width: 240px; background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-sm); padding: 0.75rem; }
+  .sim-why-sub { font-weight: 700; margin-bottom: 0.4rem; color: var(--primary-dark); }
+  .sim-why-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gray-400); margin-top: 0.5rem; }
+  .sim-why p { margin: 0.15rem 0 0; line-height: 1.5; }
+  .sim-why-scroll { max-height: 9rem; overflow-y: auto; }
+  .sim-why blockquote { margin: 0.4rem 0 0; padding: 0.4rem 0.6rem; border-left: 3px solid var(--primary-pale); background: var(--gray-50, #f9fafb); line-height: 1.5; }
+  .sim-why mark { background: #fff3a3; color: inherit; padding: 0 0.1em; border-radius: 2px; }
 </style>
 
 @include('partials.footer')

@@ -53,20 +53,26 @@ class SimilarityService
      */
     private static function wildcardMatches(array $set, array $other): int
     {
+        return count(self::matchedWords($set, $other));
+    }
+
+    /** The words of $set that match a word of $other, as wildcardMatches() counts them. */
+    private static function matchedWords(array $set, array $other): array
+    {
         // " w1 w2 w3 ": one substring search finds a word inside any of them,
         // so a long OCR'd document isn't walked word by word.
         $haystack = ' ' . implode(' ', $other) . ' ';
         $lookup   = array_flip($other);
 
-        $hits = 0;
+        $matched = [];
         foreach ($set as $word) {
             $found = strlen($word) < self::WILDCARD_MIN
                 ? str_contains($haystack, ' ' . $word . ' ')
                 : str_contains($haystack, $word) || self::holdsWordOf($word, $lookup);
-            if ($found) $hits++;
+            if ($found) $matched[] = $word;
         }
 
-        return $hits;
+        return $matched;
     }
 
     /** Whether some part of $word, WILDCARD_MIN letters or longer, is a word in $lookup. */
@@ -198,6 +204,218 @@ class SimilarityService
         }
 
         return $weightSum > 0.0 ? $score / $weightSum : 0.0;
+    }
+
+    /**
+     * Why computeSimilarity() gave its score: what each field added, the words
+     * that matched, and the bluebook's and proposal's text with those words
+     * marked. Only the results being shown are explained, so the archive-wide
+     * pass stays on the cheaper scorer. Every text in the result is escaped HTML.
+     */
+    public static function explain(
+        string $proposedTitle,
+        array  $proposedKeywords,
+        string $proposedAbstract,
+        array  $bluebook
+    ): array {
+        $propTitle    = array_unique(self::tokenize($proposedTitle));
+        $propKw       = array_unique(self::keywordTokens($proposedKeywords));
+        $propAbstract = array_unique(self::tokenize($proposedAbstract));
+        $propAll      = array_unique(array_merge($propTitle, $propKw, $propAbstract));
+
+        $bookTitle    = array_unique(self::tokenize($bluebook['title'] ?? ''));
+        $bookKw       = array_unique(self::keywordTokens($bluebook['keywords'] ?? []));
+        $bookAbstract = array_unique(self::tokenize($bluebook['abstract'] ?? ''));
+        $ocrText      = trim($bluebook['ocrText'] ?? '');
+        $bookOcr      = $ocrText === '' ? [] : array_unique(self::tokenize($ocrText));
+
+        // Same pairings and weights as computeSimilarity().
+        $pairs = [
+            ['Title',     0.50, $propTitle,    $bookTitle,    false],
+            ['Keywords',  0.20, $propKw,       $bookKw,       false],
+            ['Abstract',  0.10, $propAbstract, $bookAbstract, false],
+            ['Full text', 0.20, $propAll,      $bookOcr,      true],
+        ];
+
+        $fields     = [];
+        $propTerms  = [];
+        $bookTerms  = [];
+        $ocrTerms   = [];
+        foreach ($pairs as [$label, $weight, $prop, $book, $isOcr]) {
+            $compared = !empty($prop) && !empty($book);
+            $score    = !$compared ? 0.0 : ($isOcr ? self::overlapCoefficient($prop, $book) : self::dice($prop, $book));
+            $propHits = $compared ? self::matchedWords($prop, $book) : [];
+
+            if ($isOcr) {
+                $ocrTerms = $compared ? self::matchedWords($book, $prop) : [];
+            } else {
+                $bookTerms = array_merge($bookTerms, $compared ? self::matchedWords($book, $prop) : []);
+            }
+            $propTerms = array_merge($propTerms, $propHits);
+
+            $fields[] = self::fieldRow($label, $weight, $score, $compared,
+                self::surfaceForms($proposedTitle . ' ' . implode(' ', $proposedKeywords) . ' ' . $proposedAbstract, $propHits));
+        }
+
+        return [
+            'fields'   => $fields,
+            'book'     => self::bookHighlights($bluebook, $bookTerms),
+            'excerpts' => self::excerpts($ocrText, $ocrTerms),
+            'proposal' => [
+                'title'    => self::highlight($proposedTitle, $propTerms),
+                'abstract' => trim($proposedAbstract) === '' ? null : self::highlight($proposedAbstract, $propTerms),
+            ],
+            'proposalExcerpts' => [],
+        ];
+    }
+
+    /**
+     * Why computeSimilarityFromText() gave its score, in the shape explain()
+     * returns: the words of each bluebook field found in the pre-proposal, and
+     * passages of both documents with those words marked.
+     */
+    public static function explainFromText(string $proposalText, array $bluebook): array
+    {
+        $proposal = array_unique(self::tokenize($proposalText));
+        $ocrText  = trim($bluebook['ocrText'] ?? '');
+
+        $pairs = [
+            ['Title',     0.45, array_unique(self::tokenize($bluebook['title'] ?? ''))],
+            ['Keywords',  0.15, array_unique(self::keywordTokens($bluebook['keywords'] ?? []))],
+            ['Abstract',  0.15, array_unique(self::tokenize($bluebook['abstract'] ?? ''))],
+            ['Full text', 0.25, $ocrText === '' ? [] : array_unique(self::tokenize($ocrText))],
+        ];
+
+        // Fields the bluebook lacks drop out and the rest share their weight.
+        $weightSum = 0.0;
+        foreach ($pairs as [, $weight, $tokens]) {
+            if (!empty($tokens) && !empty($proposal)) $weightSum += $weight;
+        }
+
+        $fields    = [];
+        $bookTerms = [];
+        $ocrTerms  = [];
+        $propTerms = [];
+        foreach ($pairs as [$label, $weight, $tokens]) {
+            $compared = !empty($tokens) && !empty($proposal);
+            $score    = $compared ? self::overlapCoefficient($tokens, $proposal) : 0.0;
+            $bookHits = $compared ? self::matchedWords($tokens, $proposal) : [];
+
+            if ($label === 'Full text') {
+                $ocrTerms = $bookHits;
+                $source   = $ocrText;
+            } else {
+                $bookTerms = array_merge($bookTerms, $bookHits);
+                $source    = $label === 'Keywords' ? implode(' ', $bluebook['keywords'] ?? []) : ($bluebook[strtolower($label)] ?? '');
+            }
+            if ($compared) {
+                $propTerms = array_merge($propTerms, self::matchedWords($proposal, $tokens));
+            }
+
+            $fields[] = self::fieldRow($label, $weightSum > 0.0 ? $weight / $weightSum : 0.0, $score, $compared,
+                self::surfaceForms($source, $bookHits));
+        }
+
+        return [
+            'fields'           => $fields,
+            'book'             => self::bookHighlights($bluebook, $bookTerms),
+            'excerpts'         => self::excerpts($ocrText, $ocrTerms),
+            'proposal'         => null,
+            'proposalExcerpts' => self::excerpts($proposalText, array_unique($propTerms)),
+        ];
+    }
+
+    private static function fieldRow(string $label, float $weight, float $score, bool $compared, array $words): array
+    {
+        return [
+            'label'    => $label,
+            'compared' => $compared,
+            'weight'   => round($weight * 100, 1),
+            'score'    => round($score * 100, 1),
+            'points'   => round($score * $weight * 100, 1),
+            'words'    => array_slice($words, 0, 15),
+        ];
+    }
+
+    private static function bookHighlights(array $bluebook, array $terms): array
+    {
+        return [
+            'title'    => self::highlight($bluebook['title'] ?? '', $terms),
+            'keywords' => array_map(fn($kw) => self::highlight($kw, $terms), $bluebook['keywords'] ?? []),
+            'abstract' => trim($bluebook['abstract'] ?? '') === '' ? null : self::highlight($bluebook['abstract'], $terms),
+        ];
+    }
+
+    /**
+     * $text as escaped HTML with every word whose stem is in $terms wrapped
+     * in <mark>.
+     */
+    public static function highlight(string $text, array $terms): string
+    {
+        $lookup = array_flip($terms);
+        $parts  = preg_split('/([\p{L}\p{N}]+)/u', $text, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$text];
+
+        $html = '';
+        foreach ($parts as $i => $part) {
+            $safe  = htmlspecialchars($part, ENT_QUOTES, 'UTF-8');
+            $html .= ($i % 2 === 1 && self::isTerm($part, $lookup)) ? '<mark>' . $safe . '</mark>' : $safe;
+        }
+
+        return $html;
+    }
+
+    private static function isTerm(string $word, array $lookup): bool
+    {
+        $normal = SearchService::normalize($word);
+        return $normal !== '' && !str_contains($normal, ' ') && isset($lookup[SearchService::stem($normal)]);
+    }
+
+    /** The words of $text that stand for $terms, as written, each once. */
+    private static function surfaceForms(string $text, array $terms): array
+    {
+        if (empty($terms)) return [];
+        $lookup = array_flip($terms);
+
+        $forms = [];
+        preg_match_all('/[\p{L}\p{N}]+/u', $text, $m);
+        foreach ($m[0] as $word) {
+            $lower = mb_strtolower($word);
+            if (!isset($forms[$lower]) && self::isTerm($word, $lookup)) $forms[$lower] = true;
+        }
+
+        return array_keys($forms);
+    }
+
+    /**
+     * Up to $max passages of $text with the most distinct $terms, in reading
+     * order, highlighted. OCR text often has no sentence breaks, so long runs
+     * are cut into windows of words.
+     */
+    private static function excerpts(string $text, array $terms, int $max = 3): array
+    {
+        if ($text === '' || empty($terms)) return [];
+        $lookup = array_flip($terms);
+
+        $passages = [];
+        foreach (preg_split('/(?<=[.!?])\s+|\R+/u', $text, -1, PREG_SPLIT_NO_EMPTY) as $sentence) {
+            $words = preg_split('/\s+/u', trim($sentence), -1, PREG_SPLIT_NO_EMPTY);
+            foreach (array_chunk($words, 40) as $chunk) {
+                $passages[] = implode(' ', $chunk);
+            }
+        }
+
+        $scored = [];
+        foreach ($passages as $i => $passage) {
+            if (mb_strlen($passage) < 20) continue;
+            $hits = count(array_intersect_key(array_flip(self::tokenize($passage)), $lookup));
+            if ($hits >= 2) $scored[] = [$hits, $i, $passage];
+        }
+
+        usort($scored, fn($a, $b) => [$b[0], $a[1]] <=> [$a[0], $b[1]]);
+        $top = array_slice($scored, 0, $max);
+        usort($top, fn($a, $b) => $a[1] <=> $b[1]);
+
+        return array_map(fn($p) => self::highlight($p[2], $terms), $top);
     }
 
 }

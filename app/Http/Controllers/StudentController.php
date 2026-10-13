@@ -596,6 +596,17 @@ class StudentController extends Controller
 
         usort($results, fn($a, $b) => $b['score'] <=> $a['score']);
 
+        // The breakdown behind each shown percentage, worked out only for the
+        // matches that made the list.
+        foreach ($results as &$result) {
+            $result['explanation'] = $mode === 'file'
+                ? SimilarityService::explainFromText($proposed['proposalText'] ?? '', $result['bluebook'])
+                : SimilarityService::explain(
+                    $proposed['title'], $proposed['keywords'], $proposed['abstract'], $result['bluebook']
+                );
+        }
+        unset($result);
+
         return $results;
     }
 
