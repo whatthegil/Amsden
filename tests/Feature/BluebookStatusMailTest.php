@@ -144,7 +144,7 @@ class BluebookStatusMailTest extends TestCase
 
         $this->withSession(['user' => ['email' => self::AUTHOR, 'name' => 'Maria', 'role' => 'Student', 'canUpload' => true]])
             ->post('/student/upload', [
-                'year' => 2025,
+                'year' => 2025, 'adviser' => 'Reyes, Ana B.',
                 'file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('b.pdf', \Tests\Support\ThesisPdf::bytes($pages)),
             ])->assertOk();
 

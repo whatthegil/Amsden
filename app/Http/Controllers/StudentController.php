@@ -310,10 +310,12 @@ class StudentController extends Controller
         }
 
         try {
-            // Only the file and the year are asked for: the rest is read from
-            // the paper's title page and abstract, so it cannot be mistyped.
+            // Only the file, the adviser and the year are asked for: the rest
+            // is read from the paper's title page and abstract, so it cannot
+            // be mistyped.
             $request->validate([
                 'file'       => ['required', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile, new \App\Rules\PdfNotEncrypted], // 35MB, PDF only
+                'adviser'    => ['required', 'string', 'max:255'],
                 'year'       => ['required', 'integer', 'min:2000', 'max:' . (date('Y') + 1)],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -349,7 +351,7 @@ class StudentController extends Controller
                 'program'        => $details['program'],
                 'keywords'       => $details['keywords'],
                 'abstract'       => $details['abstract'],
-                'adviser'        => $details['adviser'],
+                'adviser'        => trim($request->input('adviser')),
                 'status'         => 'Pending',
                 'uploadedBy'     => $user['email'],
                 'uploadedByName' => $user['name'],

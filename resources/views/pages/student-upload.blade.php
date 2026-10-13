@@ -65,14 +65,6 @@
         </style>
       @endif
 
-      {{-- The waiver is set by the admin from the signed paper copy, which the
-           author downloads from My Uploads once the bluebook is sent in. --}}
-      <div class="alert alert-info">
-        <strong>Access permission waiver.</strong>
-        After uploading, download the waiver from My Uploads, fill it in and sign it, then hand it in to the CSPC Library.
-        Your bluebook is posted once the library receives it.
-      </div>
-
       <div class="form-card">
         <div class="form-card-header">
           <span class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" fill="currentColor" fill-opacity="0.18"/><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -92,14 +84,19 @@
             <div id="fileInfo" style="display:none;padding:0.75rem 1rem;background:var(--green-light);border-radius:var(--radius-sm);border:1px solid var(--green);font-size:0.88rem;color:var(--green);margin-bottom:1rem;" role="status"></div>
 
             <div class="form-group">
+              <label for="upload-adviser">Adviser <span style="font-weight:400;color:var(--gray-400);">(Last, First M.I.)</span></label>
+              <input id="upload-adviser" type="text" name="adviser" required placeholder="e.g. Dela Cruz, Juan P." value="{{ $old['adviser'] ?? '' }}">
+            </div>
+
+            <div class="form-group">
               <label for="upload-year">Academic Year</label>
               <input id="upload-year" type="number" name="year" required min="2000" max="{{ date('Y') + 1 }}" value="{{ $old['year'] ?? date('Y') }}">
             </div>
 
             <div style="background:var(--primary-light);border:1px solid var(--primary-pale);border-radius:var(--radius-sm);padding:0.875rem 1rem;margin-bottom:1.25rem;font-size:0.85rem;color:var(--primary-dark);">
               <strong>No need to type your paper's details.</strong>
-              The title, authors, adviser, college, program, keywords, abstract and number of pages are read from your PDF's
-              title page, abstract page and acknowledgements. Use the final manuscript in the standard CSPC format.
+              The title, authors, college, program, keywords, abstract and number of pages are read from your PDF's
+              title page and abstract page. Use the final manuscript in the standard CSPC format.
               Anything that can't be read is completed by the library when it reviews your submission.
             </div>
 

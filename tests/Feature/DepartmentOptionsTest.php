@@ -86,7 +86,7 @@ class DepartmentOptionsTest extends TestCase
             ThesisPdf::bytes(ThesisPdf::pages('CSPC Buhi', 'Bachelor of Science in Office Administration')));
 
         $res = $this->withSession(['user' => $this->uploader()])->post('/student/upload', [
-            'year' => 2025,
+            'year' => 2025, 'adviser' => 'Reyes, Ana B.',
             'file' => $pdf,
         ]);
 

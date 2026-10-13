@@ -32,8 +32,8 @@ class UploadAndSearchTest extends TestCase
 
     private function validUploadFields(): array
     {
-        // The year is all the form asks; the rest is read from the PDF.
-        return ['year' => 2025];
+        // The adviser and year are all the form asks; the rest is read from the PDF.
+        return ['adviser' => ThesisPdf::ADVISER, 'year' => 2025];
     }
 
     /** Minimal but structurally real PDF bytes (starts with the %PDF- signature). */
@@ -88,24 +88,40 @@ class UploadAndSearchTest extends TestCase
 
         $res->assertOk();
         $res->assertSee('name="file"', false);
+        $res->assertSee('name="adviser"', false);
         $res->assertSee('name="year"', false);
-        foreach (['title', 'authors', 'adviser', 'keywords', 'abstract', 'department', 'program', 'pages'] as $field) {
+        foreach (['title', 'authors', 'keywords', 'abstract', 'department', 'program', 'pages'] as $field) {
             $res->assertDontSee('name="' . $field . '"', false);
         }
+        // The waiver is only available once the bluebook is approved.
+        $res->assertDontSee('Access permission waiver', false);
     }
 
-    public function test_details_posted_with_the_form_are_ignored(): void
+    public function test_the_adviser_is_required(): void
     {
         Storage::fake('local');
         Queue::fake();
 
         $this->withSession(['user' => $this->uploader()])
-            ->post('/student/upload', $this->validUploadFields() + [
+            ->post('/student/upload', ['year' => 2025, 'file' => UploadedFile::fake()->createWithContent('capstone.pdf', ThesisPdf::bytes())])
+            ->assertOk()
+            ->assertSee('adviser field is required', false);
+
+        $this->assertDatabaseCount('bluebooks', 0);
+    }
+
+    public function test_details_read_from_the_pdf_cannot_be_overridden_but_the_typed_adviser_is_kept(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+
+        $this->withSession(['user' => $this->uploader()])
+            ->post('/student/upload', [
                 'title' => 'Typed Title', 'adviser' => 'Typed, Adviser', 'pages' => 999,
                 'file'  => UploadedFile::fake()->createWithContent('capstone.pdf', ThesisPdf::bytes()),
-            ])->assertOk();
+            ] + $this->validUploadFields())->assertOk();
 
-        $this->assertDatabaseHas('bluebooks', ['title' => ThesisPdf::TITLE, 'adviser' => ThesisPdf::ADVISER, 'pages' => 3]);
+        $this->assertDatabaseHas('bluebooks', ['title' => ThesisPdf::TITLE, 'adviser' => 'Typed, Adviser', 'pages' => 3]);
     }
 
     public function test_a_scans_details_are_filled_in_once_its_text_is_read(): void
@@ -121,10 +137,10 @@ class UploadAndSearchTest extends TestCase
 
         $book = Bluebook::first();
         $this->assertSame('my capstone', $book->title);
-        $this->assertSame('', $book->adviser);
+        $this->assertSame(ThesisPdf::ADVISER, $book->adviser);   // typed on the form
 
         // What OCR hands back for it later.
-        $book->forceFill(['ocr_text' => ThesisPdf::text(), 'adviser' => ''])->save();
+        $book->forceFill(['ocr_text' => ThesisPdf::text()])->save();
         \App\Services\BluebookDetails::fillMissing($book);
 
         $book->refresh();
