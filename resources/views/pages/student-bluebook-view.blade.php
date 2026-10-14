@@ -140,19 +140,12 @@
             $evalItems   = \App\Services\BluebookEvaluation::items($bluebook);
             $canEvaluate = \App\Models\User::allows($user, 'review_bluebooks');
             $evalIssues  = count(array_filter($evalItems, fn($i) => $i['status'] === 'issue'));
-            // Page numbers are the whole PDF's; a reader preview shows fewer pages, numbered its own way.
-            $canJump     = $bluebook['hasFile'] && !($preview ?? false);
-            // Text read before it kept its page breaks has no page numbers to offer.
-            $unpaged     = $canJump && $bluebook['ocrStatus'] === 'completed' && !str_contains((string) $bluebook['ocrText'], "\f");
           @endphp
           <details class="eval-checklist card" style="padding:0.9rem 1rem;" open>
             <summary style="cursor:pointer;font-weight:700;">Evaluation checklist
               <span style="font-weight:400;color:var(--gray-400);font-size:0.82rem;">(Library Manual 5.2.1 &middot; to be completed within 3 working days &middot;
                 {{ $bluebook['evaluatedAt'] ? 'saved ' . $bluebook['evaluatedAt'] : 'checked automatically from the text, not yet saved' }})</span>
             </summary>
-            @if($unpaged)
-              <p class="eval-hint">This text was read before pages were tracked, so no "Go to" page links are shown. Reading it again (<code>php artisan bluebooks:read-text --unpaged</code>) adds them.</p>
-            @endif
             <form method="POST" action="{{ route('admin.bluebooks.evaluate', $bluebook['id']) }}">
               @csrf
               <fieldset @disabled(!$canEvaluate) style="border:0;padding:0;margin:0;min-width:0;">
@@ -167,14 +160,6 @@
                       @endif
                       {{ $item['note'] }}
                     </div>
-                    @if($canJump && $item['spots'])
-                      <div class="eval-spots">
-                        Go to:
-                        @foreach($item['spots'] as $spot)
-                          <a href="#pdf-view" data-goto-page="{{ $spot['page'] }}">{{ $spot['label'] }} &middot; p.&nbsp;{{ $spot['page'] }}</a>
-                        @endforeach
-                      </div>
-                    @endif
                     <div class="eval-choice" role="radiogroup" aria-label="{{ $item['label'] }}">
                       <label><input type="radio" name="status[{{ $key }}]" value="ok" @checked($item['status'] === 'ok')> Okay</label>
                       <label><input type="radio" name="status[{{ $key }}]" value="issue" @checked($item['status'] === 'issue')> Not okay / missing</label>
@@ -210,20 +195,6 @@
                   item.classList.remove('is-unchecked');
                   if (issue) box.querySelector('textarea').focus();
                 });
-              });
-            });
-
-            // "Go to" links: bring the document into view and open it at the
-            // page. The viewer may still be loading; it reads data-goto-page
-            // when it is ready, and the event moves it if it already is.
-            const view = document.getElementById('pdf-view');
-            document.querySelectorAll('[data-goto-page]').forEach(function (link) {
-              link.addEventListener('click', function (e) {
-                if (!view) return;
-                e.preventDefault();
-                view.dataset.gotoPage = link.dataset.gotoPage;
-                view.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                view.dispatchEvent(new CustomEvent('pdf-goto', { detail: Number(link.dataset.gotoPage) }));
               });
             });
           })();

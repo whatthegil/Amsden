@@ -89,19 +89,12 @@ class PdfTextExtractor
         }
     }
 
-    /**
-     * Tidied, keeping the form feed mutool and pdftotext end each page with:
-     * the evaluation checklist uses them to say which page something is on.
-     */
     private static function normalize(string $text): string
     {
-        $text = str_replace(["\r\n", "\r"], "\n", $text);
+        $text = str_replace(["\r\n", "\r", "\f"], "\n", $text);
         $text = preg_replace('/[ \t]+/', ' ', $text);
-        $text = preg_replace('/\n*\f\n*/', "\f", $text);
         $text = preg_replace('/\n{3,}/', "\n\n", $text);
 
-        // trim() leaves form feeds alone, so a blank first page still counts;
-        // only the one after the last page is dropped.
-        return rtrim(trim($text), "\f\n ");
+        return trim($text);
     }
 }

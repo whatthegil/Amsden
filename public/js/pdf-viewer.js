@@ -504,22 +504,6 @@
       if (e.key === 'Enter') { e.preventDefault(); goTo(Number(pageInput.value)); pageInput.blur(); }
     });
 
-    // The evaluation checklist's "Go to" links: the page asked for, outlined
-    // for a moment so the eye finds it. One asked for while the document was
-    // still opening waits in data-goto-page.
-    let fadeTimer = null;
-    function goToTarget(num) {
-      goTo(num);
-      pagesEl.querySelectorAll('.pdf-page.is-target').forEach(function (el) { el.classList.remove('is-target', 'is-fading'); });
-      const holder = holders.get(Number(pageInput.value));
-      if (!holder) return;
-      holder.classList.add('is-target');
-      clearTimeout(fadeTimer);
-      fadeTimer = setTimeout(function () { holder.classList.add('is-fading'); }, 50);
-    }
-    view.addEventListener('pdf-goto', function (e) { goToTarget(e.detail); });
-    if (view.dataset.gotoPage) goToTarget(Number(view.dataset.gotoPage));
-
     // Every page changes size with the zoom, so the drawn ones are redrawn at
     // the new size and the reader is kept on the page they were reading.
     function setZoom(next) {

@@ -823,16 +823,9 @@ class PdfWatermarker
      *
      * Extraction breaks a line wherever it likes, so the patterns are tolerant
      * of whitespace rather than anchored to it.
-     *
-     * Page by page, where the text marks its pages: \s matches a form feed,
-     * and a mark at the foot of one page must not take the break with it.
      */
     public static function stripMarks(string $text, ?array $bluebook = null): string
     {
-        if (str_contains($text, "\f")) {
-            return implode("\f", array_map(fn($page) => self::stripMarks($page, $bluebook), explode("\f", $text)));
-        }
-
         if (trim($text) === '') {
             return $text;
         }

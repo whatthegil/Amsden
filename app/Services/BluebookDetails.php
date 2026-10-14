@@ -582,10 +582,10 @@ class BluebookDetails
         return trim(preg_replace('/\s+/u', ' ', $text));
     }
 
-    /** Line endings evened out, a blank line between pages, and "n˜" (how some PDFs carry ñ) put back together. */
+    /** Line endings evened out, and "n˜" (how some PDFs carry ñ) put back together. */
     private static function clean(string $text): string
     {
-        $text = str_replace(["\r\n", "\r", "\f"], ["\n", "\n", "\n\n"], $text);
+        $text = str_replace(["\r\n", "\r", "\f"], "\n", $text);
         $text = strtr($text, ['n˜' => 'ñ', 'N˜' => 'Ñ', '˜n' => 'ñ', '˜N' => 'Ñ']);
         if (class_exists(\Normalizer::class)) {
             $text = \Normalizer::normalize($text, \Normalizer::FORM_C) ?: $text;

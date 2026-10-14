@@ -10,15 +10,10 @@ use Illuminate\Console\Command;
  * Reads the text layer of bluebooks still waiting on OCR (or failed at it),
  * so the ones exported with their text become searchable without a worker
  * that has Tesseract. Scans are left as they are, for OCR.
- *
- * With --unpaged it reads again the text saved before page breaks were kept,
- * which the evaluation checklist needs to link each item to its page.
  */
 class ReadBluebookText extends Command
 {
-    protected $signature = 'bluebooks:read-text
-                            {id? : One bluebook, instead of every one not yet read}
-                            {--unpaged : Every bluebook whose saved text has no page breaks}';
+    protected $signature = 'bluebooks:read-text {id? : One bluebook, instead of every one not yet read}';
 
     protected $description = 'Read the text layer of bluebooks still pending or failed at OCR';
 
@@ -26,11 +21,7 @@ class ReadBluebookText extends Command
     {
         $query = Bluebook::whereNotNull('file_path');
         $id = $this->argument('id');
-        match (true) {
-            (bool) $id               => $query->where('id', (int) $id),
-            $this->option('unpaged') => $query->where('ocr_status', 'completed')->where('ocr_text', 'not like', "%\f%"),
-            default                  => $query->whereIn('ocr_status', ['pending', 'failed']),
-        };
+        $id ? $query->where('id', (int) $id) : $query->whereIn('ocr_status', ['pending', 'failed']);
 
         $read = $scans = 0;
         foreach ($query->orderBy('id')->get() as $bluebook) {
