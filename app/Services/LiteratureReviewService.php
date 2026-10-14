@@ -3,20 +3,9 @@
 namespace App\Services;
 
 use App\Models\Bluebook;
-use App\Services\Ai\OpenAiClient;
 
 class LiteratureReviewService
 {
-    // How many of the top-ranked results get an AI-written summary per search.
-    // Keeps latency and API cost bounded regardless of how many bluebooks match —
-    // the remainder still get the local extractive summary, never a blank result.
-    private const AI_SUMMARY_LIMIT = 6;
-
-    // Per-paper cap on how much OCR'd document text is sent to the model. Keeps a
-    // multi-paper request well within a single call while still giving the model
-    // real body content (not just the abstract) to ground its summary in.
-    private const AI_OCR_EXCERPT_CHARS = 5000;
-
     // Most results a search returns, and so most papers loaded in full.
     private const MAX_RESULTS = 25;
 
@@ -31,20 +20,18 @@ class LiteratureReviewService
      * of it - but it must contain a third of its words (one, for a topic of
      * one or two), which keeps out papers sharing only a word like "students".
      *
-     * The summary for the top AI_SUMMARY_LIMIT results is AI-written when
-     * OPENAI_API_KEY is configured; any AI failure falls back to the local
-     * extractive summary, so search() never errors or loses results because of
-     * the AI layer.
+     * Everything - matching, ranking and summaries - runs on the server itself;
+     * no paper's text is sent to an outside service.
      */
     public static function search(string $topic, ?int $withinYears = null, string $sort = 'relevance', ?string $department = null): array
     {
-        $empty = ['results' => [], 'overview' => null];
+        $empty = ['results' => []];
         $terms = SearchService::terms($topic);
         if ($terms === []) {
             return $empty;
         }
 
-        // Only approved bluebooks, ever: this text may be sent to OpenAI.
+        // Only approved bluebooks, ever.
         $pool = Bluebook::where('status', 'Approved');
 
         // A review of related literature usually has to cite recent work.
@@ -82,7 +69,6 @@ class LiteratureReviewService
                 'score'       => $m['rank'],
                 'relevance'   => self::relevance($m),
                 'summary'     => self::summarize($book, $terms),
-                'aiGenerated' => false,
                 'citation'    => self::citation($book),
             ];
         }
@@ -92,12 +78,7 @@ class LiteratureReviewService
             usort($results, fn($a, $b) => ($b['bluebook']['year'] ?? 0) <=> ($a['bluebook']['year'] ?? 0));
         }
 
-        $overview = null;
-        if (!empty($results) && OpenAiClient::isConfigured()) {
-            $overview = self::applyAiSummaries($results, $topic);
-        }
-
-        return ['results' => $results, 'overview' => $overview];
+        return ['results' => $results];
     }
 
     /**
@@ -113,95 +94,6 @@ class LiteratureReviewService
         return round($coverage * 75 + $strength * 25, 1);
     }
 
-    /**
-     * Overwrites the 'summary' field (in place) for the top AI_SUMMARY_LIMIT
-     * results with an AI-written summary grounded in each paper's actual
-     * content — title, abstract, and an excerpt of its OCR'd full text, not
-     * just keyword overlap. One batched request covers every candidate.
-     */
-    private static function applyAiSummaries(array &$results, string $topic): ?string
-    {
-        $candidates = array_slice($results, 0, self::AI_SUMMARY_LIMIT, preserve_keys: true);
-
-        $papersBlock = '';
-        foreach ($candidates as $r) {
-            $book = $r['bluebook'];
-            // The author's waiver governs the document text: only an open paper's
-            // text is sent, so a summary cannot repeat pages readers are not given.
-            $open       = ($book['accessLevel'] ?? Bluebook::ACCESS_PUBLIC) === Bluebook::ACCESS_PUBLIC;
-            $ocrExcerpt = $open ? mb_substr(trim($book['ocrText'] ?? ''), 0, self::AI_OCR_EXCERPT_CHARS) : '';
-
-            $papersBlock .= "### Paper id={$book['id']}\n";
-            $papersBlock .= "Title: {$book['title']}\n";
-            $papersBlock .= 'Authors: ' . implode(', ', $book['authors'] ?? []) . "\n";
-            $papersBlock .= 'Cite in text as: ' . $r['citation']['inText'] . "\n";
-            $papersBlock .= "Department/Program: {$book['department']} / {$book['program']}\n";
-            $papersBlock .= "Abstract: " . ($book['abstract'] ?: '(none provided)') . "\n";
-            $papersBlock .= $ocrExcerpt !== ''
-                ? "Excerpt from uploaded document text:\n{$ocrExcerpt}\n"
-                : "(No OCR'd document text available for this paper — base the summary on the abstract only.)\n";
-            $papersBlock .= "\n";
-        }
-
-        $userContent = "Research topic: \"{$topic}\"\n\nCandidate papers from the archive, ranked by keyword relevance (do not re-rank them):\n\n{$papersBlock}";
-
-        $system = <<<SYS
-You are a literature-review assistant for C-BAMS, a capstone/thesis archive at Camarines Sur Polytechnic Colleges (CSPC). For each candidate paper, write a 2-3 sentence summary explaining specifically how that paper relates to the student's research topic. Ground every claim in the title, abstract, or document excerpt actually provided — never invent findings, methods, or results that aren't in the given text. If only the abstract is available for a paper, summarize from that alone and do not claim to describe its full methodology or results. Write in a neutral, academic tone suitable for an undergraduate literature review. Do not re-rank or re-score the papers — only summarize.
-
-Also write "overview": one paragraph of 4-6 sentences that a student could adapt for the Review of Related Literature section of their paper. Synthesize rather than list: group the papers by what they have in common (approach, technology, setting or finding), show how together they bear on the topic, and end with what these papers leave open for the student's own study, if the text supports saying so. Cite each paper you mention using exactly the in-text citation given for it, e.g. (Dela Cruz & Santos, 2024). Mention only the papers provided and claim nothing they do not say.
-SYS;
-
-        $schema = [
-            'type' => 'object',
-            'properties' => [
-                'papers' => [
-                    'type' => 'array',
-                    'items' => [
-                        'type' => 'object',
-                        'properties' => [
-                            'id'      => ['type' => 'integer'],
-                            'summary' => ['type' => 'string'],
-                        ],
-                        'required' => ['id', 'summary'],
-                        'additionalProperties' => false,
-                    ],
-                ],
-                'overview' => ['type' => 'string'],
-            ],
-            'required' => ['papers', 'overview'],
-            'additionalProperties' => false,
-        ];
-
-        $response = OpenAiClient::createJsonMessage($system, $userContent, $schema, maxTokens: 3072);
-        if ($response === null || !isset($response['papers'])) {
-            return null; // extractive summaries already in place — nothing to do
-        }
-
-        $summariesById = [];
-        foreach ($response['papers'] as $entry) {
-            if (isset($entry['id'], $entry['summary'])) {
-                $summariesById[(int) $entry['id']] = trim($entry['summary']);
-            }
-        }
-
-        foreach ($results as $i => $r) {
-            $id = $r['bluebook']['id'];
-            if (isset($summariesById[$id]) && $summariesById[$id] !== '') {
-                $results[$i]['summary']     = $summariesById[$id];
-                $results[$i]['aiGenerated'] = true;
-            }
-        }
-
-        $overview = trim((string) ($response['overview'] ?? ''));
-        return $overview !== '' ? $overview : null;
-    }
-
-    /**
-     * Extractive summary: pulls the abstract sentences most relevant to the
-     * search topic. Used as the initial summary for every result, and as
-     * the permanent fallback for results applyAiSummaries() doesn't reach
-     * (beyond AI_SUMMARY_LIMIT, or when the AI call fails for any reason).
-     */
     /**
      * The paper cited in APA 7th edition, as an unpublished bachelor's thesis
      * of the college - which is what every bluebook in the archive is.
@@ -267,6 +159,10 @@ SYS;
         return \App\Services\Citation\PersonName::parse($person)['surname'];
     }
 
+    /**
+     * Extractive summary: the abstract sentences that carry most of the topic,
+     * taken word for word from the paper.
+     */
     public static function summarize(array $book, array $terms): string
     {
         $abstract = trim($book['abstract'] ?? '');

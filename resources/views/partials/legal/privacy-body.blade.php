@@ -62,12 +62,9 @@
 
   <h2>3. Automated processing</h2>
   <p>
-    Uploaded PDFs are processed automatically to extract their text. Where the literature
-    review feature is enabled, short extracts of a document&rsquo;s text and metadata may be
-    sent to a third-party AI provider to generate summaries of search results. Only bluebook
-    content is sent for this purpose &mdash; never your account details or activity log &mdash;
-    and a document&rsquo;s text is sent only when its author chose Open Access. If
-    the feature is disabled, summaries are produced entirely within the System.
+    Uploaded PDFs are processed automatically to extract their text. Search, similarity
+    checking and the literature review, including its summaries, all run entirely within
+    the System; no document text or account information is sent to an outside AI service.
   </p>
 
   <h2>4. Who can see your information</h2>

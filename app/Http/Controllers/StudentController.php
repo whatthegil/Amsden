@@ -735,7 +735,6 @@ class StudentController extends Controller
         $user = session('user');
 
         $results  = null;
-        $overview = null;
         $topic    = null;
         $within   = in_array((int) $request->input('within'), [5, 10], true) ? (int) $request->input('within') : null;
         $sort     = $request->input('sort') === 'newest' ? 'newest' : 'relevance';
@@ -749,9 +748,7 @@ class StudentController extends Controller
             if ($topic !== '' && !UsageLimit::record($user['id'], UsageLimit::LITERATURE_REVIEW)) {
                 $error = UsageLimit::message(UsageLimit::LITERATURE_REVIEW);
             } elseif ($topic !== '') {
-                $found    = LiteratureReviewService::search($topic, $within, $sort, $department);
-                $results  = $found['results'];
-                $overview = $found['overview'];
+                $results = LiteratureReviewService::search($topic, $within, $sort, $department)['results'];
             } else {
                 $results = [];
             }
@@ -770,7 +767,6 @@ class StudentController extends Controller
             'user'    => $user,
             'active'   => 'literature-review',
             'results'  => $results,
-            'overview' => $overview,
             'topic'    => $topic,
             'within'   => $within,
             'sort'     => $sort,

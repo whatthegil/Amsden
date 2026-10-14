@@ -6,9 +6,8 @@
 |--------------------------------------------------------------------------
 |
 | How many times each account may use a tool per day (Philippine time). The
-| literature review can make a paid OpenAI call on every search; the
-| similarity check runs on the server, where an uploaded PDF can mean a
-| minute of OCR.
+| literature review searches every paper's document text; the similarity
+| check runs on the server, where an uploaded PDF can mean a minute of OCR.
 |
 */
 

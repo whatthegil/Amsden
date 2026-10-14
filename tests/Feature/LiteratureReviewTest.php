@@ -12,12 +12,6 @@ class LiteratureReviewTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        config(['services.openai.api_key' => null]);   // the local summaries, no network
-    }
-
     private function paper(array $overrides = []): Bluebook
     {
         return Bluebook::create(array_merge([

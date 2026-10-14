@@ -13,7 +13,7 @@
 
     <div class="content form-page">
       <x-page-hero heading="Literature Review Assistant"
-                   sub="Enter a research topic to find related bluebooks, each with an AI-written summary grounded in the paper's own text." />
+                   sub="Enter a research topic to find related bluebooks, each with the abstract sentences that bear most on your topic." />
 
       @if($error ?? session('error'))
         <div class="alert alert-error" style="margin-bottom:1.25rem;">{{ $error ?? session('error') }}</div>
@@ -63,7 +63,7 @@
             @include('partials.department-filter', ['id' => 'litrev-department'])
 
             <div style="background:var(--primary-light);border:1px solid var(--primary-pale);border-radius:var(--radius-sm);padding:0.875rem 1rem;margin-bottom:1.25rem;font-size:0.85rem;color:var(--primary-dark);">
-              <strong>What you get:</strong> the related bluebooks in the archive, each with a summary of how it bears on your topic and an APA 7th edition citation to copy into your references, plus a draft synthesis paragraph you can adapt for your Review of Related Literature. Summaries and the synthesis are written by AI from each paper's own text; check them against the papers before using them.
+              <strong>What you get:</strong> the related bluebooks in the archive, ranked by how much of your topic they cover, each with the sentences of its abstract that bear most on your topic and an APA 7th edition citation to copy into your references. Summaries are taken word for word from each paper, so cite them rather than copy them.
             </div>
 
             <div class="form-actions">
@@ -97,19 +97,6 @@
               </span>
             </div>
           </div>
-
-          @if(!empty($overview))
-            <div class="card" style="margin-top:1.25rem;">
-              <div class="card-header">
-                <div class="card-title">Draft synthesis for your Review of Related Literature</div>
-                <button type="button" class="btn btn-outline btn-sm" data-copy="{{ $overview }}">Copy</button>
-              </div>
-              <div class="card-body" style="font-size:0.92rem;line-height:1.65;color:var(--gray-800);">
-                <p>{{ $overview }}</p>
-                <p style="font-size:0.78rem;color:var(--gray-400);margin-top:0.75rem;">Written by AI from the papers below. Rewrite it in your own words and check every claim against the papers before you use it.</p>
-              </div>
-            </div>
-          @endif
 
           <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
             <button type="button" class="btn btn-outline btn-sm" data-open-modal="cite-all">Cite all {{ $total }} papers</button>
@@ -161,11 +148,7 @@
                   @endif
                   <div style="background:var(--cream);border:1px solid var(--gray-200);border-radius:var(--radius-sm);padding:0.75rem 1rem;">
                     <div style="font-size:0.78rem;font-weight:600;color:var(--gray-600);margin-bottom:0.3rem;display:flex;align-items:center;gap:0.4rem;">
-                      @if($result['aiGenerated'] ?? false)
-                        <span style="background:var(--primary);color:var(--white);padding:0.05rem 0.5rem;border-radius:999px;font-size:0.68rem;letter-spacing:0.03em;">AI Summary</span>
-                      @else
-                        Key Points Summary
-                      @endif
+                      Key Points Summary
                     </div>
                     <div style="font-size:0.88rem;color:var(--gray-800);line-height:1.5;">
                       {{ $result['summary'] }}

@@ -18,7 +18,6 @@ class DailyUsageLimitTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['services.openai.api_key' => null]);
 
         $user = User::create(['name' => 'Gil Realubit', 'email' => 'student@my.cspc.edu.ph', 'password' => Hash::make('x'), 'role' => 'Student']);
         $this->student = ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'role' => 'Student'];
