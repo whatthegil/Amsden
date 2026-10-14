@@ -145,6 +145,78 @@ class EvaluationChecklistTest extends TestCase
         $this->assertNull($b->fresh()->evaluated_at);
     }
 
+    /** The same paper with its page breaks, as the text is saved now. */
+    private const PAGED = [
+        "Automated Attendance Monitoring Using RFID\nMaria Dela Cruz",                       // 1
+        "APPROVAL SHEET  This thesis is recommended for approval.",                          // 2
+        "CERTIFICATION  We certify that this thesis was read.",                              // 3
+        "TABLE OF CONTENTS  Chapter 1 ... 5  Chapter 2 ... 6\nLIST OF TABLES  Table 1  Table 2  Table 4", // 4
+        "CHAPTER 1 Introduction  Table 1 lists the users.",                                  // 5
+        "CHAPTER 2 Review  Table 2 compares systems.",                                       // 6
+        "CHAPTER 3 Methods  Table 4 shows the results.  Figure 1 shows the system.",         // 7
+        "CHAPTER 5 Conclusions",                                                             // 8
+        "REFERENCES",                                                                        // 9
+        "CURRICULUM VITAE  Contact number 0917 123 4567",                                    // 10
+    ];
+
+    public function test_each_item_points_to_the_page_to_look_at(): void
+    {
+        $spots = BluebookEvaluation::spots(Store::bookToArray($this->paper(['ocr_text' => implode("\f", self::PAGED)])));
+        $pages = fn(string $key) => array_column($spots[$key], 'page', 'label');
+
+        $this->assertSame(['Approval sheet' => 2, 'Certification' => 3], $pages('approval_pages'));
+        $this->assertSame(['Table of Contents' => 4], $pages('toc'));
+        // Table 3 is skipped: the pages of Table 2 and Table 4 in the body, not the list of tables.
+        $this->assertSame(['Table 2 (before Table 3)' => 6, 'Table 4 (before Table 3)' => 7], $pages('labels'));
+        // Chapter 4 is missing: it belongs between Chapter 3 and Chapter 5.
+        $this->assertSame(7, $pages('complete')['Chapter 3']);
+        $this->assertSame(8, $pages('complete')['Chapter 5']);
+        $this->assertSame(['Curriculum vitae' => 10], $pages('sensitive'));   // each page once
+        $this->assertSame(['Title page' => 1, 'Chapter 1' => 5], $pages('format'));
+        $this->assertArrayNotHasKey('unencrypted', $spots);
+    }
+
+    public function test_a_missing_part_points_to_where_it_belongs(): void
+    {
+        $text  = implode("\f", ['A Title', 'TABLE OF CONTENTS', 'CHAPTER 1 Intro', 'CHAPTER 2 End', 'Thank you']);
+        $spots = BluebookEvaluation::spots(Store::bookToArray($this->paper(['ocr_text' => $text])));
+
+        // No approval sheet anywhere: the title page and the contents, which would list it.
+        $this->assertSame([1, 2], array_column($spots['approved_unit'], 'page'));
+        // No references: the last page, where they would be.
+        $this->assertSame(['page' => 5, 'label' => 'Last page'], end($spots['complete']));
+    }
+
+    public function test_text_without_page_breaks_offers_no_pages(): void
+    {
+        $this->assertSame([], BluebookEvaluation::spots(Store::bookToArray($this->paper())));
+    }
+
+    public function test_the_admin_page_links_items_to_their_pages(): void
+    {
+        $paged   = $this->paper(['ocr_text' => implode("\f", self::PAGED), 'file_path' => 'bluebooks/x.pdf']);
+        $unpaged = $this->paper(['file_path' => 'bluebooks/y.pdf']);
+        $admin   = $this->admin();
+
+        $this->withSession($admin)->get("/admin/bluebooks/{$paged->id}")
+            ->assertOk()
+            ->assertSee('data-goto-page="2"', false)
+            ->assertSee('Approval sheet &middot; p.&nbsp;2', false)
+            ->assertDontSee('read before pages were tracked');
+
+        $this->withSession($admin)->get("/admin/bluebooks/{$unpaged->id}")
+            ->assertOk()
+            ->assertDontSee('data-goto-page="', false)
+            ->assertSee('read before pages were tracked');
+    }
+
+    public function test_watermarks_are_stripped_without_losing_page_breaks(): void
+    {
+        $text = "Page one CSPC ARCHIVE · NOT FOR REDISTRIBUTION\fPage two";
+
+        $this->assertSame("Page one\fPage two", \App\Services\Pdf\PdfWatermarker::stripMarks($text));
+    }
+
     public function test_an_encrypted_pdf_is_detected(): void
     {
         $plain = tempnam(sys_get_temp_dir(), 'pdf');

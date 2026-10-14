@@ -2212,3 +2212,14 @@ a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
 .eval-issues { margin: 0.5rem 0 0; padding-left: 1.1rem; }
 .eval-issues li { margin-bottom: 0.3rem; }
 .eval-issues .eval-issue-comment { display: block; color: var(--gray-800); white-space: pre-line; }
+/* "Go to" links from a checklist item to the page it concerns. */
+.eval-checklist .eval-spots { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-top: 0.35rem; color: var(--gray-600); }
+.eval-checklist .eval-spots a {
+  font-size: 0.76rem; padding: 0.1rem 0.5rem; border-radius: 999px; text-decoration: none;
+  background: var(--primary-light); color: var(--primary-dark);
+}
+.eval-checklist .eval-spots a:hover, .eval-checklist .eval-spots a:focus-visible { background: var(--primary); color: var(--white); }
+.eval-checklist .eval-hint { margin: 0.4rem 0 0; font-size: 0.78rem; color: var(--gray-600); }
+/* The page a checklist link opened, picked out for a moment. */
+.pdf-page.is-target { outline: 3px solid var(--primary); outline-offset: -3px; }
+.pdf-page.is-target.is-fading { outline-color: transparent; transition: outline-color 1.5s ease 1.5s; }

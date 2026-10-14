@@ -48,11 +48,12 @@ class BluebookEvaluation
      * saved decision where there is one, and the status to show.
      *
      * @param array $bluebook a Store::bookToArray()-shaped array
-     * @return array<string, array{label: string, auto: string, note: string, saved: ?string, status: string, comment: string}>
+     * @return array<string, array{label: string, auto: string, note: string, saved: ?string, status: string, comment: string, spots: list<array{page: int, label: string}>}>
      */
     public static function items(array $bluebook): array
     {
         $auto  = self::auto($bluebook);
+        $spots = self::spots($bluebook);
         $saved = $bluebook['evaluation'] ?? [];
 
         $items = [];
@@ -65,6 +66,7 @@ class BluebookEvaluation
                 'saved'   => $decision,
                 'status'  => $decision ?? $auto[$key]['status'],
                 'comment' => $decision === self::ISSUE ? (string) ($saved[$key]['comment'] ?? '') : '',
+                'spots'   => $spots[$key] ?? [],
             ];
         }
 
@@ -175,6 +177,187 @@ class BluebookEvaluation
     }
 
     /**
+     * Where in the document to look, criterion by criterion: the page a thing
+     * was found on, or - when it was not found - the page next to where it
+     * belongs, so the admin can open it there instead of paging through.
+     *
+     * Page numbers are the PDF's own, counted from the form feeds the text
+     * keeps between pages; text read before it kept them has none, and no
+     * criterion gets a page.
+     *
+     * @return array<string, list<array{page: int, label: string}>>
+     */
+    public static function spots(array $bluebook): array
+    {
+        $raw = (string) ($bluebook['ocrText'] ?? '');
+        if (($bluebook['ocrStatus'] ?? null) !== 'completed' || !str_contains($raw, "\f")) {
+            return [];
+        }
+
+        $pages = array_map(fn($p) => mb_strtolower(trim(preg_replace('/\s+/u', ' ', $p))), explode("\f", $raw));
+
+        // Contents and lists name every chapter, table and figure; a heading
+        // or caption is looked for in the body first, and on them only if
+        // that is the one place it appears. Only the first page of a long
+        // contents says so, but every page of it has its dot leaders.
+        $lists = array_keys(array_filter($pages, fn($page) =>
+            self::has($page, ['table of contents', 'list of tables', 'list of figures', 'list of appendices'])
+            || preg_match_all('/(?:\.\s?){5,}\s*(?:\d+|[ivxlc]+)\b/u', $page) >= 2
+        ));
+        $lists = array_map(fn($i) => $i + 1, $lists);
+        $body  = fn($what, int $limit = 1) => self::find($pages, $what, $limit, $lists) ?: self::find($pages, $what, $limit);
+        // A chapter or section starts with its heading at the top of a page;
+        // "as discussed in Chapter 3" further down is only a mention of it.
+        $heading = fn($what) => self::find($pages, $what, 1, $lists, self::HEADING_REACH) ?: $body($what);
+        $at    = fn(string $label, array $nums) => array_map(fn($n) => ['page' => $n, 'label' => $label], $nums);
+
+        $title    = $at('Title page', self::find($pages, '/\p{L}/u'));
+        $toc      = $at('Table of Contents', self::find($pages, ['table of contents']));
+        $approval = $at('Approval sheet', $body(self::APPROVAL));
+        $chapter1 = $at('Chapter 1', $heading(self::chapterPattern(1)));
+        $abstract = $at('Abstract', $body('/\babstract\b/u'));
+        $front    = array_merge($title, $toc);
+
+        $spots = [
+            'approved_unit'  => $approval ?: $front,
+            'approval_pages' => array_merge($approval, $at('Certification', $body(self::CERTIFICATION))) ?: $front,
+            'format'         => array_merge($title, $chapter1),
+            'pagination'     => array_merge($toc, $chapter1),
+            'layout'         => $chapter1 ?: $title,
+            'toc'            => $toc ?: $title,
+            'lists'          => array_merge(
+                $at('List of Tables', self::find($pages, ['list of tables'])),
+                $at('List of Figures', self::find($pages, ['list of figures'])),
+                $at('List of Appendices', self::find($pages, ['list of appendices'])),
+                $at('Table 1', $body(self::labelPattern('table', 1))),
+                $at('Figure 1', $body(self::labelPattern('(?:figure|fig\.)', 1))),
+            ),
+            'labels'         => self::gapSpots($pages, $body, $at),
+            'complete'       => self::chapterSpots($pages, $heading, $at),
+            'reproduction'   => $approval,
+            'legible'        => ($bluebook['ocrEngine'] ?? null) === 'text layer' ? [] : self::illegiblePages($pages, $at),
+            'metadata'       => array_merge($title, $abstract),
+            'keywords'       => $at('Keywords', $body(['keywords', 'key words'])) ?: $abstract,
+            'waiver'         => $at('Access Permission Waiver', $body(['permission waiver', 'access permission'])),
+            // The CV and data sheet by their headings, the details themselves
+            // wherever they are - but never the contents line naming them.
+            'sensitive'      => array_merge(
+                $at('Curriculum vitae', self::find($pages, self::SENSITIVE['curriculum vitae'], 1, $lists, self::HEADING_REACH)),
+                $at('Personal data sheet', self::find($pages, self::SENSITIVE['personal data sheet'], 1, $lists, self::HEADING_REACH)),
+                ...array_map(
+                    fn($name, $pattern) => $at(ucfirst($name), self::find($pages, $pattern, 3, $lists)),
+                    array_keys(array_slice(self::SENSITIVE, 2)), array_slice(self::SENSITIVE, 2)
+                ),
+            ),
+        ];
+
+        // Each page once per criterion, in page order, and few enough to read.
+        return array_map(function (array $list) {
+            $seen = [];
+            foreach ($list as $spot) {
+                $seen[$spot['page']] ??= $spot;
+            }
+            ksort($seen);
+
+            return array_slice(array_values($seen), 0, 8);
+        }, array_filter($spots));
+    }
+
+    /**
+     * The pages (1-based) whose text has any of $what - phrases, or a regular
+     * expression - in page order, skipping $skip; with $top, only within that
+     * many characters of the top of the page, where a heading is.
+     *
+     * @return list<int>
+     */
+    private static function find(array $pages, string|array $what, int $limit = 1, array $skip = [], ?int $top = null): array
+    {
+        $found = [];
+        foreach ($pages as $i => $page) {
+            if (in_array($i + 1, $skip, true)) {
+                continue;
+            }
+            $page = $top === null ? $page : mb_substr($page, 0, $top);
+            if (is_string($what) ? preg_match($what, $page) : self::has($page, $what)) {
+                $found[] = $i + 1;
+                if (count($found) >= $limit) {
+                    break;
+                }
+            }
+        }
+
+        return $found;
+    }
+
+    private static function labelPattern(string $label, int $n): string
+    {
+        return '/\b' . $label . '\s+' . $n . '\b(?![.\-–]\d)/u';
+    }
+
+    private static function chapterPattern(int $n): string
+    {
+        $names = array_keys(self::CHAPTER_WORDS, $n, true);
+
+        return '/\bchapter\s+(?:' . implode('|', array_merge([(string) $n], $names)) . ')\b/u';
+    }
+
+    /** Either side of each skipped table or figure number: where the missing one should be. */
+    private static function gapSpots(array $pages, callable $body, callable $at): array
+    {
+        $spots = [];
+        foreach (['Table' => 'table', 'Figure' => '(?:figure|fig\.)'] as $name => $pattern) {
+            $n = self::numbers(implode(' ', $pages), $pattern);
+            if (!$n || max($n) > 200) {
+                continue;
+            }
+            foreach (array_diff(range(1, max($n)), $n) as $skipped) {
+                $before = max(array_filter($n, fn($x) => $x < $skipped) ?: [0]);
+                $after  = min(array_filter($n, fn($x) => $x > $skipped) ?: [0]);
+                foreach (array_filter([$before, $after]) as $x) {
+                    $spots = array_merge($spots, $at("{$name} {$x} (before {$name} {$skipped})", $body(self::labelPattern($pattern, $x))));
+                }
+            }
+        }
+
+        return $spots;
+    }
+
+    /**
+     * Where each chapter starts - a missing one lies between its neighbours -
+     * and the references, or the last page, where they belong.
+     */
+    private static function chapterSpots(array $pages, callable $heading, callable $at): array
+    {
+        $spots = [];
+        for ($n = 1; $n <= 7; $n++) {
+            $spots = array_merge($spots, $at("Chapter {$n}", $heading(self::chapterPattern($n))));
+        }
+
+        $references = $heading(['references', 'bibliography', 'literature cited', 'works cited']);
+
+        return array_merge($spots, $references ? $at('References', $references) : $at('Last page', [count($pages)]));
+    }
+
+    /** Scanned pages OCR could make out least of: the ones to look at by eye. */
+    private static function illegiblePages(array $pages, callable $at): array
+    {
+        $poor = [];
+        foreach ($pages as $i => $page) {
+            $tokens = preg_split('/\s+/u', $page, -1, PREG_SPLIT_NO_EMPTY);
+            if (count($tokens) < 20) {
+                continue;           // a figure, a divider or a blank page
+            }
+            $share = count(array_filter($tokens, fn($w) => preg_match('/^\p{L}{2,}[.,;:]?$/u', $w))) / count($tokens);
+            if ($share < 0.6) {
+                $poor[$i + 1] = $share;
+            }
+        }
+        asort($poor);
+
+        return $at('Hard to read', array_keys(array_slice($poor, 0, 8, true)));
+    }
+
+    /**
      * Whether a PDF is encrypted: an /Encrypt entry in its trailer. Read in
      * chunks, with an overlap so an entry split across two is still found.
      */
@@ -217,9 +400,16 @@ class BluebookEvaluation
         return false;
     }
 
+    private const APPROVAL = ['approval sheet', 'approved by', 'accepted and approved', 'approved and accepted', 'recommended for approval', 'recommended for acceptance'];
+
+    private const CERTIFICATION = ['certification', 'certificate', 'certify that', 'certifies that', 'certified by'];
+
+    /** How far down a page, in characters, a heading is looked for: past a page number and a running head. */
+    private const HEADING_REACH = 120;
+
     private static function approval(string $t): bool
     {
-        return self::has($t, ['approval sheet', 'approved by', 'accepted and approved', 'approved and accepted', 'recommended for approval', 'recommended for acceptance']);
+        return self::has($t, self::APPROVAL);
     }
 
     private static function approvalPages(string $t): array
@@ -228,7 +418,7 @@ class BluebookEvaluation
         if (!self::approval($t)) {
             $missing[] = 'approval sheet';
         }
-        if (!self::has($t, ['certification', 'certificate', 'certify that', 'certifies that', 'certified by'])) {
+        if (!self::has($t, self::CERTIFICATION)) {
             $missing[] = 'certification';
         }
 

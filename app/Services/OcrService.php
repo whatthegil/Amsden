@@ -48,8 +48,10 @@ class OcrService
             $text   = '';
             $maxLen = config('ocr.max_text_length');
 
+            // A form feed after each page, as the text layer has, so it can be
+            // told which page a passage came from.
             foreach ($pageImages as $imagePath) {
-                $text .= $engine->recognize($imagePath) . "\n\n";
+                $text .= trim($engine->recognize($imagePath)) . "\f";
 
                 // Stop once the stored-text budget is spent; the remaining
                 // pages would be truncated away anyway.
@@ -58,7 +60,7 @@ class OcrService
                 }
             }
 
-            $text = trim($text);
+            $text = trim(rtrim($text, "\f"));
             if (strlen($text) > $maxLen) {
                 $text = substr($text, 0, $maxLen);
             }
