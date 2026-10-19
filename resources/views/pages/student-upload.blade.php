@@ -116,15 +116,45 @@
 </div>
 
 <script nonce="{{ $cspNonce ?? '' }}">
+// The server rejects anything that isn't a real PDF; this stops a non-PDF
+// picked through "All files" (or dropped) before the form is sent.
+function isPdf(file) {
+  return /\.pdf$/i.test(file.name) && (file.type === '' || file.type === 'application/pdf');
+}
+
+function showFileInfo(text, ok) {
+  const info = document.getElementById('fileInfo');
+  info.style.display = 'block';
+  info.style.background = ok ? 'var(--green-light)' : 'var(--red-light)';
+  info.style.borderColor = ok ? 'var(--green)' : 'var(--red)';
+  info.style.color = ok ? 'var(--green)' : 'var(--red)';
+  info.textContent = text;
+}
+
 function handleFile(input) {
   const file = input.files[0];
-  if (file) {
-    const info = document.getElementById('fileInfo');
-    info.style.display = 'block';
-    info.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+  if (!file) return;
+  if (!isPdf(file)) {
+    input.value = '';
+    showFileInfo(file.name + ' is not a PDF. Only .pdf files can be uploaded.', false);
+    return;
   }
+  showFileInfo(file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)', true);
 }
-document.getElementById('fileInput').addEventListener('change', function () { handleFile(this); });
+
+const fileInput = document.getElementById('fileInput');
+const dropZone = document.querySelector('.file-drop-zone');
+fileInput.addEventListener('change', function () { handleFile(this); });
+['dragenter', 'dragover'].forEach(function (type) {
+  dropZone.addEventListener(type, function (e) { e.preventDefault(); });
+});
+dropZone.addEventListener('drop', function (e) {
+  e.preventDefault();
+  if (e.dataTransfer.files.length) {
+    fileInput.files = e.dataTransfer.files;
+    handleFile(fileInput);
+  }
+});
 </script>
 
 @include('partials.footer')
