@@ -11,6 +11,7 @@ use App\Services\Pdf\PageImages;
 use App\Services\SearchService;
 use App\Services\SimilarityService;
 use App\Services\Store;
+use App\Services\VersionHistory;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -182,6 +183,10 @@ class AdminController extends Controller
             'uploadedByName' => $user['name'],
             'pages'          => (int)$request->input('pages'),
         ], $fileData));
+        VersionHistory::submitted($bluebook['id'], $user);
+        if ($bluebook['status'] === 'Approved') {
+            VersionHistory::approved($bluebook['id'], $user);
+        }
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Added Bluebook', 'document' => $request->input('title')]);
 
         // Read the PDF's text in the background, as a student upload does, so
@@ -223,6 +228,7 @@ class AdminController extends Controller
             'canPreview'   => $canPreview,
             'preview'      => $preview,
             'pageImages'   => $preview ? count(PageImages::visiblePages($bluebook)) : 0,
+            'history'      => VersionHistory::forBluebook($id),
             'pendingCount' => Store::getPendingCount(),
         ]);
     }
@@ -291,6 +297,33 @@ class AdminController extends Controller
         return $this->streamBluebookDocument($bluebook, session('user'), $disk, null);
     }
 
+    /**
+     * The file of one version from the history - a declined or replaced one
+     * the library kept for reference - stamped like the current file.
+     */
+    public function bluebookVersionFile(int $id, int $version)
+    {
+        $bluebook = Store::getBluebook($id);
+        $entry    = $bluebook ? VersionHistory::find($id, $version) : null;
+        if (!$entry || !$entry['filePath']) {
+            abort(404);
+        }
+
+        $disk = Storage::disk(Store::bluebookDisk());
+        if (!$disk->exists($entry['filePath'])) {
+            abort(404);
+        }
+
+        $bluebook = array_merge($bluebook, [
+            'title'            => $bluebook['title'] . ' (version ' . $version . ')',
+            'filePath'         => $entry['filePath'],
+            'fileOriginalName' => $entry['fileOriginalName'],
+            'fileSize'         => $entry['fileSize'],
+        ]);
+
+        return $this->streamBluebookDocument($bluebook, session('user'), $disk, null);
+    }
+
     public function bluebookEditForm(int $id)
     {
         $bluebook = Store::getBluebook($id);
@@ -341,10 +374,9 @@ class AdminController extends Controller
         }
 
         if ($canManage && $request->hasFile('file')) {
-            $existing = Store::getBluebook($id);
-            if ($existing && $existing['filePath']) {
-                Storage::disk(Store::bluebookDisk())->delete($existing['filePath']);
-            }
+            // The old file stays, as the version it was: the history records
+            // it before the record moves on to the new one.
+            VersionHistory::current($id);
             $file = $request->file('file');
             $path = $file->store('bluebooks', Store::bluebookDisk());
 
@@ -361,6 +393,9 @@ class AdminController extends Controller
         }
 
         Store::updateBluebook($id, $fields);
+        if (isset($fields['filePath'])) {
+            VersionHistory::submitted($id, $user, VersionHistory::REPLACEMENT, $request->input('version_notes'));
+        }
 
         // A replaced file's text replaces the old file's, which search and the
         // similarity check would otherwise go on matching against.
@@ -380,6 +415,7 @@ class AdminController extends Controller
             return redirect($this->reviewedFrom($request));
         }
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Approved Bluebook', 'document' => $bluebook['title']]);
+        VersionHistory::approved($id, $user);
 
         // One the library added itself (a Sub-Admin's, awaiting the Admin) has
         // no author waiver to wait for, so approving it posts it.
@@ -409,6 +445,7 @@ class AdminController extends Controller
         }
 
         Store::setBluebookStatus($id, 'Pending');
+        VersionHistory::recalled($id, $user);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Recalled Bluebook', 'document' => $bluebook['title'], 'bluebookId' => $id]);
         BluebookStatusMail::notify($bluebook, BluebookStatusMail::RECALLED);
 
@@ -585,6 +622,7 @@ class AdminController extends Controller
             $library = $this->addedByLibrary($bluebook);
             Store::setBluebookStatus($id, $library ? 'Approved' : Bluebook::STATUS_AWAITING_WAIVER);
             Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Approved Bluebook', 'document' => $bluebook['title']]);
+            VersionHistory::approved($id, $user);
             if (!$library) {
                 BluebookStatusMail::notify($bluebook, BluebookStatusMail::APPROVED);
             }
@@ -611,6 +649,7 @@ class AdminController extends Controller
         }
         Store::setBluebookStatus($id, 'Approved');
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Received Waiver', 'document' => $bluebook['title']]);
+        VersionHistory::posted($id, $user);
         BluebookStatusMail::notify($bluebook, BluebookStatusMail::POSTED);
         return redirect()->route('admin.bluebooks')->with('success', 'Waiver received. The bluebook is now posted in Browse.');
     }
@@ -645,6 +684,7 @@ class AdminController extends Controller
 
         Bluebook::find($id)->forceFill(['evaluation' => $evaluation, 'evaluated_at' => now()])->save();
         Store::updateBluebook($id, ['status' => 'Rejected', 'rejectionReason' => $reason]);
+        VersionHistory::declined($id, $user, $evaluation, $reason);
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Rejected Bluebook', 'document' => $bluebook['title']]);
         BluebookStatusMail::notify(Store::getBluebook($id), BluebookStatusMail::REJECTED, $reason);
         return redirect(route('admin.pending'))->with('success', 'Bluebook rejected. The author was sent your evaluation and reason, and can re-upload.');

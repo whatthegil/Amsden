@@ -15,6 +15,7 @@ use App\Services\PdfTextExtractor;
 use App\Services\SimilarityService;
 use App\Services\Store;
 use App\Services\UsageLimit;
+use App\Services\VersionHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -363,6 +364,7 @@ class StudentController extends Controller
                 // No access level: the admin sets the waiver on the edit form
                 // from the signed copy the author hands in to the library.
             ]);
+            VersionHistory::submitted($bluebook['id'], $user);
             Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Uploaded Bluebook', 'document' => $title]);
             // Its text now if it has a text layer; OCR queued only for a scan.
             ProcessBluebookOcr::readNowOrQueue($bluebook['id'], $file->getRealPath() ?: null);
@@ -447,6 +449,7 @@ class StudentController extends Controller
         try {
             $request->validate([
                 'file' => ['required', 'file', 'mimes:pdf', 'max:35840', new \App\Rules\PdfFile, new \App\Rules\PdfNotEncrypted], // 35MB, PDF only
+                'notes' => ['nullable', 'string', 'max:' . VersionHistory::NOTES_MAX],
             ], [
                 'file.required' => 'Please choose the corrected PDF to upload.',
             ]);
@@ -455,6 +458,8 @@ class StudentController extends Controller
         }
 
         try {
+            // The declined file is recorded before the record moves on.
+            VersionHistory::current($id);
             $file = $request->file('file');
             $path = $file->store('bluebooks', Store::bluebookDisk());
             $stamped = Store::stampStoredBluebook($path, [
@@ -477,10 +482,8 @@ class StudentController extends Controller
             return redirect()->route('student.my-uploads')->with('error', 'Something went wrong while uploading your file. Please try again.');
         }
 
-        // The old file goes only once the new one is safely recorded.
-        if ($bluebook['filePath'] && $bluebook['filePath'] !== $path) {
-            Storage::disk(Store::bluebookDisk())->delete($bluebook['filePath']);
-        }
+        // The declined file is kept as the version it was, for reference.
+        VersionHistory::submitted($id, $user, VersionHistory::RESUBMISSION, $request->input('notes'));
 
         Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Resubmitted Bluebook', 'document' => $bluebook['title']]);
         ProcessBluebookOcr::readNowOrQueue($id, isset($file) ? ($file->getRealPath() ?: null) : null);
@@ -494,7 +497,11 @@ class StudentController extends Controller
     {
         $user = session('user');
         $my   = array_values(array_filter(Store::getBluebooks(), fn($b) => $b['uploadedBy'] === $user['email']));
-        return view('pages.student-my-uploads', ['user' => $user, 'active' => 'my-uploads', 'bluebooks' => $my]);
+        $histories = [];
+        foreach ($my as $b) {
+            $histories[$b['id']] = VersionHistory::forBluebook($b['id']);
+        }
+        return view('pages.student-my-uploads', ['user' => $user, 'active' => 'my-uploads', 'bluebooks' => $my, 'histories' => $histories]);
     }
 
     public function history()

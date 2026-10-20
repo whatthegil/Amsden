@@ -46,6 +46,11 @@
                 <div style="font-size:0.85rem;color:var(--gray-600);margin-bottom:0.4rem;">Current file: {{ $bluebook['fileOriginalName'] }}</div>
               @endif
               <input id="bb-form-file" type="file" name="file" accept=".pdf,application/pdf">
+              @if($isEdit)
+                {{-- A new file is a new version in the history; the old one is kept. --}}
+                <label for="bb-form-version-notes" style="margin-top:0.6rem;">What changed in the new file <span style="font-weight:400;color:var(--gray-400);">(optional, kept in the version history)</span></label>
+                <textarea id="bb-form-version-notes" name="version_notes" rows="2" maxlength="{{ \App\Services\VersionHistory::NOTES_MAX }}" placeholder="e.g. Replaced with the copy carrying the panel's signatures"></textarea>
+              @endif
             </div>
 
             <div class="form-group">

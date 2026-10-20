@@ -131,6 +131,9 @@
                     @csrf
                     <label class="sr-only" for="reupload-file-{{ $b['id'] }}">Corrected PDF for {{ $b['title'] }}</label>
                     <input id="reupload-file-{{ $b['id'] }}" type="file" name="file" accept=".pdf,application/pdf" required>
+                    <label class="sr-only" for="reupload-notes-{{ $b['id'] }}">What you changed in {{ $b['title'] }}</label>
+                    <textarea id="reupload-notes-{{ $b['id'] }}" name="notes" rows="2" maxlength="{{ \App\Services\VersionHistory::NOTES_MAX }}"
+                              placeholder="What did you change? (optional, helps the reviewer)"></textarea>
                     <button type="submit" class="btn btn-primary btn-sm">
                       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0-12l-4 4m4-4l4 4M4 20h16"/></svg>
                       Re-upload
@@ -138,6 +141,13 @@
                   </form>
                 @endif
               </div>
+
+              {{-- Once there is more than the first upload, or a decision on it. --}}
+              @if(($histories[$b['id']]['count'] ?? 0) > 1 || ($histories[$b['id']]['revisionsRequired'] ?? 0) > 0)
+                <div class="submission-note">
+                  @include('partials.version-history', ['history' => $histories[$b['id']], 'bluebook' => $b, 'forAuthor' => true])
+                </div>
+              @endif
 
               @if($b['hasFile'])
                 {{-- OCR to us, but the author only cares what it decides: whether

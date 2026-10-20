@@ -144,6 +144,12 @@ class Bluebook extends Model
         return $this->hasMany(Bookmark::class);
     }
 
+    /** Every file submitted for this paper and its review, oldest first. */
+    public function versions(): HasMany
+    {
+        return $this->hasMany(BluebookVersion::class)->orderBy('version');
+    }
+
     /**
      * The original page numbers a reader may see, in order, out of $count.
      *

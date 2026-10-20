@@ -243,6 +243,10 @@
           </script>
         @endif
 
+        @if($asAdmin && isset($history))
+          @include('partials.version-history')
+        @endif
+
         <h4 style="font-size:0.82rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--gray-400);margin-bottom:0.6rem;">Document</h4>
         @if(session('success'))
           <div class="alert alert-success" style="margin-bottom:0.75rem;">{{ session('success') }}</div>

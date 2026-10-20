@@ -25,6 +25,6 @@ return [
     | restored (a table before any that points at it). Sessions, queued jobs
     | and the migrations list are left out: they are rebuilt, not restored.
     */
-    'tables' => ['users', 'bluebooks', 'bookmarks', 'logs', 'feature_usage'],
+    'tables' => ['users', 'bluebooks', 'bluebook_versions', 'bookmarks', 'logs', 'feature_usage'],
 
 ];

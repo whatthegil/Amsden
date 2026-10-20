@@ -224,7 +224,8 @@ class RejectAndReuploadTest extends TestCase
         $this->assertSame('Resubmission Paper', $bluebook->title);
         $this->assertSame('Dr. Adviser', $bluebook->adviser);
 
-        Storage::disk(Store::bluebookDisk())->assertMissing('bluebooks/old.pdf');
+        // The declined file is kept as version 1 of the history.
+        Storage::disk(Store::bluebookDisk())->assertExists('bluebooks/old.pdf');
         Storage::disk(Store::bluebookDisk())->assertExists($bluebook->file_path);
         Queue::assertPushed(ProcessBluebookOcr::class);
         $this->assertDatabaseHas('logs', ['action' => 'Resubmitted Bluebook']);

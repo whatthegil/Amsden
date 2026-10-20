@@ -56,7 +56,12 @@ class ArchiveBackup
         }
 
         $files = Storage::disk(Store::bluebookDisk());
-        foreach (DB::table('bluebooks')->whereNotNull('file_path')->pluck('file_path') as $path) {
+        // Every file a bluebook or one of its earlier versions points at.
+        $paths = DB::table('bluebooks')->whereNotNull('file_path')->pluck('file_path');
+        if (Schema::hasTable('bluebook_versions')) {
+            $paths = $paths->merge(DB::table('bluebook_versions')->whereNotNull('file_path')->pluck('file_path'))->unique();
+        }
+        foreach ($paths as $path) {
             $write(['file' => $path, 'size' => $files->exists($path) ? $files->size($path) : null]);
         }
 

@@ -2223,3 +2223,25 @@ a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
 .eval-results { list-style: none; padding-left: 0; }
 .eval-results .badge { margin-right: 0.3rem; }
 .eval-results .eval-issue-comment { margin-top: 0.15rem; }
+
+/* Version history of a bluebook (admin detail page, My Uploads). */
+.version-history { margin: 0 0 1rem; padding: 0.9rem 1rem; }
+.version-history > summary { cursor: pointer; font-weight: 700; }
+.version-tally { font-weight: 400; color: var(--gray-400); font-size: 0.82rem; }
+.version-list { list-style: none; margin: 0.6rem 0 0; padding: 0; }
+.version-item {
+  margin-bottom: 0.6rem; padding: 0.6rem 0.75rem; font-size: 0.82rem;
+  border-left: 3px solid var(--yellow); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--gray-50, #f7f8fa);
+}
+.version-item.is-approved { border-left-color: var(--green); }
+.version-item.is-declined { border-left-color: var(--red); }
+.version-item.is-replaced { border-left-color: var(--gray-200); }
+.version-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; color: var(--gray-800); }
+.version-kind { color: var(--gray-400); }
+.version-meta { margin-top: 0.25rem; color: var(--gray-600); overflow-wrap: anywhere; }
+.version-notes { margin-top: 0.35rem; color: var(--gray-800); white-space: pre-line; }
+.version-eval, .version-events { margin-top: 0.4rem; }
+.version-eval > summary, .version-events > summary { cursor: pointer; color: var(--primary); font-size: 0.8rem; }
+.version-events ul { margin: 0.3rem 0 0; padding-left: 1.1rem; color: var(--gray-600); }
+.reupload-form textarea { flex-basis: 100%; width: 100%; font: inherit; font-size: 0.83rem; padding: 0.4rem 0.55rem; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); resize: vertical; }

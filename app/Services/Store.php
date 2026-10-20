@@ -305,8 +305,10 @@ class Store
 
         $snapshot = self::bookToArray($bluebook);
 
-        if ($bluebook->file_path) {
-            Storage::disk(self::bluebookDisk())->delete($bluebook->file_path);
+        // Its earlier versions' files too; their rows go with the bluebook's.
+        $files = array_unique(array_filter(array_merge([$bluebook->file_path], VersionHistory::filePaths($id))));
+        if ($files) {
+            Storage::disk(self::bluebookDisk())->delete(array_values($files));
         }
         Storage::disk(self::bluebookDisk())->deleteDirectory(\App\Services\Pdf\PageImages::directory($id));
 
