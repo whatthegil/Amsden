@@ -54,7 +54,7 @@ class BluebookStatusMailTest extends TestCase
 
     private function assertMailed(string $event): void
     {
-        Mail::assertQueued(BluebookStatusMail::class, fn(BluebookStatusMail $m) =>
+        Mail::assertSent(BluebookStatusMail::class, fn(BluebookStatusMail $m) =>
             $m->event === $event && $m->hasTo(self::AUTHOR) && $m->title === 'Mail Flow Paper');
     }
 
@@ -88,7 +88,7 @@ class BluebookStatusMailTest extends TestCase
         $b = $this->makeBluebook('Pending');
         $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/reject", Checklist::rejecting('Missing the approval sheet.'));
 
-        Mail::assertQueued(BluebookStatusMail::class, fn(BluebookStatusMail $m) =>
+        Mail::assertSent(BluebookStatusMail::class, fn(BluebookStatusMail $m) =>
             $m->event === BluebookStatusMail::REJECTED && $m->note === 'Missing the approval sheet.');
     }
 
@@ -97,7 +97,7 @@ class BluebookStatusMailTest extends TestCase
         $b = $this->makeBluebook('Pending');
         $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/reject", Checklist::rejecting('See the checklist.'));
 
-        Mail::assertQueued(BluebookStatusMail::class, function (BluebookStatusMail $m) {
+        Mail::assertSent(BluebookStatusMail::class, function (BluebookStatusMail $m) {
             if ($m->event !== BluebookStatusMail::REJECTED) return false;
 
             // Every criterion, not only the ones to fix.
@@ -111,6 +111,16 @@ class BluebookStatusMailTest extends TestCase
             $this->assertStringContainsString('Table of Contents matches the contents and page numbers', $html);
             return true;
         });
+    }
+
+    public function test_mail_is_sent_after_the_response_not_left_on_the_queue(): void
+    {
+        // No worker on the live site takes mail off the queue, so nothing may wait there.
+        $b = $this->makeBluebook('Pending');
+        $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/reject", Checklist::rejecting('Incomplete.'));
+
+        Mail::assertNothingQueued();
+        Mail::assertSent(BluebookStatusMail::class, fn(BluebookStatusMail $m) => $m->hasTo(self::AUTHOR));
     }
 
     public function test_recalling_tells_the_author(): void
@@ -137,7 +147,7 @@ class BluebookStatusMailTest extends TestCase
             ->assertSessionHas('success');
 
         $this->assertMailed(BluebookStatusMail::RECEIVED);
-        Mail::assertQueued(\App\Mail\NewSubmissionMail::class, fn($m) => $m->resubmitted && $m->bluebookId === $b->id);
+        Mail::assertSent(\App\Mail\NewSubmissionMail::class, fn($m) => $m->resubmitted && $m->bluebookId === $b->id);
     }
 
     public function test_a_new_upload_tells_every_admin_and_no_one_else(): void
@@ -161,13 +171,13 @@ class BluebookStatusMailTest extends TestCase
         $this->assertDatabaseHas('bluebooks', ['title' => 'Mail Flow Paper']);
         $this->assertMailed(BluebookStatusMail::RECEIVED);
 
-        Mail::assertQueued(\App\Mail\NewSubmissionMail::class, 2);
+        Mail::assertSent(\App\Mail\NewSubmissionMail::class, 2);
         foreach (['adm@cspc.edu.ph', 'adm2@cspc.edu.ph'] as $admin) {
-            Mail::assertQueued(\App\Mail\NewSubmissionMail::class, fn($m) =>
+            Mail::assertSent(\App\Mail\NewSubmissionMail::class, fn($m) =>
                 $m->hasTo($admin) && !$m->resubmitted && $m->title === 'Mail Flow Paper' && $m->uploaderEmail === self::AUTHOR);
         }
         foreach (['sub@cspc.edu.ph', 'library@cspc.edu.ph', self::AUTHOR] as $other) {
-            Mail::assertNotQueued(\App\Mail\NewSubmissionMail::class, fn($m) => $m->hasTo($other));
+            Mail::assertNotSent(\App\Mail\NewSubmissionMail::class, fn($m) => $m->hasTo($other));
         }
     }
 
@@ -188,7 +198,7 @@ class BluebookStatusMailTest extends TestCase
 
         $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/approve");
 
-        Mail::assertNothingQueued();
+        Mail::assertNothingSent();
     }
 
     public function test_every_message_renders(): void

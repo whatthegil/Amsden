@@ -5,22 +5,20 @@ namespace App\Mail;
 use App\Models\User;
 use App\Services\BluebookEvaluation;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
 
 /**
  * Tells a student what became of a bluebook they uploaded.
  *
- * Queued, so a slow or unreachable mail server never holds up - or fails - the
- * approval, rejection or upload that set it off. The queue worker sends it.
+ * Sent after the response, so a slow or unreachable mail server never holds
+ * up - or fails - the approval, rejection or upload that set it off.
  */
-class BluebookStatusMail extends Mailable implements ShouldQueue
+class BluebookStatusMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable, SerializesModels, SendsAfterResponse;
 
     public const RECEIVED  = 'received';   // uploaded or re-uploaded, now Pending
     public const APPROVED  = 'approved';   // approved, waiting on the signed waiver
@@ -62,17 +60,13 @@ class BluebookStatusMail extends Mailable implements ShouldQueue
             return;
         }
 
-        try {
-            Mail::to($email)->queue(new self(
-                $event,
-                (string) $bluebook['title'],
-                (string) ($bluebook['uploadedByName'] ?? ''),
-                $note,
-                $event === self::REJECTED ? BluebookEvaluation::results($bluebook) : [],
-            ));
-        } catch (\Throwable $e) {
-            report($e);
-        }
+        self::sendAfterResponse($email, new self(
+            $event,
+            (string) $bluebook['title'],
+            (string) ($bluebook['uploadedByName'] ?? ''),
+            $note,
+            $event === self::REJECTED ? BluebookEvaluation::results($bluebook) : [],
+        ));
     }
 
     public function envelope(): Envelope
