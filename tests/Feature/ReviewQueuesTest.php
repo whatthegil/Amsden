@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Bluebook;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\Checklist;
 use Tests\TestCase;
 
 /** The Pending and Rejected pages beside Bluebooks, and what they help with. */
@@ -129,7 +130,7 @@ class ReviewQueuesTest extends TestCase
 
         $c = $this->paper('To Reject', 'Pending', now()->subDay());
         $this->withSession($this->staffSession())
-            ->post("/admin/bluebooks/{$c->id}/reject", ['from' => 'pending', 'reason' => 'Incomplete.'])
+            ->post("/admin/bluebooks/{$c->id}/reject", Checklist::rejecting('Incomplete.'))
             ->assertRedirect(route('admin.pending'));
     }
 
@@ -160,13 +161,13 @@ class ReviewQueuesTest extends TestCase
 
     public function test_a_sub_admin_sees_the_queue_with_reject_but_not_approve(): void
     {
-        $this->paper('Waiting Paper', 'Pending', now()->subDay());
+        $p = $this->paper('Waiting Paper', 'Pending', now()->subDay());
 
         $res = $this->withSession($this->staffSession('Sub-Admin'))->get('/admin/pending');
 
         $res->assertOk();
         $res->assertSee('Waiting Paper');
-        $res->assertSee('Confirm Reject');
+        $res->assertSee(route('admin.bluebooks.view', $p->id) . '#evaluation', false);
         $res->assertDontSee('id="approve-selected-btn"', false);
         $res->assertSee('Only the Admin can approve submissions.');
     }

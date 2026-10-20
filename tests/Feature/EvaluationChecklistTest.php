@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\BluebookEvaluation;
 use App\Services\Store;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\Checklist;
 use Tests\TestCase;
 
 /** The evaluation checklist, read from the OCR text and commented on by the admin. */
@@ -98,18 +99,18 @@ class EvaluationChecklistTest extends TestCase
             ->assertOk()
             ->assertSee('Auto: not okay')
             ->assertSee('The numbering skips Table 3.')
-            ->assertSee('name="status[labels]" value="issue" checked', false)
-            ->assertSee(route('admin.bluebooks.evaluate', $b->id), false);
+            ->assertSee('name="status[labels]" value="issue" required checked', false)
+            ->assertSee(route('admin.bluebooks.reject', $b->id), false);
     }
 
     public function test_comments_are_kept_only_on_items_not_okay_and_the_author_sees_them(): void
     {
+        $input = Checklist::rejecting('Please see the checklist.', ['complete' => 'Chapter 4 is missing, please add it.', 'labels' => '']);
+        $input['comment']['toc'] = 'Should not be kept';
         $b = $this->paper();
 
-        $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/evaluate", [
-            'status'  => ['toc' => 'ok', 'complete' => 'issue', 'labels' => 'issue'],
-            'comment' => ['toc' => 'Should not be kept', 'complete' => 'Chapter 4 is missing, please add it.', 'labels' => ''],
-        ])->assertRedirect(route('admin.bluebooks.view', $b->id));
+        $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/reject", $input)
+            ->assertRedirect(route('admin.pending'));
 
         $saved = $b->fresh()->evaluation;
         $this->assertSame(['status' => 'ok'], $saved['toc']);
@@ -119,20 +120,24 @@ class EvaluationChecklistTest extends TestCase
 
         $this->withSession($this->author())->get('/student/my-uploads')
             ->assertOk()
-            ->assertSee('found 2 problems')
+            ->assertSee('17 okay, 2 not okay.')
             ->assertSee('Chapter 4 is missing, please add it.')
             ->assertSee(BluebookEvaluation::CRITERIA['labels'])
-            ->assertDontSee('Should not be kept')
-            ->assertDontSee(BluebookEvaluation::CRITERIA['toc']);
+            ->assertSee(BluebookEvaluation::CRITERIA['toc'])
+            ->assertDontSee('Should not be kept');
     }
 
-    public function test_a_posted_bluebook_cannot_be_evaluated(): void
+    public function test_a_rejected_bluebook_shows_its_checklist_read_only(): void
     {
-        $b = $this->paper(['status' => 'Approved']);
+        $b = $this->paper(['status' => 'Rejected', 'rejection_reason' => 'x',
+            'evaluation' => ['toc' => ['status' => 'issue', 'comment' => 'Pages do not match.']], 'evaluated_at' => now()]);
 
-        $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/evaluate", ['status' => ['toc' => 'issue']]);
-
-        $this->assertNull($b->fresh()->evaluation);
+        $this->withSession($this->admin())->get("/admin/bluebooks/{$b->id}")
+            ->assertOk()
+            ->assertSee('sent with the rejection')
+            ->assertSee('Pages do not match.')
+            ->assertSee('<fieldset disabled', false)
+            ->assertDontSee('name="reason"', false);
     }
 
     public function test_a_replaced_file_is_evaluated_afresh(): void

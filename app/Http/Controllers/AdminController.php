@@ -615,54 +615,39 @@ class AdminController extends Controller
         return redirect()->route('admin.bluebooks')->with('success', 'Waiver received. The bluebook is now posted in Browse.');
     }
 
+    /**
+     * Reject a pending submission with its evaluation: every checklist item
+     * marked okay or not okay, at least one not okay, and a reason. The
+     * checklist is saved with the rejection and sent to the author whole, so
+     * they know what passed as well as what to fix before re-uploading.
+     */
     public function bluebookReject(Request $request, int $id)
     {
         $user     = session('user');
         $bluebook = Store::getBluebook($id);
-        if (!$bluebook) {
-            return redirect()->route('admin.bluebooks');
-        }
-
-        // The author sees this in My Uploads; it is how they know what to fix
-        // before re-uploading, so a rejection without one is not accepted.
-        $reason = trim((string) $request->input('reason'));
-        if ($reason === '') {
-            return redirect($this->reviewedFrom($request))->with('success', 'Please give a reason for rejecting "' . $bluebook['title'] . '".');
-        }
-        $reason = mb_substr($reason, 0, 1000);
-
-        Store::updateBluebook($id, ['status' => 'Rejected', 'rejectionReason' => $reason]);
-        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Rejected Bluebook', 'document' => $bluebook['title']]);
-        BluebookStatusMail::notify($bluebook, BluebookStatusMail::REJECTED, $reason);
-        return redirect($this->reviewedFrom($request))->with('success', 'Bluebook rejected. The author can see your reason and re-upload.');
-    }
-
-    /**
-     * Save the evaluation checklist: each criterion okay or not, and a comment
-     * to the author on those that are not. The author sees the not-okay ones
-     * in My Uploads.
-     */
-    public function bluebookEvaluate(Request $request, int $id)
-    {
-        $user     = session('user');
-        $bluebook = Bluebook::find($id);
-        if (!$bluebook || !in_array($bluebook->status, ['Pending', 'Rejected'], true)) {
+        if (!$bluebook || $bluebook['status'] !== 'Pending') {
             return redirect()->route('admin.bluebooks');
         }
 
         $evaluation = BluebookEvaluation::fromInput((array) $request->input('status', []), (array) $request->input('comment', []));
-        $bluebook->forceFill(['evaluation' => $evaluation, 'evaluated_at' => now()])->save();
+        $issues     = count(array_filter($evaluation, fn($e) => $e['status'] === BluebookEvaluation::ISSUE));
+        $reason     = mb_substr(trim((string) $request->input('reason')), 0, 1000);
 
-        $issues = count(array_filter($evaluation, fn($e) => $e['status'] === BluebookEvaluation::ISSUE));
-        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Evaluated Bluebook', 'document' => $bluebook->title, 'bluebookId' => $bluebook->id]);
-        // Only when there is something to fix; an all-okay checklist is not news.
-        if ($issues > 0) {
-            BluebookStatusMail::notify(Store::getBluebook($id), BluebookStatusMail::EVALUATED, null, $issues);
+        $problem = match (true) {
+            count($evaluation) < count(BluebookEvaluation::CRITERIA) => 'Mark every item of the evaluation checklist okay or not okay before rejecting.',
+            $issues === 0 => 'Mark at least one checklist item not okay: a rejection has to tell the author what to fix.',
+            $reason === '' => 'Please give a reason for rejecting "' . $bluebook['title'] . '".',
+            default => null,
+        };
+        if ($problem) {
+            return redirect(route('admin.bluebooks.view', $id) . '#evaluation')->withInput()->with('rejectError', $problem);
         }
 
-        return redirect()->route('admin.bluebooks.view', $id)->with('success', $issues
-            ? 'Evaluation saved. The author can see the ' . $issues . ' ' . Str::plural('item', $issues) . ' marked not okay, with your comments.'
-            : 'Evaluation saved. Every item marked is okay.');
+        Bluebook::find($id)->forceFill(['evaluation' => $evaluation, 'evaluated_at' => now()])->save();
+        Store::updateBluebook($id, ['status' => 'Rejected', 'rejectionReason' => $reason]);
+        Store::addLog(['userName' => $user['name'], 'email' => $user['email'], 'action' => 'Rejected Bluebook', 'document' => $bluebook['title']]);
+        BluebookStatusMail::notify(Store::getBluebook($id), BluebookStatusMail::REJECTED, $reason);
+        return redirect(route('admin.pending'))->with('success', 'Bluebook rejected. The author was sent your evaluation and reason, and can re-upload.');
     }
 
     public function bluebookDelete(Request $request, int $id)

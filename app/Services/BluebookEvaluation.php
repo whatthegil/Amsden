@@ -40,6 +40,21 @@ class BluebookEvaluation
         'preservation'    => 'Suitable for long-term digital preservation',
     ];
 
+    /**
+     * One click to start a rejection's reason from what is most often wrong;
+     * the text can still be edited before it is sent. These are the Library
+     * Manual's grounds for non-acceptance (5.2.1).
+     */
+    public const REJECTION_REASONS = [
+        'Missing pages'      => 'Required pages or sections are missing (title page, approval sheet, abstract, table of contents or chapters). Please upload the complete manuscript.',
+        'Signatures'         => 'Approval signatures or certifications are incomplete. Please upload the copy with all approval and certification pages signed.',
+        'Unreadable file'    => 'The electronic file is corrupted, unreadable or has pages that are not properly scanned, oriented or legible. Please upload a clear, complete PDF.',
+        'Not the final copy' => 'The submitted file does not match the final approved manuscript. Please upload the exact final approved version.',
+        'Metadata'           => 'The details given (title, authors, adviser, program, year or abstract) are inaccurate or do not match the manuscript. Please correct them and re-upload.',
+        'Format'             => 'The manuscript does not follow the institutional thesis format (pagination, headings, table of contents, lists of tables and figures). Please correct it and re-upload.',
+        'Repository requirements' => 'The submission does not comply with institutional repository requirements. Please see the library for details.',
+    ];
+
     /** Comments are kept to this length, like a rejection reason. */
     public const COMMENT_MAX = 1000;
 
@@ -69,24 +84,6 @@ class BluebookEvaluation
         }
 
         return $items;
-    }
-
-    /**
-     * The saved criteria the admin marked not okay, with their comments - what
-     * the author is told to fix.
-     *
-     * @return array<string, array{label: string, comment: string}>
-     */
-    public static function issues(array $bluebook): array
-    {
-        $issues = [];
-        foreach ($bluebook['evaluation'] ?? [] as $key => $decision) {
-            if (isset(self::CRITERIA[$key]) && ($decision['status'] ?? null) === self::ISSUE) {
-                $issues[$key] = ['label' => self::CRITERIA[$key], 'comment' => (string) ($decision['comment'] ?? '')];
-            }
-        }
-
-        return $issues;
     }
 
     /**

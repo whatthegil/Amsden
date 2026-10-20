@@ -3,8 +3,8 @@
 
   Pending - the review queue, longest-waiting first: overdue submissions are
   flagged, each is checked against the posted archive for a likely duplicate,
-  several can be approved at once, and a rejection can start from a common
-  reason. Rejected - what was turned down and why, flagging authors who have
+  several can be approved at once, and Reject opens the evaluation checklist
+  it is made with. Rejected - what was turned down and why, flagging authors who have
   not re-uploaded, with delete for those who manage bluebooks.
 
   $mode is 'pending' or 'rejected'.
@@ -25,19 +25,6 @@
     return \App\Models\Bluebook::accessName($b['accessLevel']);
   };
   $days = fn(int $d) => $d === 0 ? 'Today' : ($d === 1 ? '1 day' : $d . ' days');
-
-  // One click to start a rejection from what is most often wrong; the text
-  // can still be edited before it is sent.
-  // These are the Library Manual's grounds for non-acceptance (5.2.1).
-  $reasons = [
-    'Missing pages'      => 'Required pages or sections are missing (title page, approval sheet, abstract, table of contents or chapters). Please upload the complete manuscript.',
-    'Signatures'         => 'Approval signatures or certifications are incomplete. Please upload the copy with all approval and certification pages signed.',
-    'Unreadable file'    => 'The electronic file is corrupted, unreadable or has pages that are not properly scanned, oriented or legible. Please upload a clear, complete PDF.',
-    'Not the final copy' => 'The submitted file does not match the final approved manuscript. Please upload the exact final approved version.',
-    'Metadata'           => 'The details given (title, authors, adviser, program, year or abstract) are inaccurate or do not match the manuscript. Please correct them and re-upload.',
-    'Format'             => 'The manuscript does not follow the institutional thesis format (pagination, headings, table of contents, lists of tables and figures). Please correct it and re-upload.',
-    'Repository requirements' => 'The submission does not comply with institutional repository requirements. Please see the library for details.',
-  ];
 @endphp
 @include('partials.head')
 
@@ -192,23 +179,8 @@
                             <button type="submit" class="btn btn-success btn-sm">Approve</button>
                           </form>
                           @endif
-                          <details class="reject-box">
-                            <summary class="btn btn-warning btn-sm">Reject</summary>
-                            <form method="POST" action="{{ route('admin.bluebooks.reject', $b['id']) }}">
-                              @csrf
-                              <input type="hidden" name="from" value="pending">
-                              <span style="font-size:0.78rem;color:var(--gray-600);">Common reasons:</span>
-                              <div class="reason-picks">
-                                @foreach($reasons as $label => $text)
-                                  <button type="button" class="reason-pick" data-reason="{{ $text }}">{{ $label }}</button>
-                                @endforeach
-                              </div>
-                              <label for="queue-reason-{{ $b['id'] }}">Reason (shown to the author)</label>
-                              <textarea id="queue-reason-{{ $b['id'] }}" name="reason" rows="3" maxlength="1000" required
-                                        placeholder="Why it cannot be accepted, and what to fix."></textarea>
-                              <button type="submit" class="btn btn-warning btn-sm">Confirm Reject</button>
-                            </form>
-                          </details>
+                          {{-- A rejection is made with the evaluation checklist, on the bluebook's page. --}}
+                          <a href="{{ route('admin.bluebooks.view', $b['id']) }}#evaluation" class="btn btn-warning btn-sm">Reject</a>
                         @elseif(!$isPending && $canManage)
                           <details class="reject-box">
                             <summary class="btn btn-danger btn-sm">Delete</summary>
@@ -262,15 +234,6 @@
   };
   if (all) all.addEventListener('change', () => { rows().forEach(r => { r.checked = all.checked; }); sync(); });
   document.addEventListener('change', e => { if (e.target.classList && e.target.classList.contains('row-select')) sync(); });
-
-  // A common reason fills the box, which can still be edited.
-  document.addEventListener('click', e => {
-    const pick = e.target.closest('.reason-pick');
-    if (!pick) return;
-    const box = pick.closest('form').querySelector('textarea');
-    box.value = pick.dataset.reason;
-    box.focus();
-  });
 })();
 </script>
 

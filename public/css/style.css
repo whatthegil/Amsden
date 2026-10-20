@@ -2212,6 +2212,13 @@ a.result-title:hover { color: var(--primary-dark); text-decoration: underline; }
 .eval-issues { margin: 0.5rem 0 0; padding-left: 1.1rem; }
 .eval-issues li { margin-bottom: 0.3rem; }
 .eval-issues .eval-issue-comment { display: block; color: var(--gray-800); white-space: pre-line; }
+.eval-reject {
+  display: flex; flex-direction: column; gap: 0.4rem;
+  margin-top: 0.75rem; padding: 0.7rem;
+  border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+}
+.eval-reject label { font-size: 0.8rem; font-weight: 600; }
+.eval-reject textarea { width: 100%; font: inherit; font-size: 0.85rem; padding: 0.4rem 0.55rem; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); resize: vertical; }
 .eval-results-heading { margin-top: 0.6rem; font-weight: 600; font-size: 0.8rem; color: var(--gray-800); }
 .eval-results { list-style: none; padding-left: 0; }
 .eval-results .badge { margin-right: 0.3rem; }

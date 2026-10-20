@@ -4,11 +4,13 @@ namespace Tests\Feature;
 
 use App\Jobs\ProcessBluebookOcr;
 use App\Models\Bluebook;
+use App\Services\BluebookEvaluation;
 use App\Services\Store;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\Checklist;
 use Tests\TestCase;
 
 /**
@@ -70,19 +72,22 @@ class RejectAndReuploadTest extends TestCase
         ], $overrides));
     }
 
-    // ─── Reject needs a reason ────────────────────────────────────────────────
+    // ─── Reject needs the evaluation and a reason ─────────────────────────────
 
-    public function test_reject_saves_the_reason(): void
+    public function test_reject_saves_the_evaluation_and_the_reason(): void
     {
         $bluebook = $this->makeBluebook('Pending');
 
         $this->withSession(['user' => $this->admin()])
-            ->post("/admin/bluebooks/{$bluebook->id}/reject", ['reason' => 'Chapter 3 is missing.'])
-            ->assertRedirect(route('admin.bluebooks'));
+            ->post("/admin/bluebooks/{$bluebook->id}/reject", Checklist::rejecting('Please complete the manuscript.'))
+            ->assertRedirect(route('admin.pending'));
 
         $bluebook->refresh();
         $this->assertSame('Rejected', $bluebook->status);
-        $this->assertSame('Chapter 3 is missing.', $bluebook->rejection_reason);
+        $this->assertSame('Please complete the manuscript.', $bluebook->rejection_reason);
+        $this->assertCount(count(BluebookEvaluation::CRITERIA), $bluebook->evaluation);
+        $this->assertSame(['status' => 'issue', 'comment' => 'Chapter 3 is missing.'], $bluebook->evaluation['complete']);
+        $this->assertNotNull($bluebook->evaluated_at);
     }
 
     public function test_reject_without_a_reason_is_refused(): void
@@ -90,20 +95,69 @@ class RejectAndReuploadTest extends TestCase
         $bluebook = $this->makeBluebook('Pending');
 
         $this->withSession(['user' => $this->admin()])
-            ->post("/admin/bluebooks/{$bluebook->id}/reject", ['reason' => '   ']);
+            ->post("/admin/bluebooks/{$bluebook->id}/reject", Checklist::rejecting('   '))
+            ->assertRedirect(route('admin.bluebooks.view', $bluebook->id) . '#evaluation')
+            ->assertSessionHas('rejectError');
 
         $this->assertSame('Pending', $bluebook->fresh()->status);
     }
 
-    public function test_the_pending_queue_asks_for_a_reason(): void
+    public function test_reject_without_the_whole_checklist_is_refused(): void
     {
-        $this->makeBluebook('Pending');
+        $bluebook = $this->makeBluebook('Pending');
+        $input    = Checklist::rejecting('Incomplete.');
+        unset($input['status']['format']);
 
+        $this->withSession(['user' => $this->admin()])
+            ->post("/admin/bluebooks/{$bluebook->id}/reject", $input)
+            ->assertSessionHas('rejectError', 'Mark every item of the evaluation checklist okay or not okay before rejecting.');
+        $this->withSession(['user' => $this->admin()])
+            ->post("/admin/bluebooks/{$bluebook->id}/reject", ['reason' => 'Incomplete.']);
+
+        $this->assertSame('Pending', $bluebook->fresh()->status);
+        $this->assertNull($bluebook->fresh()->evaluation);
+    }
+
+    public function test_reject_with_every_item_okay_is_refused(): void
+    {
+        $bluebook = $this->makeBluebook('Pending');
+
+        $this->withSession(['user' => $this->admin()])
+            ->post("/admin/bluebooks/{$bluebook->id}/reject", Checklist::rejecting('Incomplete.', []))
+            ->assertSessionHas('rejectError');
+
+        $this->assertSame('Pending', $bluebook->fresh()->status);
+    }
+
+    public function test_only_a_pending_bluebook_can_be_rejected(): void
+    {
+        $bluebook = $this->makeBluebook('Approved');
+
+        $this->withSession(['user' => $this->admin()])
+            ->post("/admin/bluebooks/{$bluebook->id}/reject", Checklist::rejecting('Incomplete.'));
+
+        $this->assertSame('Approved', $bluebook->fresh()->status);
+    }
+
+    public function test_reject_is_made_from_the_checklist(): void
+    {
+        $bluebook = $this->makeBluebook('Pending');
+
+        // The queue's Reject opens the bluebook's checklist...
         $this->withSession(['user' => $this->admin()])
             ->get('/admin/pending')
             ->assertOk()
+            ->assertSee(route('admin.bluebooks.view', $bluebook->id) . '#evaluation', false)
+            ->assertDontSee('Confirm Reject');
+
+        // ...where the checklist, the reason and Reject are one form, with no separate save.
+        $this->withSession(['user' => $this->admin()])
+            ->get("/admin/bluebooks/{$bluebook->id}")
+            ->assertOk()
+            ->assertSee('action="' . route('admin.bluebooks.reject', $bluebook->id) . '"', false)
             ->assertSee('name="reason"', false)
-            ->assertSee('Confirm Reject');
+            ->assertSee('name="status[toc]" value="ok" required', false)
+            ->assertDontSee('Save evaluation');
     }
 
     // ─── What the author sees ─────────────────────────────────────────────────

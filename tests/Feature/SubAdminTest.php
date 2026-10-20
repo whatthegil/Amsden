@@ -6,6 +6,7 @@ use App\Models\Bluebook;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Tests\Support\Checklist;
 use Tests\TestCase;
 
 /**
@@ -75,9 +76,9 @@ class SubAdminTest extends TestCase
             ->assertSee('Only the Admin can approve submissions.')
             ->assertDontSee('id="approve-selected-btn"', false)
             ->assertDontSee(route('admin.bluebooks.approve', $b->id), false)
-            ->assertSee(route('admin.bluebooks.reject', $b->id), false);
+            ->assertSee(route('admin.bluebooks.view', $b->id) . '#evaluation', false);
 
-        $this->withSession($this->as($sub))->post("/admin/bluebooks/{$b->id}/reject", ['reason' => 'The abstract does not match the paper.']);
+        $this->withSession($this->as($sub))->post("/admin/bluebooks/{$b->id}/reject", Checklist::rejecting('The abstract does not match the paper.'));
         $this->assertSame('Rejected', $b->fresh()->status);
     }
 

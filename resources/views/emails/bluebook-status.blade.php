@@ -64,10 +64,6 @@ Your bluebook **{{ $title }}** was **not approved** yet. Please correct it and u
 @case('recalled')
 Your bluebook **{{ $title }}** has been returned to **Pending** for another review, and is hidden from the archive until it is approved again. The library may ask you for corrections.
 @break
-
-@case('evaluated')
-The library evaluated your bluebook **{{ $title }}** and marked **{{ $issues }} {{ \Illuminate\Support\Str::plural('item', $issues) }}** as not okay. Open My Uploads to see each item and the library's comments.
-@break
 @endswitch
 
 <x-mail::button :url="$url">

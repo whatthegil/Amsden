@@ -133,24 +133,33 @@
 
         @if($asAdmin && in_array($bluebook['status'], ['Pending', 'Rejected'], true))
           {{-- The Library Manual's criteria for evaluating a submission (5.2.1),
-               pre-filled from the OCR text and the record. The admin confirms or
-               corrects each one; a comment box opens on those marked not okay,
-               and that is what the author is shown. --}}
+               pre-filled from the OCR text and the record. Rejecting is done
+               here: the admin marks every item, comments on those not okay,
+               gives a reason, and the whole checklist goes to the author with
+               the rejection. A rejected one shows what was sent, read-only. --}}
           @php
-            $evalItems   = \App\Services\BluebookEvaluation::items($bluebook);
-            $canEvaluate = \App\Models\User::allows($user, 'review_bluebooks');
-            $evalIssues  = count(array_filter($evalItems, fn($i) => $i['status'] === 'issue'));
+            $evalItems = \App\Services\BluebookEvaluation::items($bluebook);
+            $isPending = $bluebook['status'] === 'Pending';
+            $canReject = $isPending && \App\Models\User::allows($user, 'review_bluebooks');
           @endphp
-          <details class="eval-checklist card" style="padding:0.9rem 1rem;" open>
+          <details class="eval-checklist card" id="evaluation" style="padding:0.9rem 1rem;" open>
             <summary style="cursor:pointer;font-weight:700;">Evaluation checklist
               <span style="font-weight:400;color:var(--gray-400);font-size:0.82rem;">(Library Manual 5.2.1 &middot; to be completed within 3 working days &middot;
-                {{ $bluebook['evaluatedAt'] ? 'saved ' . $bluebook['evaluatedAt'] : 'checked automatically from the text, not yet saved' }})</span>
+                {{ $isPending ? 'checked automatically from the text; confirm each item to reject' : 'sent with the rejection' . ($bluebook['evaluatedAt'] ? ' on ' . $bluebook['evaluatedAt'] : '') }})</span>
             </summary>
-            <form method="POST" action="{{ route('admin.bluebooks.evaluate', $bluebook['id']) }}">
+            @if(session('rejectError'))
+              <div class="alert alert-error" style="margin-top:0.6rem;">{{ session('rejectError') }}</div>
+            @endif
+            <form method="POST" action="{{ route('admin.bluebooks.reject', $bluebook['id']) }}">
               @csrf
-              <fieldset @disabled(!$canEvaluate) style="border:0;padding:0;margin:0;min-width:0;">
+              <fieldset @disabled(!$canReject) style="border:0;padding:0;margin:0;min-width:0;">
               <ul>
                 @foreach($evalItems as $key => $item)
+                  @php
+                    // What the admin had marked, when a refused rejection sends them back.
+                    $item['status']  = old("status.$key", $item['status']);
+                    $item['comment'] = old("comment.$key", $item['comment']);
+                  @endphp
                   <li class="eval-item is-{{ $item['status'] }}" data-eval-item>
                     <div class="eval-label">{{ $item['label'] }}</div>
                     <div class="eval-note">
@@ -161,8 +170,8 @@
                       {{ $item['note'] }}
                     </div>
                     <div class="eval-choice" role="radiogroup" aria-label="{{ $item['label'] }}">
-                      <label><input type="radio" name="status[{{ $key }}]" value="ok" @checked($item['status'] === 'ok')> Okay</label>
-                      <label><input type="radio" name="status[{{ $key }}]" value="issue" @checked($item['status'] === 'issue')> Not okay / missing</label>
+                      <label><input type="radio" name="status[{{ $key }}]" value="ok" required @checked($item['status'] === 'ok')> Okay</label>
+                      <label><input type="radio" name="status[{{ $key }}]" value="issue" required @checked($item['status'] === 'issue')> Not okay / missing</label>
                     </div>
                     <div class="eval-comment" @if($item['status'] !== 'issue') hidden @endif>
                       <label class="sr-only" for="eval-comment-{{ $key }}">What is the problem with: {{ $item['label'] }}</label>
@@ -172,10 +181,21 @@
                   </li>
                 @endforeach
               </ul>
-              @if($canEvaluate)
-                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-                  <button type="submit" class="btn btn-primary btn-sm">Save evaluation</button>
-                  <span style="font-size:0.82rem;color:var(--gray-600);">{{ $evalIssues }} not okay. The uploader sees those items and your comments in My Uploads.</span>
+              @if($canReject)
+                <div class="eval-reject">
+                  <span style="font-size:0.78rem;color:var(--gray-600);">Common reasons:</span>
+                  <div class="reason-picks">
+                    @foreach(\App\Services\BluebookEvaluation::REJECTION_REASONS as $label => $text)
+                      <button type="button" class="reason-pick" data-reason="{{ $text }}">{{ $label }}</button>
+                    @endforeach
+                  </div>
+                  <label for="reject-reason">Reason (sent to the author with the checklist)</label>
+                  <textarea id="reject-reason" name="reason" rows="3" maxlength="1000" required
+                            placeholder="Why it cannot be accepted, and what to fix.">{{ old('reason') }}</textarea>
+                  <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem;">
+                    <button type="submit" class="btn btn-warning btn-sm">Reject</button>
+                    <span style="font-size:0.82rem;color:var(--gray-600);" data-eval-count></span>
+                  </div>
                 </div>
               @endif
               </fieldset>
@@ -183,8 +203,19 @@
           </details>
           <script nonce="{{ $cspNonce ?? '' }}">
           (function () {
+            const items = document.querySelectorAll('[data-eval-item]');
+            const count = document.querySelector('[data-eval-count]');
+            const tally = function () {
+              if (!count) return;
+              const marked = Array.from(document.querySelectorAll('[data-eval-item] input[type=radio]:checked'));
+              const issues = marked.filter(r => r.value === 'issue').length;
+              count.textContent = marked.length + ' of ' + items.length + ' marked, ' + issues + ' not okay. '
+                + (marked.length < items.length ? 'Mark every item to reject.'
+                  : issues === 0 ? 'Mark at least one item not okay to reject.'
+                  : 'The author is sent the whole checklist.');
+            };
             // The comment box belongs to "Not okay" only, and goes with it.
-            document.querySelectorAll('[data-eval-item]').forEach(function (item) {
+            items.forEach(function (item) {
               const box = item.querySelector('.eval-comment');
               item.querySelectorAll('input[type=radio]').forEach(function (radio) {
                 radio.addEventListener('change', function () {
@@ -194,7 +225,18 @@
                   item.classList.toggle('is-ok', !issue);
                   item.classList.remove('is-unchecked');
                   if (issue) box.querySelector('textarea').focus();
+                  tally();
                 });
+              });
+            });
+            tally();
+
+            // A common reason fills the box, which can still be edited.
+            document.querySelectorAll('.reason-pick').forEach(function (pick) {
+              pick.addEventListener('click', function () {
+                const box = document.getElementById('reject-reason');
+                box.value = pick.dataset.reason;
+                box.focus();
               });
             });
           })();

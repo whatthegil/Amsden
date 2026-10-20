@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Tests\Support\Checklist;
 use Tests\TestCase;
 
 /**
@@ -85,7 +86,7 @@ class BluebookStatusMailTest extends TestCase
     public function test_rejecting_sends_the_reason(): void
     {
         $b = $this->makeBluebook('Pending');
-        $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/reject", ['reason' => 'Missing the approval sheet.']);
+        $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/reject", Checklist::rejecting('Missing the approval sheet.'));
 
         Mail::assertQueued(BluebookStatusMail::class, fn(BluebookStatusMail $m) =>
             $m->event === BluebookStatusMail::REJECTED && $m->note === 'Missing the approval sheet.');
@@ -93,11 +94,8 @@ class BluebookStatusMailTest extends TestCase
 
     public function test_rejecting_sends_the_complete_evaluation(): void
     {
-        $b = $this->makeBluebook('Pending', self::AUTHOR, ['evaluation' => [
-            'toc'      => ['status' => 'ok'],
-            'complete' => ['status' => 'issue', 'comment' => 'Chapter 3 is missing.'],
-        ]]);
-        $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/reject", ['reason' => 'See the checklist.']);
+        $b = $this->makeBluebook('Pending');
+        $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/reject", Checklist::rejecting('See the checklist.'));
 
         Mail::assertQueued(BluebookStatusMail::class, function (BluebookStatusMail $m) {
             if ($m->event !== BluebookStatusMail::REJECTED) return false;
@@ -106,24 +104,13 @@ class BluebookStatusMailTest extends TestCase
             $this->assertCount(count(\App\Services\BluebookEvaluation::CRITERIA), $m->results);
             $this->assertSame('ok', $m->results['toc']['status']);
             $this->assertSame('Chapter 3 is missing.', $m->results['complete']['comment']);
-            $this->assertSame('unchecked', $m->results['format']['status']);
 
             $html = $m->render();
-            $this->assertStringContainsString('1 okay, 1 not okay, 17 not checked', $html);
+            $this->assertStringContainsString('18 okay, 1 not okay.', $html);
             $this->assertStringContainsString('Chapter 3 is missing.', $html);
             $this->assertStringContainsString('Table of Contents matches the contents and page numbers', $html);
             return true;
         });
-    }
-
-    public function test_rejecting_an_unevaluated_bluebook_sends_no_checklist(): void
-    {
-        $b = $this->makeBluebook('Pending');
-        $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/reject", ['reason' => 'Wrong file.']);
-
-        Mail::assertQueued(BluebookStatusMail::class, fn(BluebookStatusMail $m) =>
-            $m->event === BluebookStatusMail::REJECTED && $m->results === []
-            && !str_contains($m->render(), "library's evaluation"));
     }
 
     public function test_recalling_tells_the_author(): void
@@ -132,18 +119,6 @@ class BluebookStatusMailTest extends TestCase
         $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/recall");
 
         $this->assertMailed(BluebookStatusMail::RECALLED);
-    }
-
-    public function test_an_evaluation_with_issues_is_mailed_and_a_clean_one_is_not(): void
-    {
-        $b = $this->makeBluebook('Pending');
-
-        $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/evaluate", ['status' => ['toc' => 'ok']]);
-        Mail::assertNothingQueued();
-
-        $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/evaluate", ['status' => ['toc' => 'issue']]);
-        Mail::assertQueued(BluebookStatusMail::class, fn(BluebookStatusMail $m) =>
-            $m->event === BluebookStatusMail::EVALUATED && $m->issues === 1);
     }
 
     public function test_resubmitting_confirms_receipt(): void
@@ -220,9 +195,9 @@ class BluebookStatusMailTest extends TestCase
     {
         foreach ([
             BluebookStatusMail::RECEIVED, BluebookStatusMail::APPROVED, BluebookStatusMail::POSTED,
-            BluebookStatusMail::REJECTED, BluebookStatusMail::RECALLED, BluebookStatusMail::EVALUATED,
+            BluebookStatusMail::REJECTED, BluebookStatusMail::RECALLED,
         ] as $event) {
-            $html = (new BluebookStatusMail($event, 'A <b>Title</b>', 'Maria', 'Fix <i>this</i>', 2))->render();
+            $html = (new BluebookStatusMail($event, 'A <b>Title</b>', 'Maria', 'Fix <i>this</i>'))->render();
 
             $this->assertStringContainsString('Hello, Maria', $html);
             $this->assertStringContainsString('A &lt;b&gt;Title&lt;/b&gt;', $html, "{$event}: the title must be escaped.");

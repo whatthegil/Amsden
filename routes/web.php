@@ -79,7 +79,6 @@ Route::prefix('admin')->middleware('role:Admin,Sub-Admin')->group(function () {
     Route::middleware('permission:review_bluebooks')->group(function () {
         Route::post('/bluebooks/{id}/waiver-received', [AdminController::class, 'bluebookWaiverReceived'])->name('admin.bluebooks.waiverReceived');
         Route::post('/bluebooks/{id}/reject',      [AdminController::class, 'bluebookReject'])->name('admin.bluebooks.reject');
-        Route::post('/bluebooks/{id}/evaluate',    [AdminController::class, 'bluebookEvaluate'])->whereNumber('id')->name('admin.bluebooks.evaluate');
     });
 
     Route::middleware('permission:manage_users')->group(function () {

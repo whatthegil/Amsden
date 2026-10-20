@@ -27,7 +27,6 @@ class BluebookStatusMail extends Mailable implements ShouldQueue
     public const POSTED    = 'posted';     // in Browse
     public const REJECTED  = 'rejected';
     public const RECALLED  = 'recalled';   // taken back to Pending after approval
-    public const EVALUATED = 'evaluated';  // checklist saved with items to fix
 
     private const SUBJECTS = [
         self::RECEIVED  => 'We received your bluebook',
@@ -35,7 +34,6 @@ class BluebookStatusMail extends Mailable implements ShouldQueue
         self::POSTED    => 'Your bluebook is now posted in the archive',
         self::REJECTED  => 'Your bluebook needs changes',
         self::RECALLED  => 'Your bluebook is back under review',
-        self::EVALUATED => 'Your bluebook was evaluated',
     ];
 
     public function __construct(
@@ -43,7 +41,6 @@ class BluebookStatusMail extends Mailable implements ShouldQueue
         public string $title,
         public string $name,
         public ?string $note = null,
-        public int $issues = 0,
         public array $results = [],
     ) {}
 
@@ -52,10 +49,10 @@ class BluebookStatusMail extends Mailable implements ShouldQueue
      *
      * Bluebooks the library added itself have no student behind them, so
      * nothing is sent for those. A rejection carries the whole evaluation
-     * checklist, if one was saved. Never throws: an email that cannot be queued
+     * checklist it was made with. Never throws: an email that cannot be queued
      * is reported and the action that caused it goes ahead regardless.
      */
-    public static function notify(array $bluebook, string $event, ?string $note = null, int $issues = 0): void
+    public static function notify(array $bluebook, string $event, ?string $note = null): void
     {
         $email = $bluebook['uploadedBy'] ?? null;
         if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL) || $email === 'library@cspc.edu.ph') {
@@ -71,7 +68,6 @@ class BluebookStatusMail extends Mailable implements ShouldQueue
                 (string) $bluebook['title'],
                 (string) ($bluebook['uploadedByName'] ?? ''),
                 $note,
-                $issues,
                 $event === self::REJECTED ? BluebookEvaluation::results($bluebook) : [],
             ));
         } catch (\Throwable $e) {
