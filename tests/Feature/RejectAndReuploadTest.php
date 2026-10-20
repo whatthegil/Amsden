@@ -120,6 +120,27 @@ class RejectAndReuploadTest extends TestCase
         $res->assertSee('Re-upload');
     }
 
+    public function test_author_sees_the_complete_evaluation_of_a_rejection(): void
+    {
+        $this->makeBluebook('Rejected', [
+            'rejection_reason' => 'See the checklist.',
+            'evaluation'       => [
+                'toc'      => ['status' => 'ok'],
+                'complete' => ['status' => 'issue', 'comment' => 'Chapter 3 is missing.'],
+            ],
+        ]);
+
+        $this->withSession(['user' => $this->author()])
+            ->get('/student/my-uploads')
+            ->assertOk()
+            ->assertSee('1 okay, 1 not okay, 17 not checked')
+            ->assertSee('Not okay — please fix')
+            ->assertSee('Chapter 3 is missing.')
+            // What passed is shown too, not only what to fix.
+            ->assertSee('Table of Contents matches the contents and page numbers')
+            ->assertSee('Conforms to the approved institutional thesis format');
+    }
+
     public function test_no_reupload_form_for_other_statuses(): void
     {
         $this->makeBluebook('Pending');

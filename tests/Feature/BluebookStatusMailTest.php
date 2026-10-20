@@ -91,6 +91,41 @@ class BluebookStatusMailTest extends TestCase
             $m->event === BluebookStatusMail::REJECTED && $m->note === 'Missing the approval sheet.');
     }
 
+    public function test_rejecting_sends_the_complete_evaluation(): void
+    {
+        $b = $this->makeBluebook('Pending', self::AUTHOR, ['evaluation' => [
+            'toc'      => ['status' => 'ok'],
+            'complete' => ['status' => 'issue', 'comment' => 'Chapter 3 is missing.'],
+        ]]);
+        $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/reject", ['reason' => 'See the checklist.']);
+
+        Mail::assertQueued(BluebookStatusMail::class, function (BluebookStatusMail $m) {
+            if ($m->event !== BluebookStatusMail::REJECTED) return false;
+
+            // Every criterion, not only the ones to fix.
+            $this->assertCount(count(\App\Services\BluebookEvaluation::CRITERIA), $m->results);
+            $this->assertSame('ok', $m->results['toc']['status']);
+            $this->assertSame('Chapter 3 is missing.', $m->results['complete']['comment']);
+            $this->assertSame('unchecked', $m->results['format']['status']);
+
+            $html = $m->render();
+            $this->assertStringContainsString('1 okay, 1 not okay, 17 not checked', $html);
+            $this->assertStringContainsString('Chapter 3 is missing.', $html);
+            $this->assertStringContainsString('Table of Contents matches the contents and page numbers', $html);
+            return true;
+        });
+    }
+
+    public function test_rejecting_an_unevaluated_bluebook_sends_no_checklist(): void
+    {
+        $b = $this->makeBluebook('Pending');
+        $this->withSession($this->admin())->post("/admin/bluebooks/{$b->id}/reject", ['reason' => 'Wrong file.']);
+
+        Mail::assertQueued(BluebookStatusMail::class, fn(BluebookStatusMail $m) =>
+            $m->event === BluebookStatusMail::REJECTED && $m->results === []
+            && !str_contains($m->render(), "library's evaluation"));
+    }
+
     public function test_recalling_tells_the_author(): void
     {
         $b = $this->makeBluebook('Approved');

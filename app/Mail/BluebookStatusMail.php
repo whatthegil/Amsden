@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\User;
+use App\Services\BluebookEvaluation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -43,13 +44,15 @@ class BluebookStatusMail extends Mailable implements ShouldQueue
         public string $name,
         public ?string $note = null,
         public int $issues = 0,
+        public array $results = [],
     ) {}
 
     /**
      * Send the uploader word of a change, if there is an uploader to tell.
      *
      * Bluebooks the library added itself have no student behind them, so
-     * nothing is sent for those. Never throws: an email that cannot be queued
+     * nothing is sent for those. A rejection carries the whole evaluation
+     * checklist, if one was saved. Never throws: an email that cannot be queued
      * is reported and the action that caused it goes ahead regardless.
      */
     public static function notify(array $bluebook, string $event, ?string $note = null, int $issues = 0): void
@@ -69,6 +72,7 @@ class BluebookStatusMail extends Mailable implements ShouldQueue
                 (string) ($bluebook['uploadedByName'] ?? ''),
                 $note,
                 $issues,
+                $event === self::REJECTED ? BluebookEvaluation::results($bluebook) : [],
             ));
         } catch (\Throwable $e) {
             report($e);

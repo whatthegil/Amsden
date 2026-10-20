@@ -127,7 +127,7 @@
                   @if(!empty($b['rejectionReason']))
                     <div class="rejection-reason"><strong>Reason:</strong> {{ $b['rejectionReason'] }}</div>
                   @endif
-                  @include('partials.evaluation-issues')
+                  @include('partials.evaluation-results')
                   <form method="POST" action="{{ route('student.my-uploads.reupload', $b['id']) }}" enctype="multipart/form-data" class="reupload-form">
                     @csrf
                     <label class="sr-only" for="reupload-file-{{ $b['id'] }}">Corrected PDF for {{ $b['title'] }}</label>

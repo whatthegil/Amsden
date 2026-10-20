@@ -90,6 +90,34 @@ class BluebookEvaluation
     }
 
     /**
+     * The whole saved evaluation, every criterion in checklist order: okay,
+     * not okay with its comment, or unchecked where the admin left it unmarked.
+     * Empty when the submission has not been evaluated. This is what a
+     * rejected author is sent, so they see what passed as well as what to fix.
+     *
+     * @return array<string, array{label: string, status: string, comment: string}>
+     */
+    public static function results(array $bluebook): array
+    {
+        $saved = $bluebook['evaluation'] ?? [];
+        if (!$saved) {
+            return [];
+        }
+
+        $results = [];
+        foreach (self::CRITERIA as $key => $label) {
+            $status = $saved[$key]['status'] ?? self::UNCHECKED;
+            $results[$key] = [
+                'label'   => $label,
+                'status'  => $status,
+                'comment' => $status === self::ISSUE ? (string) ($saved[$key]['comment'] ?? '') : '',
+            ];
+        }
+
+        return $results;
+    }
+
+    /**
      * The admin's form as it is stored: a status for each criterion they
      * marked, and a comment only on those marked not okay.
      */

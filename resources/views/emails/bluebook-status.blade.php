@@ -25,6 +25,40 @@ Your bluebook **{{ $title }}** was **not approved** yet. Please correct it and u
 **Reason from the library:** {{ $note }}
 </x-mail::panel>
 @endif
+
+@if($results)
+@php
+  $byStatus = fn($s) => array_filter($results, fn($r) => $r['status'] === $s);
+  $notOkay  = $byStatus('issue');
+  $okay     = $byStatus('ok');
+  $open     = $byStatus('unchecked');
+@endphp
+**The library's evaluation:** {{ count($okay) }} okay, {{ count($notOkay) }} not okay{{ $open ? ', ' . count($open) . ' not checked' : '' }}.
+
+@if($notOkay)
+**Not okay — please fix:**
+
+@foreach($notOkay as $r)
+- {{ $r['label'] }}{!! $r['comment'] !== '' ? ' — <em>' . e(preg_replace('/\s+/u', ' ', $r['comment'])) . '</em>' : '' !!}
+@endforeach
+@endif
+
+@if($okay)
+**Okay:**
+
+@foreach($okay as $r)
+- {{ $r['label'] }}
+@endforeach
+@endif
+
+@if($open)
+**Not checked by the library:**
+
+@foreach($open as $r)
+- {{ $r['label'] }}
+@endforeach
+@endif
+@endif
 @break
 
 @case('recalled')
