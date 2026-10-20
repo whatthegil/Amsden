@@ -145,7 +145,7 @@
           <details class="eval-checklist card" id="evaluation" style="padding:0.9rem 1rem;" open>
             <summary style="cursor:pointer;font-weight:700;">Evaluation checklist
               <span style="font-weight:400;color:var(--gray-400);font-size:0.82rem;">(Library Manual 5.2.1 &middot; to be completed within 3 working days &middot;
-                {{ $isPending ? 'checked automatically from the text; confirm each item to reject' : 'sent with the rejection' . ($bluebook['evaluatedAt'] ? ' on ' . $bluebook['evaluatedAt'] : '') }})</span>
+                {{ $isPending ? 'checked automatically from the text; confirm each item to decline' : 'sent with the rejection' . ($bluebook['evaluatedAt'] ? ' on ' . $bluebook['evaluatedAt'] : '') }})</span>
             </summary>
             @if(session('rejectError'))
               <div class="alert alert-error" style="margin-top:0.6rem;">{{ session('rejectError') }}</div>
@@ -193,7 +193,7 @@
                   <textarea id="reject-reason" name="reason" rows="3" maxlength="1000" required
                             placeholder="Why it cannot be accepted, and what to fix.">{{ old('reason') }}</textarea>
                   <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem;">
-                    <button type="submit" class="btn btn-warning btn-sm">Reject</button>
+                    <button type="submit" class="btn btn-warning btn-sm">Decline</button>
                     <span style="font-size:0.82rem;color:var(--gray-600);" data-eval-count></span>
                   </div>
                 </div>
@@ -210,8 +210,8 @@
               const marked = Array.from(document.querySelectorAll('[data-eval-item] input[type=radio]:checked'));
               const issues = marked.filter(r => r.value === 'issue').length;
               count.textContent = marked.length + ' of ' + items.length + ' marked, ' + issues + ' not okay. '
-                + (marked.length < items.length ? 'Mark every item to reject.'
-                  : issues === 0 ? 'Mark at least one item not okay to reject.'
+                + (marked.length < items.length ? 'Mark every item to decline.'
+                  : issues === 0 ? 'Mark at least one item not okay to decline.'
                   : 'The author is sent the whole checklist.');
             };
             // The comment box belongs to "Not okay" only, and goes with it.

@@ -110,7 +110,7 @@ class RejectAndReuploadTest extends TestCase
 
         $this->withSession(['user' => $this->admin()])
             ->post("/admin/bluebooks/{$bluebook->id}/reject", $input)
-            ->assertSessionHas('rejectError', 'Mark every item of the evaluation checklist okay or not okay before rejecting.');
+            ->assertSessionHas('rejectError', 'Mark every item of the evaluation checklist okay or not okay before declining.');
         $this->withSession(['user' => $this->admin()])
             ->post("/admin/bluebooks/{$bluebook->id}/reject", ['reason' => 'Incomplete.']);
 

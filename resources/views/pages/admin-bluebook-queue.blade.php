@@ -180,7 +180,7 @@
                           </form>
                           @endif
                           {{-- A rejection is made with the evaluation checklist, on the bluebook's page. --}}
-                          <a href="{{ route('admin.bluebooks.view', $b['id']) }}#evaluation" class="btn btn-warning btn-sm">Reject</a>
+                          <a href="{{ route('admin.bluebooks.view', $b['id']) }}#evaluation" class="btn btn-warning btn-sm">Decline</a>
                         @elseif(!$isPending && $canManage)
                           <details class="reject-box">
                             <summary class="btn btn-danger btn-sm">Delete</summary>

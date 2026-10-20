@@ -634,9 +634,9 @@ class AdminController extends Controller
         $reason     = mb_substr(trim((string) $request->input('reason')), 0, 1000);
 
         $problem = match (true) {
-            count($evaluation) < count(BluebookEvaluation::CRITERIA) => 'Mark every item of the evaluation checklist okay or not okay before rejecting.',
-            $issues === 0 => 'Mark at least one checklist item not okay: a rejection has to tell the author what to fix.',
-            $reason === '' => 'Please give a reason for rejecting "' . $bluebook['title'] . '".',
+            count($evaluation) < count(BluebookEvaluation::CRITERIA) => 'Mark every item of the evaluation checklist okay or not okay before declining.',
+            $issues === 0 => 'Mark at least one checklist item not okay: a decline has to tell the author what to fix.',
+            $reason === '' => 'Please give a reason for declining "' . $bluebook['title'] . '".',
             default => null,
         };
         if ($problem) {
